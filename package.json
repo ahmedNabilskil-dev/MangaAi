@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 9002 --hostname 0.0.0.0",
+    "dev": "next dev -p 9002 --hostname 0.0.0.0 --port 9002",
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
     "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
     "build": "next build",
@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@genkit-ai/googleai": "^1.6.2",
-    "@genkit-ai/next": "^1.5.0",
+    "@genkit-ai/next": "^1.4.0",
     "@hookform/resolvers": "^3.9.0",
     "@radix-ui/react-accordion": "^1.2.0",
     "@radix-ui/react-alert-dialog": "^1.1.1",
@@ -43,18 +43,21 @@
     "date-fns": "^3.6.0",
     "framer-motion": "^11.3.17",
     "genkit": "^1.6.2",
+    "immer": "^10.1.1",
+    "konva": "^9.3.13",
     "lucide-react": "^0.417.0",
-    "next": "^15.0.0",
+    "next": "^15.3.1",
     "next-themes": "latest",
     "patch-package": "^8.0.0",
-    "react": "^19.1.0",
-    "react-day-picker": "^8.10.1",
-    "react-dom": "^19.1.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "react-hook-form": "^7.52.1",
+    "react-konva": "^18.2.10",
     "reactflow": "^11.11.4",
     "recharts": "^2.12.7",
     "tailwind-merge": "^2.4.0",
     "tailwindcss-animate": "^1.0.7",
+    "uuid": "^10.0.0",
     "zod": "^3.23.8",
     "zustand": "^4.5.4"
   },
@@ -62,10 +65,10 @@
     "@types/node": "^20",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
+    "@types/uuid": "^10.0.0",
     "genkit-cli": "^1.6.1",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
   }
 }
-
