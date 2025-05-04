@@ -17,6 +17,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Separator } from '../ui/separator'; // Import Separator
 
 const PageManager: React.FC = () => {
     const { pages, currentPageId, setCurrentPageId, addPage, deletePage } = useEditorStore();
@@ -85,7 +86,7 @@ const PageManager: React.FC = () => {
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
                                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => confirmDelete(page.id)}>
+                                        <AlertDialogAction onClick={() => confirmDelete(page.id)} className='bg-destructive hover:bg-destructive/80'>
                                             Delete
                                         </AlertDialogAction>
                                         </AlertDialogFooter>
@@ -102,4 +103,3 @@ const PageManager: React.FC = () => {
 };
 
 export default PageManager;
-```

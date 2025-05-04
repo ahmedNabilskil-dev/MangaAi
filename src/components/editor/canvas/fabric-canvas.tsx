@@ -357,14 +357,17 @@ const FabricCanvas: React.FC = () => {
                     if (existingObj.scaleX !== (shape.scaleX ?? 1)) updates.scaleX = shape.scaleX ?? 1;
                     if (existingObj.scaleY !== (shape.scaleY ?? 1)) updates.scaleY = shape.scaleY ?? 1;
                  } else if (existingObj.type === 'image') {
-                    const newScaleX = shape.width / (existingObj.width ?? 1);
-                    const newScaleY = shape.height / (existingObj.height ?? 1);
+                    // Handle potential zero division error if image hasn't loaded width/height yet
+                    const imgWidth = (existingObj as fabric.Image).width ?? 1;
+                    const imgHeight = (existingObj as fabric.Image).height ?? 1;
+                    const newScaleX = shape.width / imgWidth;
+                    const newScaleY = shape.height / imgHeight;
                     if (existingObj.scaleX !== newScaleX) updates.scaleX = newScaleX;
                     if (existingObj.scaleY !== newScaleY) updates.scaleY = newScaleY;
                  } else if (existingObj.type === 'group') { // Bubble
                      const group = existingObj as fabric.Group;
-                     const currentScaledWidth = group.width * group.scaleX;
-                     const currentScaledHeight = group.height * group.scaleY;
+                     const currentScaledWidth = (group.width ?? 1) * (group.scaleX ?? 1); // Use default 1 if undefined
+                     const currentScaledHeight = (group.height ?? 1) * (group.scaleY ?? 1);
 
                      if (currentScaledWidth !== shape.width || currentScaledHeight !== shape.height) {
                         // Adjust scale to match target width/height
@@ -383,7 +386,11 @@ const FabricCanvas: React.FC = () => {
                     if (textbox.fontSize !== shape.props?.fontSize) updates.fontSize = shape.props?.fontSize;
                     if (textbox.fontFamily !== shape.props?.fontFamily) updates.fontFamily = shape.props?.fontFamily;
                     if (textbox.fontWeight !== (shape.props?.fontWeight || 'normal')) updates.fontWeight = shape.props?.fontWeight || 'normal';
-                    if (textbox.textAlign !== (shape.props?.textAlign || 'left')) updates.textAlign = shape.props?.textAlign || 'left';
+                    // Check if textAlign exists in props before setting
+                    const newTextAlign = shape.props?.textAlign || 'left'; // Default to 'left' if undefined
+                     if (textbox.textAlign !== newTextAlign) {
+                         updates.textAlign = newTextAlign;
+                     }
                 }
                  // Handle Bubble (Group) specific updates - update text inside
                  if (shape.type === 'bubble' && existingObj.type === 'group') {
@@ -461,7 +468,7 @@ const FabricCanvas: React.FC = () => {
              console.log("Canvas sync complete for page:", currentPageId);
        });
 
-   }, [currentShapes, currentPageId, updateShape]); // Rerun when shapes or page changes
+   }, [currentShapes, currentPageId]); // Removed updateShape dependency as it's debounced
 
 
    // Update active object based on selectedShapeId from store
@@ -502,4 +509,3 @@ const FabricCanvas: React.FC = () => {
 };
 
 export default FabricCanvas;
-```
