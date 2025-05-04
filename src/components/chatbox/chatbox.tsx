@@ -26,9 +26,13 @@ async function askGeneralAssistant(message: string): Promise<string> {
     if (message.toLowerCase().includes('hello') || message.toLowerCase().includes('hi')) {
         return "Hello there! How can I help you create or edit your manga today using the in-memory store?";
     } else if (message.toLowerCase().includes('help')) {
-        return "I can help create/edit chapters, scenes, panels, characters, dialogues stored in memory. Try 'create chapter 1 titled...' or 'brainstorm characters...'. Select an item to edit it, e.g., 'change the scene setting to a beach'.";
+        return "I can help create chapters, scenes, panels, characters, dialogues, or brainstorm ideas. Try 'create chapter 1 titled...' or 'brainstorm characters...'. To edit a specific item (like changing a scene's setting), please select it first in the editor.";
     }
-    return `I received: "${message}". I can assist with manga creation tasks like generating or editing chapters, scenes, characters, etc., interacting with the in-memory store. Select an item or use commands like 'create ...' or 'brainstorm ...'.`;
+    // Provide clearer guidance if an update-like command is used without selection
+    if (['change', 'update', 'edit', 'set', 'add', 'remove'].some(keyword => message.toLowerCase().startsWith(keyword))) {
+         return "To modify a specific item (e.g., change a description, add a character to a panel), please select it in the visual editor first. Otherwise, tell me what you'd like to create or brainstorm.";
+    }
+    return `I received: "${message}". I can assist with manga creation tasks like generating chapters, scenes, characters, etc., interacting with the in-memory store. Use commands like 'create ...' or 'brainstorm ...'. Select an item if you want to edit it.`;
 }
 
 
@@ -84,7 +88,7 @@ export default function Chatbox() {
         try {
              // --- Command Interpretation ---
 
-             // 1. Creation Commands
+             // 1. Creation Commands (No selection needed)
              if (userInput.toLowerCase().startsWith('create chapter')) {
                  actionTaken = true;
                  const match = userInput.match(/create chapter (\d+)\s+titled\s+["']?([^"']+)["']?\s*(?:about|:)?\s*(.*)/i);
@@ -133,40 +137,47 @@ export default function Chatbox() {
                  )};
                  // Note: Brainstorming doesn't automatically add characters yet.
 
-             // 2. Update Command (if a node is selected)
+             // 2. Update Command (*Requires* a selected node)
              } else if (selectedNode && selectedNode.data?.properties?.id && selectedNode.data.type) {
                   actionTaken = true;
                   const entityId = selectedNode.data.properties.id; // In-memory ID
                   const entityType = selectedNode.data.type as NodeType;
 
-                  toast({ title: "AI Action", description: `Updating ${entityType} "${selectedNode.data.label}"...` });
+                  // Check if the input seems like an update command
+                  if (['change', 'update', 'edit', 'set', 'add', 'remove'].some(keyword => userInput.toLowerCase().startsWith(keyword))) {
+                      toast({ title: "AI Action", description: `Updating ${entityType} "${selectedNode.data.label}"...` });
 
-                  const result = await updateEntity({
-                      entityType: entityType,
-                      entityId: entityId,
-                      prompt: userInput,
-                      projectId: currentProjectId, // Pass default project context
-                  });
+                      const result = await updateEntity({
+                          entityType: entityType,
+                          entityId: entityId,
+                          prompt: userInput,
+                          projectId: currentProjectId, // Pass default project context
+                      });
 
-                  aiResponse = { id: Date.now().toString(), sender: 'ai', text: (
-                      <div>
-                          <p>{result.success ? '✅' : '⚠️'} Update for {entityType} (ID: {result.updatedEntityId.substring(0, 6)}...) processed.</p>
-                          <p className="text-xs italic">{result.message}</p>
-                      </div>
-                  )};
-                  if (result.success) {
-                      refreshFlowData(); // Refresh editor
-                      setSelectedNode(null); // Clear selection after update
+                      aiResponse = { id: Date.now().toString(), sender: 'ai', text: (
+                          <div>
+                              <p>{result.success ? '✅' : '⚠️'} Update for {entityType} (ID: {result.updatedEntityId.substring(0, 6)}...) processed.</p>
+                              <p className="text-xs italic">{result.message}</p>
+                          </div>
+                      )};
+                      if (result.success) {
+                          refreshFlowData(); // Refresh editor
+                          setSelectedNode(null); // Clear selection after update
+                      }
+                  } else {
+                       // Input was given while a node was selected, but it wasn't an obvious update command
+                       // Treat as general query, but maybe add context? Or just let general assistant handle it.
+                       actionTaken = false; // Fall through to general assistant
+                       console.log("Input given while node selected, but not an update command. Passing to general assistant.");
                   }
 
-             // 3. General Assistant Fallback
-             } else {
-                 if (['change', 'update', 'edit', 'set', 'add', 'remove'].some(keyword => userInput.toLowerCase().startsWith(keyword)) && !selectedNode) {
-                     aiResponse = { id: Date.now().toString(), text: "Please select an item in the visual editor first before asking me to make changes to it.", sender: 'ai' };
-                 } else {
-                     const generalResponseText = await askGeneralAssistant(userInput);
-                     aiResponse = { id: Date.now().toString(), text: generalResponseText, sender: 'ai' };
-                 }
+             // 3. General Assistant Fallback (No selection or not an update command)
+             }
+
+             // If no specific action was taken above, use the general assistant
+             if (!actionTaken) {
+                 const generalResponseText = await askGeneralAssistant(userInput);
+                 aiResponse = { id: Date.now().toString(), text: generalResponseText, sender: 'ai' };
              }
 
         } catch (error: any) {
@@ -203,9 +214,10 @@ export default function Chatbox() {
         await processUserInput(userMessageText);
     };
 
+     // Updated placeholder text
      const placeholderText = selectedNode
         ? `Editing ${selectedNode.data.type} "${selectedNode.data.label}". What should I change?`
-        : "Ask AI: 'create chapter 1 titled...' or select an item to edit...";
+        : "Ask AI: 'create chapter 1 titled...' or 'brainstorm characters...'";
 
     return (
         <motion.div

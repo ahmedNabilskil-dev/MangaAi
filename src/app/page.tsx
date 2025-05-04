@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ReactFlowProvider } from 'reactflow';
+// Removed ReactFlowProvider import as it's handled in VisualEditor
 import VisualEditor from '@/components/visual-editor/visual-editor';
 import Chatbox from '@/components/chatbox/chatbox';
 import PropertiesPanel from '@/components/properties-panel/properties-panel';
@@ -12,12 +12,14 @@ export default function Home() {
   const selectedNode = useVisualEditorStore((state) => state.selectedNode);
   const setSelectedNode = useVisualEditorStore((state) => state.setSelectedNode);
 
-  // Panel state can be derived from selectedNode
+  // Panel state is derived directly from whether a node is selected in the store
   const isPanelOpen = !!selectedNode;
 
   const handlePanelClose = () => {
     setSelectedNode(null); // Clear selection in the store
   };
+
+  // No default node selection logic needed here anymore
 
   return (
     // No need to wrap VisualEditor in ReactFlowProvider here, it's handled internally
