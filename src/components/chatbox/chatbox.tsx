@@ -48,16 +48,19 @@ const chatboxVariants = {
     open: {
         opacity: 1,
         y: 0,
-        height: '450px', // Max height when open
+        // height: '450px', // Let content and resize handle height when open
         transition: { type: 'spring', stiffness: 300, damping: 30 }
     },
     closed: {
         opacity: 1,
         y: 0,
-        height: '60px', // Height when minimized (adjust as needed)
+        // height: '60px', // Height is controlled by max-h class and content visibility
         transition: { type: 'spring', stiffness: 300, damping: 30 }
     }
 };
+
+// Define the height of the header (adjust if padding/border changes)
+const HEADER_HEIGHT = '52px'; // Approx height of header + border
 
 export default function Chatbox() {
     const [input, setInput] = useState('');
@@ -252,38 +255,38 @@ export default function Chatbox() {
 
      // Updated placeholder text
      const placeholderText = selectedNode
-        ? `Editing ${selectedNode.data.type} "${selectedNode.data.label}". What should I change?`
+        ? `Editing ${selectedNode.data.type} "${selectedNode.data.label}"...`
         : "Ask AI: 'create chapter 1 titled...' or 'brainstorm characters...'";
 
     // Handle resizing state
     const [chatSize, setChatSize] = useState({ width: 500, height: 450 }); // Initial size
 
     return (
-        // Use motion.div for layout animation, but size is controlled by resize interaction
+        // Use motion.div for layout animation
         <motion.div
-            layout // Animate layout changes (like height) if needed
+            layout // Animate layout changes (like height)
             animate={isMinimized ? "closed" : "open"}
-            variants={chatboxVariants} // Still use variants for minimize/maximize animation
+            variants={chatboxVariants} // Still use variants for opacity/y transitions
             initial={false}
             className={cn(
                 "bg-card border border-border rounded-lg shadow-xl overflow-hidden flex flex-col backdrop-blur-sm bg-opacity-90",
-                "resizable-chat", // Add a class for potential resizing styles/JS targeting
-                isMinimized ? "max-h-[60px]" : "max-h-[80vh]" // Allow larger max height when open
+                "resizable-chat", // Add class for potential resizing styles/JS targeting
+                // Set height based on minimized state: Header height or auto
+                isMinimized ? `h-[${HEADER_HEIGHT}] max-h-[${HEADER_HEIGHT}]` : "max-h-[80vh]"
             )}
              style={{
-                 width: isMinimized ? undefined : `${chatSize.width}px`, // Control width/height via state when not minimized
-                 height: isMinimized ? undefined : `${chatSize.height}px`,
+                 width: isMinimized ? undefined : `${chatSize.width}px`, // Control width via state when not minimized
+                 // Let className/content control height when not minimized
+                 // height: isMinimized ? undefined : `${chatSize.height}px`,
                  position: 'absolute', // Required for react-draggable positioning
-                 bottom: '1rem', // Example initial position (overridden by Draggable)
-                 left: '50%',
-                 transform: 'translateX(-50%)',
+                 // Default positioning handled by parent Draggable in page.tsx
                  resize: 'both', // Allow resizing
                  overflow: 'auto', // Needed for resize handles
              }}
         >
             {/* Header with Minimize/Maximize Button & Drag Handle */}
             {/* Added 'chatbox-drag-handle' class */}
-            <div className="chatbox-drag-handle flex items-center justify-between px-3 py-1.5 border-b border-border bg-background/80 shrink-0 cursor-grab active:cursor-grabbing">
+            <div className="chatbox-drag-handle flex items-center justify-between px-3 py-1.5 border-b border-border bg-background/80 shrink-0 cursor-grab active:cursor-grabbing" style={{ height: HEADER_HEIGHT }}>
                  <div className="flex items-center gap-1 text-muted-foreground">
                     <GripVertical size={14} />
                     <h3 className="text-sm font-medium">AI Assistant</h3>
@@ -304,11 +307,11 @@ export default function Chatbox() {
                 {!isMinimized && (
                     <motion.div
                         key="chat-content"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
+                        initial={{ opacity: 0, height: 0 }} // Start hidden when maximizing
+                        animate={{ opacity: 1, height: 'auto' }} // Animate to auto height
+                        exit={{ opacity: 0, height: 0 }} // Animate to hidden when minimizing
                         transition={{ duration: 0.2 }}
-                        className="flex flex-col flex-grow min-h-0" // Important for flex layout with scroll
+                        className="flex flex-col flex-grow min-h-0 overflow-hidden" // Important for flex layout and hiding content when minimized
                     >
                         {/* Message Area */}
                         <ScrollArea className="flex-grow p-4" ref={scrollAreaRef}>

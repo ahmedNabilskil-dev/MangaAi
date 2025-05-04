@@ -1,7 +1,7 @@
 
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react'; // Import useState and useEffect
 import VisualEditor from '@/components/visual-editor/visual-editor';
 import Chatbox from '@/components/chatbox/chatbox';
 import PropertiesPanel from '@/components/properties-panel/properties-panel';
@@ -15,8 +15,12 @@ export default function Home() {
   const selectedNode = useVisualEditorStore((state) => state.selectedNode);
   const setSelectedNode = useVisualEditorStore((state) => state.setSelectedNode);
 
+  // State for default positions, calculated on client-side
+  const [chatboxPos, setChatboxPos] = useState({ x: 0, y: 400 }); // Initial safe default
+  const [propertiesPanelPos, setPropertiesPanelPos] = useState({ x: 0, y: 70 }); // Initial safe default
+
   // Panel state is derived directly from whether a node is selected in the store
-  const isPanelOpen = !!selectedNode; // This is the correct variable
+  const isPanelOpen = !!selectedNode; // Panel visibility controlled by selection
 
   const handlePanelClose = () => {
     setSelectedNode(null); // Clear selection in the store
@@ -26,8 +30,23 @@ export default function Home() {
   const projectTitle = "Adventures in CodeLand"; // Sample title
 
   // Draggable nodeRef for preventing findDOMNode warnings in strict mode
-  const chatboxNodeRef = React.useRef(null);
-  const propertiesPanelNodeRef = React.useRef(null);
+  const chatboxNodeRef = useRef(null);
+  const propertiesPanelNodeRef = useRef(null);
+
+  // Calculate default positions on the client-side after mount
+  useEffect(() => {
+    // Check if window is defined (ensures client-side)
+    if (typeof window !== 'undefined') {
+        const chatX = 0; // Centered horizontally
+        const chatY = window.innerHeight * 0.8 - 150; // Near bottom, adjust offset as needed
+        setChatboxPos({ x: chatX, y: chatY });
+
+        const panelX = window.innerWidth - 400 - 20; // Right side with margin, adjust width/margin as needed
+        const panelY = 70; // Below TopBar
+        setPropertiesPanelPos({ x: panelX, y: panelY });
+    }
+  }, []); // Empty dependency array ensures this runs only once on mount
+
 
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
@@ -42,27 +61,33 @@ export default function Home() {
         </div>
 
         {/* Chatbox - Wrapped in Draggable */}
-        {/* Note: Default position is handled by Draggable. Position is relative to parent. */}
-        <Draggable nodeRef={chatboxNodeRef} handle=".chatbox-drag-handle">
-            <div ref={chatboxNodeRef} className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10 w-full max-w-xl px-4" style={{ cursor: 'move' }}>
-                 {/* Pass handle class down or manage state */}
+        <Draggable
+            nodeRef={chatboxNodeRef}
+            handle=".chatbox-drag-handle"
+            // Use state for default position
+            defaultPosition={chatboxPos}
+        >
+             {/* Use absolute positioning and transform, initial position set by Draggable */}
+             <div ref={chatboxNodeRef} className="absolute z-10 max-w-xl px-4" style={{ left: '50%', transform: 'translateX(-50%)' }}>
                 <Chatbox />
             </div>
         </Draggable>
 
 
         {/* Properties Panel - Wrapped in Draggable */}
-        {/* Initial position set via style, draggable will manage from there */}
-        {/* Render only when isPanelOpen is true */}
-        {isPanelOpen && ( // Corrected: Use isPanelOpen instead of isOpen
-            <Draggable nodeRef={propertiesPanelNodeRef} handle=".properties-panel-drag-handle">
+        {/* Render only when a node is selected */}
+        {isPanelOpen && (
+            <Draggable
+                nodeRef={propertiesPanelNodeRef}
+                handle=".properties-panel-drag-handle"
+                // Use state for default position
+                defaultPosition={propertiesPanelPos}
+            >
                 <div
                     ref={propertiesPanelNodeRef}
-                    className="absolute top-16 right-4 z-10" // Initial position, Draggable takes over
-                    style={{ cursor: 'move' }}
+                    className="absolute z-10" // Remove top/right, let Draggable handle it
                  >
                     <PropertiesPanel
-                        isOpen={isPanelOpen} // Pass isPanelOpen to conditionally render internally if needed
                         node={selectedNode}
                         onClose={handlePanelClose}
                     />
@@ -73,4 +98,3 @@ export default function Home() {
     </div>
   );
 }
-
