@@ -9,7 +9,7 @@ interface EditorState {
   selectedShapeId: string | null;
   history: { pages: Page[]; currentPageId: string | null }[]; // History includes full page state
   historyIndex: number;
-  addShape: (shape: Omit<ShapeConfig, 'id'>) => void; // Accept shape data without ID
+  addShape: (shape: Partial<ShapeConfig>) => void; // Allow partial shape for creation defaults
   updateShape: (id: string, updates: Partial<ShapeConfig> | { props: Record<string, any> }) => void;
   deleteShape: (id: string) => void;
   setSelectedShapeId: (id: string | null) => void;
@@ -69,20 +69,52 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (pageIndex === -1) return; // No current page
 
     const newId = uuidv4(); // Generate ID here
+    // Apply defaults for potentially missing properties
     const newShapeWithDefaults: ShapeConfig = {
         id: newId,
-        scaleX: 1,
-        scaleY: 1,
-        angle: 0,
-        opacity: 1,
-        visible: true,
-        ...shapeData,
+        type: shapeData.type!, // Assume type is always provided
         left: shapeData.left ?? 100 + Math.random() * 100, // Default position
         top: shapeData.top ?? 100 + Math.random() * 100,
-         props: {
+        width: shapeData.width ?? (shapeData.type === 'bubble' || shapeData.type === 'text' ? 150 : 200), // Default dimensions based on type
+        height: shapeData.height ?? (shapeData.type === 'bubble' || shapeData.type === 'text' ? 80 : 150),
+        angle: shapeData.angle ?? 0,
+        scaleX: shapeData.scaleX ?? 1,
+        scaleY: shapeData.scaleY ?? 1,
+        fill: shapeData.fill ?? (shapeData.type === 'panel' ? 'rgba(220, 220, 220, 0.5)' : (shapeData.type === 'bubble' ? 'white' : (shapeData.type === 'image' ? '#f0f0f0' : (shapeData.type === 'text' ? 'black' : 'transparent')))), // Type-specific default fill
+        stroke: shapeData.stroke ?? (shapeData.type === 'text' || shapeData.type === 'image' ? undefined : 'black'), // No default stroke for text/image
+        strokeWidth: shapeData.strokeWidth ?? (shapeData.type === 'text' ? 0 : 1), // No default strokeWidth for text
+        opacity: shapeData.opacity ?? 1,
+        visible: shapeData.visible ?? true,
+        props: {
             ...shapeData.props,
-            ...(shapeData.type === 'text' || shapeData.type === 'bubble' ? { fontFamily: shapeData.props?.fontFamily ?? DEFAULT_FONT } : {}),
+            // Add default font family if it's text or bubble and font family isn't provided
+            ...( (shapeData.type === 'text' || shapeData.type === 'bubble') && !shapeData.props?.fontFamily
+                ? { fontFamily: DEFAULT_FONT }
+                : {}
+             ),
+             // Add default text if it's text or bubble and text isn't provided
+              ...( (shapeData.type === 'text' || shapeData.type === 'bubble') && !shapeData.props?.text
+                  ? { text: shapeData.type === 'text' ? 'New Text' : 'Bubble' }
+                  : {}
+              ),
+              // Add default fontSize if it's text or bubble and fontSize isn't provided
+              ...( (shapeData.type === 'text' || shapeData.type === 'bubble') && !shapeData.props?.fontSize
+                  ? { fontSize: shapeData.type === 'text' ? 20 : 14 }
+                  : {}
+              ),
+               // Add default bubbleType if it's bubble and bubbleType isn't provided
+              ...( shapeData.type === 'bubble' && !shapeData.props?.bubbleType
+                  ? { bubbleType: 'speech' }
+                  : {}
+              ),
+              // Add default textColor if it's bubble and textColor isn't provided
+              ...( shapeData.type === 'bubble' && !shapeData.props?.textColor
+                  ? { textColor: 'black' }
+                  : {}
+              ),
         },
+         // Add src for image if not provided (placeholder)
+         ...(shapeData.type === 'image' && !shapeData.src ? { src: `https://picsum.photos/seed/${newId.substring(0,6)}/150/100` } : { src: shapeData.src }),
     };
     state.pages[pageIndex].shapes.push(newShapeWithDefaults);
     state.selectedShapeId = newId; // Select the newly added shape
@@ -99,20 +131,24 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         let changed = false;
         const newUpdates = { ...updates };
 
+        // Merge 'props' object specifically if present in updates
         if ('props' in newUpdates && typeof newUpdates.props === 'object' && newUpdates.props !== null) {
             const mergedProps = { ...currentShape.props, ...newUpdates.props };
+            // Check if props actually changed before marking as changed
             if (JSON.stringify(currentShape.props) !== JSON.stringify(mergedProps)) {
                 state.pages[pageIndex].shapes[shapeIndex].props = mergedProps;
                 changed = true;
             }
-            delete newUpdates.props;
+            delete newUpdates.props; // Remove props from newUpdates after merging
         }
 
+        // Apply remaining top-level updates
         for (const key in newUpdates) {
             if (Object.prototype.hasOwnProperty.call(newUpdates, key)) {
                 const updateKey = key as keyof ShapeConfig;
                  const newValue = (newUpdates as any)[updateKey];
-                if (currentShape[updateKey] !== newValue) {
+                 // Only update if the value is different
+                 if (currentShape[updateKey] !== newValue) {
                     (state.pages[pageIndex].shapes[shapeIndex] as any)[updateKey] = newValue;
                     changed = true;
                 }
@@ -243,4 +279,3 @@ if (initialState.pages.length > 0 && !initialState.currentPageId) {
        state.history[0].currentPageId = state.pages[0].id;
    }));
 }
-```
