@@ -23,15 +23,6 @@ import type { Node } from 'reactflow';
 import type { DeepPartial } from '@/types/utils';
 import { cn } from '@/lib/utils';
 import nodeFormConfig from '@/config/node-form-config'; // Import the new config
-import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet"
 import { Label } from '@/components/ui/label'; // Ensure Label is imported
 
 interface PropertiesPanelProps {
@@ -125,11 +116,6 @@ export default function PropertiesPanel({ isOpen, node, onClose }: PropertiesPan
         });
     };
 
-    // Trigger form validation and submission from the external button
-    // const triggerSubmit = () => {
-    //     formRef.current?.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-    // };
-
     if (!isOpen) {
         return null; // Don't render anything if not open
     }
@@ -141,9 +127,9 @@ export default function PropertiesPanel({ isOpen, node, onClose }: PropertiesPan
             initial={false}
             animate={isMinimized ? "closed" : "open"}
             className={cn(
-                // Added mt-16 to push it below a potential 4rem (h-16) top bar
-                 "absolute top-4 right-4 mt-14 z-10 bg-card border border-border rounded-lg shadow-xl overflow-hidden flex flex-col backdrop-blur-sm bg-opacity-95",
-                 isMinimized ? "max-h-[52px]" : "max-h-[calc(100vh-2rem-3.5rem)]" // Adjust max height considering top bar (h-14) and margins
+                // Position just below the top bar (h-14 = 3.5rem = 56px). Adjust 'top-16' (4rem) if TopBar height changes.
+                 "absolute top-16 right-4 z-10 bg-card border border-border rounded-lg shadow-xl overflow-hidden flex flex-col backdrop-blur-sm bg-opacity-95",
+                 isMinimized ? "max-h-[52px]" : "max-h-[calc(100vh-5rem)]" // Adjust max height considering top-16 positioning
             )}
         >
             {/* Header */}
@@ -185,7 +171,7 @@ export default function PropertiesPanel({ isOpen, node, onClose }: PropertiesPan
                         transition={{ duration: 0.2 }}
                         className="flex flex-col flex-grow min-h-0" // Important for flex layout with scroll
                     >
-                        <ScrollArea className="flex-grow px-4 py-3">
+                        <ScrollArea className="flex-grow px-4 py-3"> {/* ScrollArea wraps the form */}
                             {nodeData && nodeType && nodeData.properties ? (
                                 <PropertyForm
                                     key={nodeId || 'no-node'} // Re-render form when node changes
@@ -193,9 +179,6 @@ export default function PropertiesPanel({ isOpen, node, onClose }: PropertiesPan
                                     initialValues={nodeData.properties}
                                     onSubmit={handleFormSubmit}
                                     isLoading={mutation.isPending}
-                                    // Pass the ref to potentially trigger submit/validation externally
-                                    // Requires PropertyForm to use React.forwardRef
-                                    // ref={formRef} // Uncomment and implement forwardRef in PropertyForm if needed
                                 />
                             ) : (
                                 <div className="flex items-center justify-center h-full text-sm text-muted-foreground p-4">

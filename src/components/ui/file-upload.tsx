@@ -1,22 +1,41 @@
 
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react'; // Added useEffect
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { UploadCloud, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface FileUploadProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type' | 'value' | 'onChange'> {
-    onFileChange: (file: File | null) => void;
+    onFileChange: (file: File | null | string) => void; // Allow passing string URL back
     label?: string;
     accept?: string; // e.g., "image/*,application/pdf"
+    currentFile?: string | File | null; // New prop to show existing file/url
 }
 
 const FileUpload = React.forwardRef<HTMLInputElement, FileUploadProps>(
-    ({ onFileChange, label = 'Upload File', accept, className, disabled, ...props }, ref) => {
+    ({ onFileChange, label, accept, className, disabled, currentFile, ...props }, ref) => {
         const internalRef = useRef<HTMLInputElement>(null);
-        const [fileName, setFileName] = useState<string | null>(null);
+        const [displayFileName, setDisplayFileName] = useState<string | null>(null);
+
+        // Effect to update display name when currentFile prop changes
+        useEffect(() => {
+            if (currentFile instanceof File) {
+                setDisplayFileName(currentFile.name);
+            } else if (typeof currentFile === 'string') {
+                 // Display the last part of the URL or the full string if not a URL
+                 try {
+                    const url = new URL(currentFile);
+                    setDisplayFileName(url.pathname.split('/').pop() || currentFile);
+                 } catch {
+                    setDisplayFileName(currentFile); // Display as is if not a valid URL
+                 }
+            } else {
+                setDisplayFileName(null);
+            }
+        }, [currentFile]);
+
 
         const handleButtonClick = () => {
             (ref || internalRef).current?.click();
@@ -25,12 +44,8 @@ const FileUpload = React.forwardRef<HTMLInputElement, FileUploadProps>(
         const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
             const file = event.target.files ? event.target.files[0] : null;
             if (file) {
-                setFileName(file.name);
-                onFileChange(file);
-            } else {
-                // Handle case where file selection is cancelled
-                // setFileName(null); // Optionally clear name if cancelled
-                // onFileChange(null);
+                setDisplayFileName(file.name);
+                onFileChange(file); // Pass the File object up
             }
              // Reset input value to allow re-uploading the same file
              event.target.value = '';
@@ -38,8 +53,8 @@ const FileUpload = React.forwardRef<HTMLInputElement, FileUploadProps>(
 
         const handleClear = (event: React.MouseEvent<HTMLButtonElement>) => {
              event.stopPropagation(); // Prevent triggering the file input again
-             setFileName(null);
-             onFileChange(null);
+             setDisplayFileName(null);
+             onFileChange(null); // Indicate clearing
              if ((ref || internalRef).current) {
                  (ref || internalRef).current.value = '';
              }
@@ -48,23 +63,23 @@ const FileUpload = React.forwardRef<HTMLInputElement, FileUploadProps>(
 
         return (
             <div className={cn('flex flex-col space-y-1 w-full', className)}>
-                 {label && <span className="text-sm font-medium text-muted-foreground">{label}</span>}
+                 {label && <span className="text-xs text-muted-foreground">{label}</span>} {/* Adjusted label size */}
                 <div className="flex items-center space-x-2">
                      <Button
                          type="button"
                          variant="outline"
                          onClick={handleButtonClick}
                          disabled={disabled}
-                         className="flex-grow justify-start text-left font-normal text-muted-foreground hover:text-foreground"
+                         className="flex-grow justify-start text-left font-normal text-muted-foreground hover:text-foreground h-8 text-xs" // Adjusted size and text
                      >
-                         <UploadCloud className="mr-2 h-4 w-4" />
-                         {fileName ? (
-                             <span className="truncate">{fileName}</span>
+                         <UploadCloud className="mr-2 h-3 w-3" /> {/* Adjusted icon size */}
+                         {displayFileName ? (
+                             <span className="truncate">{displayFileName}</span>
                          ) : (
-                             'Choose a file...'
+                             'Choose or Upload File...'
                          )}
                      </Button>
-                     {fileName && (
+                     {displayFileName && (
                          <Button
                              type="button"
                              variant="ghost"
