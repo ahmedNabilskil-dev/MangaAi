@@ -65,7 +65,7 @@ function generateSampleProjectData(): { nodes: Node<NodeData>[], edges: Edge[] }
     const sampleProject: MangaProject = {
         id: projectId,
         title: 'Adventures in CodeLand',
-        description: 'A journey through a world made of code.',
+        description: 'A journey through a world made of code. This project follows the brave Alex and the mischievous Bugsy.',
         status: MangaStatus.DRAFT,
         genre: 'Fantasy Comedy',
         creatorId: 'user-sample',
@@ -81,8 +81,9 @@ function generateSampleProjectData(): { nodes: Node<NodeData>[], edges: Edge[] }
         id: char1Id,
         name: 'Alex the Algorithm',
         role: 'protagonist',
-        briefDescription: 'A brave sorting algorithm.',
+        briefDescription: 'A brave sorting algorithm, always trying to optimize.',
         mangaProjectId: projectId,
+        imgUrl: 'https://picsum.photos/seed/alex/200/300', // Placeholder image
         isAiGenerated: false,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -93,8 +94,9 @@ function generateSampleProjectData(): { nodes: Node<NodeData>[], edges: Edge[] }
         id: char2Id,
         name: 'Bugsy the Error',
         role: 'antagonist',
-        briefDescription: 'A mischievous runtime error.',
+        briefDescription: 'A mischievous runtime error, loves causing chaos.',
         mangaProjectId: projectId,
+        imgUrl: 'https://picsum.photos/seed/bugsy/200/300', // Placeholder image
         isAiGenerated: false,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -106,6 +108,7 @@ function generateSampleProjectData(): { nodes: Node<NodeData>[], edges: Edge[] }
         chapterNumber: 1,
         title: 'The First Compile',
         mangaProjectId: projectId,
+        summary: 'Alex begins their journey, encountering the Compiler and the first signs of trouble.',
         isAiGenerated: false,
         isPublished: false,
         viewCount: 0,
@@ -129,9 +132,10 @@ function generateSampleProjectData(): { nodes: Node<NodeData>[], edges: Edge[] }
     const samplePanel1: Panel = {
         id: panel1Id,
         order: 0,
-        panelContext: { action: 'Alex stands nervously before the Compiler gate', lighting: 'Bright, sterile', effects: [], dramaticPurpose: 'Introduce main character', narrativePosition: 'Beginning' },
+        panelContext: { action: 'Alex stands nervously before the intimidating Compiler gate, circuits humming.', lighting: 'Bright, sterile', effects: [], dramaticPurpose: 'Introduce main character and setting', narrativePosition: 'Beginning' },
         sceneId: scene1Id,
         characterIds: [char1Id],
+        imageUrl: 'https://picsum.photos/seed/panel1/400/200', // Placeholder image
         isAiGenerated: false,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -140,7 +144,7 @@ function generateSampleProjectData(): { nodes: Node<NodeData>[], edges: Edge[] }
      const dialogue1Id = 'dlg-sample-1';
      const sampleDialogue1: PanelDialogue = {
          id: dialogue1Id,
-         content: "Here goes nothing...",
+         content: "Here goes nothing... Hope I pass validation.",
          order: 0,
          panelId: panel1Id,
          speakerId: char1Id,
@@ -165,9 +169,10 @@ function generateSampleProjectData(): { nodes: Node<NodeData>[], edges: Edge[] }
      const samplePanel2: Panel = {
          id: panel2Id,
          order: 0,
-         panelContext: { action: 'Bugsy appears, laughing', lighting: 'Dim, glitchy', effects: ['glitch'], dramaticPurpose: 'Introduce antagonist', narrativePosition: 'Middle' },
+         panelContext: { action: 'Bugsy appears with a glitchy shimmer, laughing mischievously at Alex.', lighting: 'Dim, flickering', effects: ['glitch', 'distortion'], dramaticPurpose: 'Introduce antagonist', narrativePosition: 'Middle' },
          sceneId: scene2Id,
          characterIds: [char1Id, char2Id],
+         imageUrl: 'https://picsum.photos/seed/panel2/400/200', // Placeholder image
          isAiGenerated: false,
          createdAt: new Date(),
          updatedAt: new Date(),
@@ -176,7 +181,7 @@ function generateSampleProjectData(): { nodes: Node<NodeData>[], edges: Edge[] }
      const dialogue2Id = 'dlg-sample-2';
      const sampleDialogue2: PanelDialogue = {
          id: dialogue2Id,
-         content: "Hehehe! Tripped you up!",
+         content: "Hehehe! Tripped you up! Can't catch me!",
          order: 0,
          panelId: panel2Id,
          speakerId: char2Id,
@@ -200,7 +205,7 @@ function generateSampleProjectData(): { nodes: Node<NodeData>[], edges: Edge[] }
         }
     });
 
-    // Character Nodes (no edges needed for layout)
+    // Character Nodes (no layout edges needed)
     [sampleChar1, sampleChar2].forEach(character => {
          nodes.push({
              id: character.id,
@@ -208,7 +213,7 @@ function generateSampleProjectData(): { nodes: Node<NodeData>[], edges: Edge[] }
              position: { x: 0, y: 0 }, // Initial position
              data: { label: character.name, type: 'character', properties: character }
          });
-         // Edge to project (for display only, not layout)
+         // Edge to project (for display only, mark for layout ignore)
          edges.push({
              id: `e-${projectId}-char-${character.id}`, source: projectId, target: character.id, type: 'step', style: { stroke: 'hsl(var(--muted-foreground) / 0.3)', strokeDasharray: '4 4', strokeWidth: 1 }, data: { noLayout: true } // Mark edge to ignore in layout
          });
@@ -237,7 +242,7 @@ function generateSampleProjectData(): { nodes: Node<NodeData>[], edges: Edge[] }
         id: samplePanel1.id,
         type: 'panel',
         position: { x: 0, y: 0 },
-        data: { label: samplePanel1.panelContext.action, type: 'panel', properties: samplePanel1 }
+        data: { label: `Panel ${samplePanel1.order + 1}`, type: 'panel', properties: samplePanel1 } // Use order for label
     });
     edges.push({ id: `e-${scene1Id}-${panel1Id}`, source: scene1Id, target: panel1Id });
 
@@ -246,11 +251,11 @@ function generateSampleProjectData(): { nodes: Node<NodeData>[], edges: Edge[] }
         id: sampleDialogue1.id,
         type: 'dialogue',
         position: { x: 0, y: 0 },
-        data: { label: `"${sampleDialogue1.content}"`, type: 'dialogue', properties: sampleDialogue1 }
+        data: { label: `Dialogue ${sampleDialogue1.order + 1}`, type: 'dialogue', properties: sampleDialogue1 } // Use order for label
     });
     edges.push({ id: `e-${panel1Id}-${dialogue1Id}`, source: panel1Id, target: dialogue1Id });
 
-     // Edge from Character 1 to Panel 1 (for display only)
+     // Edge from Character 1 to Panel 1 (for display only, mark noLayout)
      edges.push({
          id: `e-char-${char1Id}-panel-${panel1Id}`, source: char1Id, target: panel1Id, type: 'step', style: { stroke: 'hsl(var(--muted-foreground) / 0.3)', strokeDasharray: '4 4', strokeWidth: 1 }, animated: false, markerEnd: undefined, data: { noLayout: true }
      });
@@ -270,7 +275,7 @@ function generateSampleProjectData(): { nodes: Node<NodeData>[], edges: Edge[] }
         id: samplePanel2.id,
         type: 'panel',
         position: { x: 0, y: 0 },
-        data: { label: samplePanel2.panelContext.action, type: 'panel', properties: samplePanel2 }
+        data: { label: `Panel ${samplePanel2.order + 1}`, type: 'panel', properties: samplePanel2 } // Use order for label
     });
     edges.push({ id: `e-${scene2Id}-${panel2Id}`, source: scene2Id, target: panel2Id });
 
@@ -279,11 +284,11 @@ function generateSampleProjectData(): { nodes: Node<NodeData>[], edges: Edge[] }
         id: sampleDialogue2.id,
         type: 'dialogue',
         position: { x: 0, y: 0 },
-        data: { label: `"${sampleDialogue2.content}"`, type: 'dialogue', properties: sampleDialogue2 }
+        data: { label: `Dialogue ${sampleDialogue2.order + 1}`, type: 'dialogue', properties: sampleDialogue2 } // Use order for label
     });
     edges.push({ id: `e-${panel2Id}-${dialogue2Id}`, source: panel2Id, target: dialogue2Id });
 
-     // Edges from Characters to Panel 2 (for display only)
+     // Edges from Characters to Panel 2 (for display only, mark noLayout)
      edges.push({
         id: `e-char-${char1Id}-panel-${panel2Id}`, source: char1Id, target: panel2Id, type: 'step', style: { stroke: 'hsl(var(--muted-foreground) / 0.3)', strokeDasharray: '4 4', strokeWidth: 1 }, animated: false, markerEnd: undefined, data: { noLayout: true }
      });
@@ -338,9 +343,12 @@ function VisualEditorInternal() {
 
         if (nodes.length > 0) {
             console.log("Applying layout due to data change (refreshCounter)...");
-            const { nodes: layoutedNodes, edges: layoutedEdges } = layoutElements(nodes, edges);
+            // Pass only edges relevant for layout (filter out noLayout edges)
+            const layoutEdges = edges.filter(edge => !edge.data?.noLayout);
+            const { nodes: layoutedNodes, edges: finalEdges } = layoutElements(nodes, layoutEdges);
             setNodes(layoutedNodes);
-            setEdges(layoutedEdges);
+            // Set the original edges back, as layout function doesn't modify them
+            setEdges(edges);
 
              // Optionally fit view after layout, maybe with a delay
             // if (!viewportInitialized) {
@@ -435,14 +443,15 @@ function VisualEditorInternal() {
       >
         <Controls showInteractive={false} position="bottom-right" />
         <MiniMap nodeStrokeWidth={3} zoomable pannable position="bottom-left" nodeColor={(node) => {
+                // Match MiniMap colors to the actual node background colors
                 switch (node.type) {
-                    case 'project': return 'rgb(192, 132, 252)'; // purple-400
-                    case 'chapter': return 'rgb(96, 165, 250)'; // blue-400
-                    case 'scene': return 'rgb(74, 222, 128)'; // green-400
-                    case 'panel': return 'rgb(250, 204, 21)'; // yellow-400
-                    case 'dialogue': return 'rgb(244, 114, 182)'; // pink-400
-                    case 'character': return 'rgb(129, 140, 248)'; // indigo-400
-                    default: return '#e2e8f0';
+                    case 'project': return 'rgb(233 213 255)'; // purple-100
+                    case 'chapter': return 'rgb(219 234 254)'; // blue-100
+                    case 'scene': return 'rgb(220 252 231)'; // green-100
+                    case 'panel': return 'rgb(254 249 195)'; // yellow-100
+                    case 'dialogue': return 'rgb(253 231 239)'; // pink-100
+                    case 'character': return 'rgb(224 231 255)'; // indigo-100
+                    default: return '#e2e8f0'; // Default gray
                 }
         }}/>
         <Background color="hsl(var(--border) / 0.3)" gap={24} size={1} />

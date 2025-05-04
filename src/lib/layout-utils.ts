@@ -1,15 +1,15 @@
 
-import { type Node, type Edge } from 'reactflow';
+import { type Node, type Edge, Position } from 'reactflow';
 import type { NodeData } from '@/types/nodes';
 
 // --- Constants for Layout ---
-const HORIZONTAL_SPACING = 275; // Increased spacing between columns
-const VERTICAL_SPACING = 70;   // Spacing between nodes in the same column level
+const HORIZONTAL_SPACING = 300; // Keep horizontal spacing significant
+const VERTICAL_SPACING = 100;   // Increased spacing between nodes in the same column level
 const CHARACTER_VERTICAL_SPACING = 80; // Spacing for character nodes
-const CHARACTER_X_OFFSET = 50;
-const CHARACTER_Y_OFFSET = 50;
-const DEFAULT_NODE_WIDTH = 180; // Approximate width of a node for overlap checks (adjust if needed)
-const DEFAULT_NODE_HEIGHT = 50; // Approximate height of a node
+const CHARACTER_X_OFFSET = 50; // X position for character column
+const CHARACTER_Y_OFFSET = 50; // Initial Y offset for characters
+const HIERARCHY_X_OFFSET = CHARACTER_X_OFFSET + 250; // Start hierarchy further right
+const HIERARCHY_Y_OFFSET = 50; // Initial Y offset for hierarchy
 
 type NodeWithPosition = Node<NodeData> & { position: { x: number; y: number } };
 
@@ -18,40 +18,45 @@ export function layoutElements(nodes: Node[], edges: Edge[]): { nodes: Node[], e
         return { nodes, edges };
     }
 
-    console.log("Starting hierarchical layout process...");
+    console.log("Starting hierarchical layout process (v2)...");
 
-    // --- Separate Characters ---
+    const nodeMap = new Map<string, NodeWithPosition>();
     const characterNodes: NodeWithPosition[] = [];
     const mainHierarchyNodes: NodeWithPosition[] = [];
-    const nodeMap = new Map<string, NodeWithPosition>(
-        nodes.map(node => [node.id, { ...node } as NodeWithPosition]) // Initialize with existing nodes
-    );
 
+    // Initialize nodeMap and separate nodes
     nodes.forEach(node => {
+        const nodeWithPos = { ...node, position: { ...node.position } } as NodeWithPosition;
+        nodeMap.set(node.id, nodeWithPos);
         if (node.type === 'character') {
-            characterNodes.push(node as NodeWithPosition);
+            characterNodes.push(nodeWithPos);
         } else {
-            mainHierarchyNodes.push(node as NodeWithPosition);
+            mainHierarchyNodes.push(nodeWithPos);
         }
     });
+
 
     // --- Position Characters ---
     let characterY = CHARACTER_Y_OFFSET;
     characterNodes.forEach(charNode => {
         charNode.position = { x: CHARACTER_X_OFFSET, y: characterY };
-        nodeMap.set(charNode.id, charNode); // Update map with positioned char node
+        nodeMap.set(charNode.id, charNode); // Update map
         characterY += CHARACTER_VERTICAL_SPACING;
         console.log(`Positioned character ${charNode.id} at (${charNode.position.x}, ${charNode.position.y})`);
     });
 
-    // --- Build Hierarchy Tree (excluding character nodes/edges) ---
+    // --- Build Hierarchy Tree (excluding character nodes and edges marked noLayout) ---
     const childrenMap = new Map<string, string[]>();
     const parentMap = new Map<string, string>(); // Store parent for each node
     const mainHierarchyNodeIds = new Set(mainHierarchyNodes.map(n => n.id));
 
     edges.forEach(edge => {
-        // Only consider edges between nodes in the main hierarchy for layout
-        if (mainHierarchyNodeIds.has(edge.source) && mainHierarchyNodeIds.has(edge.target)) {
+        // Only consider edges between nodes in the main hierarchy AND not marked noLayout
+        if (
+            !edge.data?.noLayout && // Check for layout exclusion flag
+            mainHierarchyNodeIds.has(edge.source) &&
+            mainHierarchyNodeIds.has(edge.target)
+        ) {
             const children = childrenMap.get(edge.source) || [];
             children.push(edge.target);
             childrenMap.set(edge.source, children);
@@ -62,13 +67,14 @@ export function layoutElements(nodes: Node[], edges: Edge[]): { nodes: Node[], e
     // --- Find Root (Project) ---
     let rootNodeId: string | null = null;
     for (const node of mainHierarchyNodes) {
+        // A root node is one in the main hierarchy that has no parent according to the layout edges
         if (node.type === 'project' && !parentMap.has(node.id)) {
             rootNodeId = node.id;
             break;
         }
     }
 
-    // Fallback if no project node found or it has an unexpected parent link
+     // Fallback if no project node found or it has an unexpected parent link
     if (!rootNodeId && mainHierarchyNodes.length > 0) {
         for (const node of mainHierarchyNodes) {
             if (!parentMap.has(node.id)) {
@@ -85,11 +91,13 @@ export function layoutElements(nodes: Node[], edges: Edge[]): { nodes: Node[], e
 
     if (!rootNodeId) {
         console.error("Could not determine root node for layout.");
-        // Return characters only if no root is found for main hierarchy
-        return { nodes: characterNodes, edges };
+        // Return only positioned characters if no root found
+        const finalNodes = Array.from(nodeMap.values()).filter(n => characterNodes.some(cn => cn.id === n.id));
+        return { nodes: finalNodes, edges };
     }
 
     console.log(`Root node identified: ${rootNodeId}`);
+
 
     // --- Position Nodes Recursively ---
     const positionedNodeIds = new Set<string>();
@@ -102,46 +110,51 @@ export function layoutElements(nodes: Node[], edges: Edge[]): { nodes: Node[], e
             return 0; // Already positioned or doesn't exist
         }
 
-        // Determine X based on level
-        const x = CHARACTER_X_OFFSET + level * HORIZONTAL_SPACING;
+        // Determine X based on level (Starting hierarchy further right)
+        const x = HIERARCHY_X_OFFSET + level * HORIZONTAL_SPACING;
 
         // Determine Y based on the current offset for this level
-        const y = levelYOffset.get(level) ?? CHARACTER_Y_OFFSET; // Start Y offset for this level
-        levelYOffset.set(level, y + VERTICAL_SPACING); // Update Y offset for the next node at this level
+        const currentY = levelYOffset.get(level) ?? HIERARCHY_Y_OFFSET; // Start Y offset for this level
+        node.position = { x, y: currentY };
 
-        console.log(`Positioning node ${node.id} (${node.data.type}) at level ${level}, pos (${x}, ${y})`);
-        node.position = { x, y };
+        console.log(`Positioning node ${node.id} (${node.data.type}) at level ${level}, pos (${x}, ${currentY})`);
         nodeMap.set(nodeId, node); // Update map with positioned node
         positionedNodeIds.add(nodeId);
 
-        let subtreeHeight = VERTICAL_SPACING; // Minimum height of a node row
+        // Calculate height occupied by this node (including vertical spacing)
+        const nodeHeight = VERTICAL_SPACING;
+        // Update the Y offset for the *next* node at *this* level
+        levelYOffset.set(level, currentY + nodeHeight);
 
         const children = childrenMap.get(nodeId) || [];
         if (children.length > 0) {
-            let childrenHeight = 0;
+             // Start children positioning vertically aligned or slightly below parent
+             // Ensure children start at least at the parent's Y or the current level offset
+             let childStartY = currentY;
+             levelYOffset.set(level + 1, Math.max(levelYOffset.get(level + 1) ?? HIERARCHY_Y_OFFSET, childStartY));
+
+             // Position children and calculate total height of the subtree rooted at children
+            let childrenTotalHeight = 0;
             children.forEach((childId) => {
-                // Recursively position children in the next level
-                childrenHeight += positionHierarchy(childId, level + 1);
+                childrenTotalHeight += positionHierarchy(childId, level + 1);
             });
-            // Ensure the current node's level Y offset accounts for the tallest child branch
-            levelYOffset.set(level, Math.max(levelYOffset.get(level) ?? 0, y + childrenHeight));
-            subtreeHeight = Math.max(subtreeHeight, childrenHeight); // Height is determined by children
+
+            // Update this level's Y offset based on the height of its children's subtree
+            levelYOffset.set(level, Math.max(currentY + nodeHeight, levelYOffset.get(level+1) ?? 0));
+
+            return Math.max(nodeHeight, childrenTotalHeight); // Return the max height used by this node or its children subtrees
         }
 
-        return subtreeHeight; // Return the total vertical space taken by this node and its descendants
+        return nodeHeight; // Return height of this node row if it has no children
     }
 
     // Start positioning from the root
     positionHierarchy(rootNodeId, 0);
 
-    // Combine positioned main nodes and character nodes
-    const finalNodes = [
-        ...Array.from(nodeMap.values()).filter(n => mainHierarchyNodeIds.has(n.id)), // Get updated main nodes from map
-        ...characterNodes // Add the separately positioned characters
-    ];
+    // Combine all positioned nodes from the map
+    const finalNodes = Array.from(nodeMap.values());
 
-
-    console.log("Hierarchical layout process finished.");
+    console.log("Hierarchical layout process finished (v2).");
     // console.log("Final Node Positions:", finalNodes.map(n => ({ id: n.id, type: n.type, x: n.position.x, y: n.position.y })));
 
     return { nodes: finalNodes, edges };
