@@ -3,12 +3,12 @@ import { type Node, type Edge, Position } from 'reactflow';
 import type { NodeData } from '@/types/nodes';
 
 // --- Constants for Layout ---
-const HORIZONTAL_SPACING = 300; // Keep horizontal spacing significant
-const VERTICAL_SPACING = 100;   // Increased spacing between nodes in the same column level
-const CHARACTER_VERTICAL_SPACING = 80; // Spacing for character nodes
+const HORIZONTAL_SPACING = 400; // Increased horizontal spacing
+const VERTICAL_SPACING = 150;   // Increased vertical spacing between nodes in the same column level
+const CHARACTER_VERTICAL_SPACING = 120; // Increased spacing for character nodes
 const CHARACTER_X_OFFSET = 50; // X position for character column
 const CHARACTER_Y_OFFSET = 50; // Initial Y offset for characters
-const HIERARCHY_X_OFFSET = CHARACTER_X_OFFSET + 250; // Start hierarchy further right
+const HIERARCHY_X_OFFSET = CHARACTER_X_OFFSET + 350; // Adjust start of hierarchy based on character offset and spacing
 const HIERARCHY_Y_OFFSET = 50; // Initial Y offset for hierarchy
 
 type NodeWithPosition = Node<NodeData> & { position: { x: number; y: number } };
@@ -18,7 +18,7 @@ export function layoutElements(nodes: Node[], edges: Edge[]): { nodes: Node[], e
         return { nodes, edges };
     }
 
-    console.log("Starting hierarchical layout process (v2)...");
+    console.log("Starting hierarchical layout process (v3 - increased spacing)...");
 
     const nodeMap = new Map<string, NodeWithPosition>();
     const characterNodes: NodeWithPosition[] = [];
@@ -41,7 +41,7 @@ export function layoutElements(nodes: Node[], edges: Edge[]): { nodes: Node[], e
     characterNodes.forEach(charNode => {
         charNode.position = { x: CHARACTER_X_OFFSET, y: characterY };
         nodeMap.set(charNode.id, charNode); // Update map
-        characterY += CHARACTER_VERTICAL_SPACING;
+        characterY += CHARACTER_VERTICAL_SPACING; // Use increased spacing
         console.log(`Positioned character ${charNode.id} at (${charNode.position.x}, ${charNode.position.y})`);
     });
 
@@ -111,7 +111,7 @@ export function layoutElements(nodes: Node[], edges: Edge[]): { nodes: Node[], e
         }
 
         // Determine X based on level (Starting hierarchy further right)
-        const x = HIERARCHY_X_OFFSET + level * HORIZONTAL_SPACING;
+        const x = HIERARCHY_X_OFFSET + level * HORIZONTAL_SPACING; // Use increased spacing
 
         // Determine Y based on the current offset for this level
         const currentY = levelYOffset.get(level) ?? HIERARCHY_Y_OFFSET; // Start Y offset for this level
@@ -122,7 +122,7 @@ export function layoutElements(nodes: Node[], edges: Edge[]): { nodes: Node[], e
         positionedNodeIds.add(nodeId);
 
         // Calculate height occupied by this node (including vertical spacing)
-        const nodeHeight = VERTICAL_SPACING;
+        const nodeHeight = VERTICAL_SPACING; // Use increased spacing
         // Update the Y offset for the *next* node at *this* level
         levelYOffset.set(level, currentY + nodeHeight);
 
@@ -140,6 +140,7 @@ export function layoutElements(nodes: Node[], edges: Edge[]): { nodes: Node[], e
             });
 
             // Update this level's Y offset based on the height of its children's subtree
+            // Ensure current level's Y doesn't regress below its own node's height or children's max height
             levelYOffset.set(level, Math.max(currentY + nodeHeight, levelYOffset.get(level+1) ?? 0));
 
             return Math.max(nodeHeight, childrenTotalHeight); // Return the max height used by this node or its children subtrees
@@ -154,7 +155,7 @@ export function layoutElements(nodes: Node[], edges: Edge[]): { nodes: Node[], e
     // Combine all positioned nodes from the map
     const finalNodes = Array.from(nodeMap.values());
 
-    console.log("Hierarchical layout process finished (v2).");
+    console.log("Hierarchical layout process finished (v3).");
     // console.log("Final Node Positions:", finalNodes.map(n => ({ id: n.id, type: n.type, x: n.position.x, y: n.position.y })));
 
     return { nodes: finalNodes, edges };
