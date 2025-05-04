@@ -24,7 +24,7 @@ import 'reactflow/dist/style.css';
 import { type NodeData, NodeType } from '@/types/nodes';
 import { useQuery } from '@tanstack/react-query';
 import { useVisualEditorStore } from '@/store/visual-editor-store';
-// Import the new in-memory service layer
+// Import the in-memory service layer
 import { getProject, DEFAULT_PROJECT_ID } from '@/services/in-memory';
 import { layoutElements } from '@/lib/layout-utils';
 import { Pencil } from 'lucide-react';
