@@ -1,56 +1,75 @@
 'use server';
 
 /**
- * @fileOverview Summarizes a scene based on the text in the properties panel of a scene.
+ * @fileOverview Summarizes scene or panel content based on provided text or structured data.
  *
- * - summarizeScenePanel - A function that handles the scene summarization process.
- * - SummarizeScenePanelInput - The input type for the summarizeScenePanel function.
- * - SummarizeScenePanelOutput - The return type for the summarizeScenePanel function.
+ * - summarizeContent - A function that handles the content summarization process.
+ * - SummarizeContentInput - The input type for the summarizeContent function.
+ * - SummarizeContentOutput - The return type for the summarizeContent function.
  */
 
-import {ai} from '@/ai/ai-instance';
-import {z} from 'genkit';
+import { ai } from '@/ai/ai-instance';
+import { z } from 'genkit';
 
-const SummarizeScenePanelInputSchema = z.object({
-  sceneText: z.string().describe('The text content of the scene to summarize.'),
+// Input can be simple text or potentially structured data later
+const SummarizeContentInputSchema = z.object({
+  contentType: z.enum(['scene', 'panel', 'chapter', 'project']).describe('The type of content being summarized.'),
+  text: z.string().optional().describe('The primary text content to summarize (e.g., scene description, panel action).'),
+  // Optionally add structured data if needed for better context
+  // contextData: z.record(z.any()).optional().describe('Additional structured context data.'),
 });
-export type SummarizeScenePanelInput = z.infer<typeof SummarizeScenePanelInputSchema>;
+export type SummarizeContentInput = z.infer<typeof SummarizeContentInputSchema>;
 
-const SummarizeScenePanelOutputSchema = z.object({
-  summary: z.string().describe('A short summary of the scene content.'),
+const SummarizeContentOutputSchema = z.object({
+  summary: z.string().describe('A short, concise summary of the provided content.'),
 });
-export type SummarizeScenePanelOutput = z.infer<typeof SummarizeScenePanelOutputSchema>;
+export type SummarizeContentOutput = z.infer<typeof SummarizeContentOutputSchema>;
 
-export async function summarizeScenePanel(input: SummarizeScenePanelInput): Promise<SummarizeScenePanelOutput> {
-  return summarizeScenePanelFlow(input);
+export async function summarizeContent(input: SummarizeContentInput): Promise<SummarizeContentOutput> {
+  // Basic validation: Ensure at least text is provided for now
+  if (!input.text) {
+      throw new Error("No text content provided for summarization.");
+  }
+  return summarizeContentFlow(input);
 }
 
 const prompt = ai.definePrompt({
-  name: 'summarizeScenePanelPrompt',
+  name: 'summarizeContentPrompt',
   input: {
-    schema: z.object({
-      sceneText: z.string().describe('The text content of the scene to summarize.'),
-    }),
+    schema: SummarizeContentInputSchema,
   },
   output: {
-    schema: z.object({
-      summary: z.string().describe('A short summary of the scene content.'),
-    }),
+    schema: SummarizeContentOutputSchema,
   },
-  prompt: `You are an AI assistant that summarizes scene content for a manga creation tool.  Summarize the following scene text in a concise and informative way:\n\n{{{sceneText}}}`,
+  // Updated prompt to be more generic
+  prompt: `You are an AI assistant that summarizes content for a manga creation tool.
+Summarize the following {{contentType}} content concisely and informatively:
+
+Content:
+{{{text}}}
+
+{{#if contextData}}
+Additional Context:
+{{{json contextData}}}
+{{/if}}
+
+Provide only the summary.`,
 });
 
-const summarizeScenePanelFlow = ai.defineFlow<
-  typeof SummarizeScenePanelInputSchema,
-  typeof SummarizeScenePanelOutputSchema
+const summarizeContentFlow = ai.defineFlow<
+  typeof SummarizeContentInputSchema,
+  typeof SummarizeContentOutputSchema
 >(
   {
-    name: 'summarizeScenePanelFlow',
-    inputSchema: SummarizeScenePanelInputSchema,
-    outputSchema: SummarizeScenePanelOutputSchema,
+    name: 'summarizeContentFlow',
+    inputSchema: SummarizeContentInputSchema,
+    outputSchema: SummarizeContentOutputSchema,
   },
-  async input => {
-    const {output} = await prompt(input);
-    return output!;
+  async (input) => {
+    const { output } = await prompt(input);
+    if (!output) {
+        throw new Error("Failed to generate summary.");
+    }
+    return output;
   }
 );

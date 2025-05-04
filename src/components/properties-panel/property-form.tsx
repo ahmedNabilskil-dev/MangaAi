@@ -3,7 +3,7 @@
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
+import type * as z from 'zod';
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -14,53 +14,27 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from '@/components/ui/textarea'; // Fixed closing quote
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Import Select
 import { type NodeType } from '@/types/nodes';
-
-// Define base schema - can be extended or chosen based on nodeType
-const baseSchema = z.object({});
-
-// Define schemas for different node types
-const projectSchema = z.object({
-  title: z.string().min(1, "Project title is required"),
-  description: z.string().optional(),
-});
-
-const chapterSchema = z.object({
-  title: z.string().min(1, "Chapter title is required"),
-  summary: z.string().optional(),
-});
-
-const sceneSchema = z.object({
-  title: z.string().min(1, "Scene title is required"),
-  setting: z.string().optional(),
-  notes: z.string().optional(),
-});
-
-const panelSchema = z.object({
-    description: z.string().min(1, "Panel description is required"),
-    imageUrl: z.string().url("Must be a valid URL").optional(),
-});
-
-const dialogSchema = z.object({
-    character: z.string().min(1, "Character name is required"),
-    text: z.string().min(1, "Dialog text is required"),
-});
-
-const characterSchema = z.object({
-    name: z.string().min(1, "Character name is required"),
-    description: z.string().optional(),
-    imageUrl: z.string().url("Must be a valid URL").optional(),
-});
-
+import {
+    mangaProjectSchema,
+    chapterSchema,
+    characterSchema,
+    sceneSchema,
+    panelSchema,
+    panelDialogueSchema
+} from '@/types/schemas'; // Import the new schemas
+import { MangaStatus } from '@/types/enums'; // Import enum
 
 // Map node types to their schemas
-const nodeSchemaMap: Record<NodeType, z.ZodObject<any, any>> = {
-  project: projectSchema,
+const nodeSchemaMap = {
+  project: mangaProjectSchema,
   chapter: chapterSchema,
   scene: sceneSchema,
   panel: panelSchema,
-  dialog: dialogSchema,
+  dialogue: panelDialogueSchema,
   character: characterSchema,
 };
 
@@ -71,33 +45,165 @@ interface PropertyFormProps {
 }
 
 export default function PropertyForm({ nodeType, initialValues = {}, onSubmit }: PropertyFormProps) {
-    const currentSchema = nodeSchemaMap[nodeType] || baseSchema;
+    const currentSchema = nodeSchemaMap[nodeType];
     type CurrentSchemaType = z.infer<typeof currentSchema>;
+
+    // Pre-process initialValues for array/JSON fields
+    const processedInitialValues = React.useMemo(() => {
+        const values = { ...initialValues };
+        const shape = currentSchema.shape as Record<string, z.ZodTypeAny>;
+        for (const fieldName in shape) {
+            const fieldSchema = shape[fieldName];
+            const description = fieldSchema.description;
+             // Handle simple-array / comma-separated string fields
+             if (description?.startsWith("Comma-separated")) {
+                 if (Array.isArray(values[fieldName])) {
+                     values[fieldName] = values[fieldName].join(', ');
+                 }
+             }
+             // Handle JSON string fields
+             else if (description?.startsWith("JSON string")) {
+                 if (typeof values[fieldName] === 'object' && values[fieldName] !== null) {
+                    try {
+                       values[fieldName] = JSON.stringify(values[fieldName], null, 2); // Pretty print JSON
+                    } catch (e) {
+                        console.error(`Error stringifying ${fieldName}:`, e);
+                        values[fieldName] = '{}'; // Default to empty object string on error
+                    }
+                 } else if (typeof values[fieldName] === 'undefined' || values[fieldName] === null) {
+                     values[fieldName] = ''; // Use empty string for undefined/null JSON fields
+                 }
+             }
+        }
+        return values;
+    }, [initialValues, currentSchema]);
+
 
     const form = useForm<CurrentSchemaType>({
         resolver: zodResolver(currentSchema),
-        defaultValues: initialValues,
+        // Use processed values, ensuring defaults from schema are applied if not present
+        defaultValues: {
+          ...(currentSchema.parse ? currentSchema.parse({}) : {}), // Get schema defaults
+          ...processedInitialValues // Override with processed initial values
+        },
     });
+
+    // Post-process form data before submitting
+    const handleFormSubmit = (data: CurrentSchemaType) => {
+        const processedData = { ...data };
+        const shape = currentSchema.shape as Record<string, z.ZodTypeAny>;
+
+        for (const fieldName in shape) {
+             const fieldSchema = shape[fieldName];
+             const description = fieldSchema.description;
+             const value = processedData[fieldName as keyof CurrentSchemaType];
+
+            // Convert comma-separated strings back to arrays
+            if (description?.startsWith("Comma-separated") && typeof value === 'string') {
+                 processedData[fieldName as keyof CurrentSchemaType] = value.split(',').map(s => s.trim()).filter(Boolean);
+            }
+            // Parse JSON strings back to objects/arrays
+            else if (description?.startsWith("JSON string") && typeof value === 'string' && value.trim()) {
+                try {
+                    processedData[fieldName as keyof CurrentSchemaType] = JSON.parse(value);
+                } catch (e) {
+                    console.error(`Error parsing JSON for ${fieldName}:`, e);
+                     // Optionally set an error state or keep the invalid string
+                     form.setError(fieldName as any, { type: 'manual', message: 'Invalid JSON format' });
+                     // Or maybe revert to original or empty object
+                     // processedData[fieldName as keyof CurrentSchemaType] = initialValues[fieldName] || {};
+                     return; // Prevent submission if JSON is invalid
+                }
+            } else if (description?.startsWith("JSON string") && (typeof value !== 'string' || !value.trim())) {
+                 // Handle empty or non-string JSON fields (e.g., set to null or default object)
+                 processedData[fieldName as keyof CurrentSchemaType] = null; // Or maybe {} or initialValues[fieldName]
+            }
+         }
+        onSubmit(processedData);
+    };
+
 
     // Function to render form fields based on schema
     const renderFormField = (fieldName: string, fieldSchema: z.ZodType<any, any>) => {
         const label = fieldName.charAt(0).toUpperCase() + fieldName.slice(1).replace(/([A-Z])/g, ' $1'); // Basic label generation
-
+        const description = fieldSchema.description; // Get description from Zod schema
         let control: React.ReactNode;
 
-        // Determine control type based on schema or conventions
-        if (fieldSchema instanceof z.ZodString) {
-             if (fieldName.toLowerCase().includes('description') || fieldName.toLowerCase().includes('notes') || fieldName.toLowerCase().includes('summary') || fieldName.toLowerCase().includes('text')) {
-                control = <Textarea placeholder={`Enter ${label.toLowerCase()}...`} {...form.register(fieldName as any)} />;
-            } else if (fieldName.toLowerCase().includes('imageurl')) {
-                control = <Input type="url" placeholder={`Enter ${label.toLowerCase()}...`} {...form.register(fieldName as any)} />;
+        // Determine control type based on schema and description
+        if (fieldSchema instanceof z.ZodBoolean) {
+             control = (
+                 // Checkbox needs special handling with FormField render prop
+                 <FormField
+                     key={fieldName}
+                     control={form.control}
+                     name={fieldName as any}
+                     render={({ field }) => (
+                         <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                             <FormControl>
+                                <Checkbox
+                                   checked={field.value}
+                                   onCheckedChange={field.onChange}
+                                />
+                             </FormControl>
+                              <div className="space-y-1 leading-none">
+                                  <FormLabel>{label}</FormLabel>
+                                  {description && <FormMessage>{description}</FormMessage>}
+                              </div>
+                         </FormItem>
+                    )}
+                 />
+             );
+             return control; // Return early as Checkbox handles its own FormField
+        } else if (fieldSchema instanceof z.ZodNativeEnum || (fieldSchema instanceof z.ZodOptional && fieldSchema.unwrap() instanceof z.ZodNativeEnum)) {
+           const enumValues = Object.values((fieldSchema instanceof z.ZodOptional ? fieldSchema.unwrap() : fieldSchema).enum);
+           control = (
+             <Select onValueChange={form.setValue.bind(form, fieldName as any)} defaultValue={form.getValues(fieldName as any)}>
+               <FormControl>
+                 <SelectTrigger>
+                   <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
+                 </SelectTrigger>
+               </FormControl>
+               <SelectContent>
+                 {enumValues.map((enumValue: any) => (
+                   <SelectItem key={enumValue} value={enumValue}>
+                     {String(enumValue).charAt(0).toUpperCase() + String(enumValue).slice(1)}
+                   </SelectItem>
+                 ))}
+               </SelectContent>
+             </Select>
+           );
+       } else if (fieldSchema instanceof z.ZodEnum || (fieldSchema instanceof z.ZodOptional && fieldSchema.unwrap() instanceof z.ZodEnum)) {
+            const enumValues = (fieldSchema instanceof z.ZodOptional ? fieldSchema.unwrap() : fieldSchema).options;
+            control = (
+              <Select onValueChange={form.setValue.bind(form, fieldName as any)} defaultValue={form.getValues(fieldName as any)}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {enumValues.map((enumValue: any) => (
+                    <SelectItem key={enumValue} value={enumValue}>
+                     {String(enumValue).charAt(0).toUpperCase() + String(enumValue).slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            );
+       } else if (fieldSchema instanceof z.ZodString || (fieldSchema instanceof z.ZodOptional && fieldSchema.unwrap() instanceof z.ZodString)) {
+            if (description?.includes("URL")) {
+                 control = <Input type="url" placeholder={`Enter ${label.toLowerCase()} URL...`} />;
+            } else if ( description?.startsWith("JSON string") || description?.startsWith("Comma-separated") || ['description', 'summary', 'notes', 'text', 'content', 'personality', 'abilities', 'backstory', 'concept', 'prompt', 'purpose', 'tone'].some(keyword => fieldName.toLowerCase().includes(keyword)) ) {
+                 control = <Textarea placeholder={`Enter ${label.toLowerCase()}...`} rows={description?.startsWith("JSON string") ? 6 : 3} />;
+            } else {
+                 control = <Input placeholder={`Enter ${label.toLowerCase()}...`} />;
             }
-            else {
-                control = <Input placeholder={`Enter ${label.toLowerCase()}...`} {...form.register(fieldName as any)} />;
-            }
-        } else {
-            // Add more type handlers (number, boolean, select, etc.) as needed
-            control = <Input placeholder={`Enter ${label.toLowerCase()}...`} {...form.register(fieldName as any)} />;
+        } else if (fieldSchema instanceof z.ZodNumber || (fieldSchema instanceof z.ZodOptional && fieldSchema.unwrap() instanceof z.ZodNumber)) {
+            control = <Input type="number" placeholder={`Enter ${label.toLowerCase()}...`} step={fieldSchema.isInt ? 1 : 'any'} />;
+        }
+        else {
+             // Default input for unknown types
+             control = <Input placeholder={`Enter ${label.toLowerCase()}...`} />;
         }
 
 
@@ -106,12 +212,13 @@ export default function PropertyForm({ nodeType, initialValues = {}, onSubmit }:
                 key={fieldName}
                 control={form.control}
                 name={fieldName as any} // Type assertion needed due to dynamic nature
-                render={({ field }) => ( // Use render prop for custom controls or pass directly
+                render={({ field }) => (
                     <FormItem>
                         <FormLabel>{label}</FormLabel>
                         <FormControl>
                             {React.cloneElement(control as React.ReactElement, { ...field })}
                         </FormControl>
+                        {description && <p className="text-sm text-muted-foreground">{description}</p>}
                         <FormMessage />
                     </FormItem>
                 )}
@@ -123,14 +230,14 @@ export default function PropertyForm({ nodeType, initialValues = {}, onSubmit }:
         <Form {...form}>
             <form
                 id="property-form" // ID for external submit button
-                onSubmit={form.handleSubmit(onSubmit)}
+                onSubmit={form.handleSubmit(handleFormSubmit)} // Use the wrapper
                 className="space-y-6"
             >
-                {Object.keys(currentSchema.shape).map((fieldName) =>
-                    renderFormField(fieldName, currentSchema.shape[fieldName])
-                )}
-                {/* Hidden submit button for internal form submission, if needed */}
-                {/* <Button type="submit" className="hidden">Save</Button> */}
+                {Object.keys(currentSchema.shape).map((fieldName) => {
+                     const fieldSchema = (currentSchema.shape as Record<string, z.ZodTypeAny>)[fieldName];
+                     return renderFormField(fieldName, fieldSchema);
+                 })}
+                {/* The actual submit button is in the parent PropertiesPanel */}
             </form>
         </Form>
     );
