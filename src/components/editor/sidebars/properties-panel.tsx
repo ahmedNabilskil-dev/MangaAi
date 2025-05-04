@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -324,4 +325,4 @@ const PropertiesPanel: React.FC<{ selectedShape: ShapeConfig | undefined }> = ({
 };
 
 export default PropertiesPanel;
-```
+    
