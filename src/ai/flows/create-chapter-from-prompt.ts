@@ -147,8 +147,8 @@ const createPanelTool = ai.defineTool({
         // Need project context to find characters by name. Assume we can get it.
         // This might require fetching the scene->chapter->project chain, or having projectId passed down.
         // Let's assume projectId is available somehow (e.g., from flow context - needs adjustment)
-        const projectId = 'proj-123'; // Placeholder: THIS NEEDS TO BE DYNAMIC
-        if (projectId) {
+        const projectId = 'YOUR_PROJECT_ID_HERE'; // Placeholder: THIS NEEDS TO BE DYNAMIC
+        if (projectId && projectId !== 'YOUR_PROJECT_ID_HERE') {
             const charactersInProject = await getAllCharacters(projectId);
             characterIds = input.characterNames
                 .map(name => charactersInProject.find(c => c.name.toLowerCase() === name.toLowerCase())?.id)
@@ -190,8 +190,8 @@ const createPanelDialogueTool = ai.defineTool({
     if (input.speakerName) {
          // Need project context to find characters by name
          // Placeholder: THIS NEEDS TO BE DYNAMIC
-        const projectId = 'proj-123';
-        if (projectId) {
+        const projectId = 'YOUR_PROJECT_ID_HERE';
+        if (projectId && projectId !== 'YOUR_PROJECT_ID_HERE') {
              const characters = await getAllCharacters(projectId);
              const found = characters.find(c => c.name.toLowerCase() === input.speakerName?.toLowerCase());
              speakerId = found?.id;
@@ -301,7 +301,7 @@ Follow these steps meticulously using the available tools IN ORDER:
     *   List the names of characters present in \`characterNames\`.
     *   Generate a concise \`aiPrompt\` for image generation ONLY IF the panel description clearly implies a visual is needed.
     *   Use the \`createPanel\` tool to create it, providing the scene ID returned by the corresponding \`createScene\` call.
-4.  **Assign Characters to Panels:** After creating a panel where characters are present, use the \`assignCharacterToPanel\` tool for EACH character mentioned. You MUST provide the correct panel ID and the character's Document ID (you might need to create the character first using \`createCharacter` if they don't exist, or look them up if they do - this might require context or another tool not explicitly defined here, assume character IDs are known or created).
+4.  **Assign Characters to Panels:** After creating a panel where characters are present, use the \`assignCharacterToPanel\` tool for EACH character mentioned. You MUST provide the correct panel ID and the character's Document ID (you might need to create the character first using \`createCharacter\` if they don't exist, or look them up if they do - this might require context or another tool not explicitly defined here, assume character IDs are known or created).
 5.  **Create Dialogue:** For panels where dialogue or captions are specified in the prompt:
     *   Determine the dialogue \`content\`, its \`order\` within the panel, the speaker's name (\`speakerName\`) if mentioned, and any specified style, emotion, or subtext.
     *   Use the \`createPanelDialogue\` tool for EACH piece of dialogue/caption, providing the panel ID from the corresponding \`createPanel\` call. The tool will attempt to find the speaker's ID from their name.
@@ -386,3 +386,4 @@ const createChapterFromPromptFlow = ai.defineFlow<
      };
   }
 );
+

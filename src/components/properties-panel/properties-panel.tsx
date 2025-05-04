@@ -110,7 +110,7 @@ export default function PropertiesPanel({ isOpen, node, onClose }: PropertiesPan
             id: nodeId,
             data: updateData, // Pass the processed data
         });
-        });
+        // Removed extra closing brace and parenthesis here: });
     };
 
     // Trigger form validation and submission from the external button
