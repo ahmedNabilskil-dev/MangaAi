@@ -129,9 +129,18 @@ const PropertiesPanel: React.FC<{ selectedShape: ShapeConfig | undefined }> = ({
         fieldSpecificConfig?: { isFontSelect?: boolean }
     ) => {
         const path = key.split('.');
-        const value = path.length === 1
-                      ? (selectedShape as any)[path[0]]
-                      : (selectedShape.props as any)?.[path[1]] ?? ''; // Handle nested props
+        // Check if selectedShape exists before accessing properties
+        if (!selectedShape) return null;
+
+        let value: any;
+        if (path.length === 1) {
+            value = (selectedShape as any)[path[0]];
+        } else if (path.length === 2 && path[0] === 'props') {
+            value = (selectedShape.props as any)?.[path[1]] ?? '';
+        } else {
+            value = ''; // Default for unsupported paths
+        }
+
 
         if (type === 'textarea') {
             return (
@@ -315,3 +324,4 @@ const PropertiesPanel: React.FC<{ selectedShape: ShapeConfig | undefined }> = ({
 };
 
 export default PropertiesPanel;
+```

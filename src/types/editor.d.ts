@@ -85,9 +85,12 @@ export type ShapeConfig =
   | ImageShapeConfig
   | TextShapeConfig; // Add other shape types here
 
-// Type for the properties panel form values (Not directly used for rendering inputs now)
-// export type ShapePropertiesFormValues = Partial<Omit<BaseShapeConfig, 'type' | 'id' | 'props'>> & {
-//     props?: Record<string, any>;
-//     src?: string;
-//     text?: string;
-// };
+
+// --- Page Interface ---
+export interface Page {
+    id: string;
+    name: string;
+    shapes: ShapeConfig[];
+    // Add other page-specific properties if needed (e.g., background, dimensions)
+}
+```

@@ -1,8 +1,7 @@
-
 // src/components/editor/canvas/fabric-canvas.tsx
 'use client';
 
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { fabric } from 'fabric';
 import { useEditorStore } from '@/store/editor-store';
 import type { ShapeConfig } from '@/types/editor';
@@ -12,8 +11,29 @@ const FabricCanvas: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fabricCanvasRef = useRef<fabric.Canvas | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const { shapes, selectedShapeId, setSelectedShapeId, updateShape, addShape } = useEditorStore();
+  const {
+      pages,
+      currentPageId,
+      selectedShapeId,
+      setSelectedShapeId,
+      updateShape,
+      // addShape // Not used directly here, triggered by library panel
+      setCurrentPageId // Needed to initialize if not set
+  } = useEditorStore();
+  const currentShapes = React.useMemo(() => {
+    if (!currentPageId) return [];
+    const currentPage = pages.find(p => p.id === currentPageId);
+    return currentPage ? currentPage.shapes : [];
+  }, [pages, currentPageId]);
+
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 1100 }); // A4-like default
+
+    // Initialize currentPageId if it's null and pages exist
+    useEffect(() => {
+        if (!currentPageId && pages.length > 0) {
+            setCurrentPageId(pages[0].id);
+        }
+    }, [currentPageId, pages, setCurrentPageId]);
 
    // Debounce function
    const debounce = <F extends (...args: any[]) => any>(func: F, waitFor: number) => {
@@ -26,6 +46,10 @@ const FabricCanvas: React.FC = () => {
          timeout = setTimeout(() => resolve(func(...args)), waitFor);
        });
    };
+
+   // Memoized debounced update function
+   const debouncedUpdateShape = useCallback(debounce(updateShape, 150), [updateShape]);
+
 
   // Initialize Fabric Canvas
   useEffect(() => {
@@ -43,10 +67,13 @@ const FabricCanvas: React.FC = () => {
                 newWidth = newHeight * aspectRatio;
             }
 
-            setCanvasSize({ width: Math.max(200, newWidth), height: Math.max(200 / aspectRatio, newHeight) });
+            const finalWidth = Math.max(200, newWidth);
+            const finalHeight = Math.max(200 / aspectRatio, newHeight);
+
+            setCanvasSize({ width: finalWidth, height: finalHeight });
              if (fabricCanvasRef.current) {
-                 fabricCanvasRef.current.setWidth(Math.max(200, newWidth));
-                 fabricCanvasRef.current.setHeight(Math.max(200 / aspectRatio, newHeight));
+                 fabricCanvasRef.current.setWidth(finalWidth);
+                 fabricCanvasRef.current.setHeight(finalHeight);
                  fabricCanvasRef.current.requestRenderAll();
              }
           }
@@ -69,9 +96,7 @@ const FabricCanvas: React.FC = () => {
           const obj = e.target;
           const id = (obj as any).id; // Assume objects have an 'id' property
           if (id) {
-             // Use debounce to avoid excessive updates during rapid transforms
-             const debouncedUpdate = debounce(updateShape, 100); // 100ms debounce
-             debouncedUpdate(id, {
+             debouncedUpdateShape(id, {
                left: obj.left,
                top: obj.top,
                width: obj.getScaledWidth(),
@@ -79,7 +104,6 @@ const FabricCanvas: React.FC = () => {
                angle: obj.angle,
                scaleX: obj.scaleX,
                scaleY: obj.scaleY,
-               // Update other relevant props based on object type if needed
              });
           }
         }
@@ -128,11 +152,11 @@ const FabricCanvas: React.FC = () => {
          if (containerRef.current) {
              resizeObserver.unobserve(containerRef.current);
          }
-         window.removeEventListener('resize', updateSize);
+         // window.removeEventListener('resize', updateSize); // Not needed with ResizeObserver
       };
     }
      // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Use [] to run only once, size changes handled by resize observer
+  }, []); // Run only once on mount
 
 
     // Function to create Fabric objects from ShapeConfig
@@ -142,8 +166,9 @@ const FabricCanvas: React.FC = () => {
                 id: shape.id, // Assign store ID to fabric object
                 left: shape.left,
                 top: shape.top,
-                width: shape.width,
-                height: shape.height,
+                // Fabric width/height are unscaled, use scaleX/Y for dimensions
+                // width: shape.width / (shape.scaleX ?? 1),
+                // height: shape.height / (shape.scaleY ?? 1),
                 angle: shape.angle ?? 0,
                 scaleX: shape.scaleX ?? 1,
                 scaleY: shape.scaleY ?? 1,
@@ -161,9 +186,9 @@ const FabricCanvas: React.FC = () => {
                 case 'panel':
                     const panelRect = new fabric.Rect({
                         ...commonProps,
-                        // Specific panel props from shape.props if needed
-                        // cornerRadius: shape.props?.cornerRadius, // Need custom implementation
-                        ...(shape.props as fabric.IRectOptions), // Spread other rect options
+                         width: shape.width / commonProps.scaleX, // Use base width
+                         height: shape.height / commonProps.scaleY, // Use base height
+                        // ...(shape.props as fabric.IRectOptions), // Spread other rect options
                         fill: shape.fill ?? 'rgba(200, 200, 200, 0.3)', // Panel default fill
                         stroke: shape.stroke ?? 'black',
                         strokeWidth: shape.strokeWidth ?? 2,
@@ -174,13 +199,13 @@ const FabricCanvas: React.FC = () => {
                  case 'text':
                       const textObj = new fabric.Textbox(shape.props?.text || 'New Text', { // Use Textbox for wrapping
                           ...commonProps,
+                          width: shape.width / commonProps.scaleX, // Use base width for Textbox
+                          height: shape.height / commonProps.scaleY, // Use base height for Textbox
                           fontSize: shape.props?.fontSize || 20,
                           fontFamily: shape.props?.fontFamily || 'Arial, sans-serif', // Apply font family
                           fill: shape.fill || 'black', // Text color is fill in Fabric
                           textAlign: shape.props?.textAlign || 'left', // Default textAlign
                           fontWeight: shape.props?.fontWeight || 'normal', // Default fontWeight
-                          // Important: width needs to be set for textbox wrapping
-                           width: shape.width,
                           ...(shape.props as fabric.ITextboxOptions), // Spread other Textbox options
                           strokeWidth: 0, // Usually no stroke on text itself
                       });
@@ -193,12 +218,10 @@ const FabricCanvas: React.FC = () => {
                            if (img) {
                                img.set({
                                    ...commonProps,
-                                   // Adjust scale to fit width/height from store
-                                   scaleX: shape.width / (img.width ?? 1),
-                                   scaleY: shape.height / (img.height ?? 1),
-                                   // Reset width/height to original image dimensions after scaling
-                                   width: img.width,
-                                   height: img.height,
+                                    // Let scaleX/Y handle the dimensions based on original image size
+                                   // Width and height remain the image's natural dimensions
+                                    // scaleX: shape.width / (img.width ?? 1), // Already set in commonProps
+                                   // scaleY: shape.height / (img.height ?? 1), // Already set in commonProps
                                    crossOrigin: shape.props?.crossOrigin || 'anonymous',
                                    stroke: shape.stroke, // Apply border if specified
                                    strokeWidth: shape.strokeWidth,
@@ -215,6 +238,8 @@ const FabricCanvas: React.FC = () => {
                          // Create a placeholder rect if no src
                          const placeholder = new fabric.Rect({
                              ...commonProps,
+                             width: shape.width / commonProps.scaleX, // Use base width
+                             height: shape.height / commonProps.scaleY, // Use base height
                              fill: '#e0e0e0',
                              stroke: '#a0a0a0',
                              strokeDashArray: [5, 5]
@@ -227,11 +252,16 @@ const FabricCanvas: React.FC = () => {
                  case 'bubble':
                       // Simplified: Create a rect with text inside (Placeholder)
                       // Proper implementation needs custom shape or group
+                      const bubbleWidth = shape.width / commonProps.scaleX;
+                      const bubbleHeight = shape.height / commonProps.scaleY;
+                      const padding = 5 * commonProps.scaleX; // Scale padding? Maybe not needed if text scales
+
                       const textInBubble = new fabric.Textbox(shape.props?.text || 'Bubble', {
-                          left: commonProps.left + 5, // Padding
-                          top: commonProps.top + 5,
-                          width: commonProps.width - 10,
-                          // height: commonProps.height - 10, // Textbox height adjusts
+                          // Position relative to group origin (top-left)
+                          left: padding,
+                          top: padding,
+                          width: bubbleWidth - 2 * padding,
+                          // height: bubbleHeight - 2 * padding, // Textbox height adjusts
                           fontSize: shape.props?.fontSize || 14,
                           fontFamily: shape.props?.fontFamily || 'Arial, sans-serif',
                           fill: shape.props?.textColor || 'black',
@@ -241,12 +271,18 @@ const FabricCanvas: React.FC = () => {
                       });
 
                       const bubbleRect = new fabric.Rect({
-                           ...commonProps,
+                            // Position relative to group origin (top-left)
+                            left: 0,
+                            top: 0,
+                            width: bubbleWidth,
+                            height: bubbleHeight,
                            fill: shape.fill ?? 'white',
                            stroke: shape.stroke ?? 'black',
                            strokeWidth: shape.strokeWidth ?? 1.5,
-                           rx: shape.props?.bubbleType === 'speech' ? 10 : shape.width / 2, // Basic corner radius
-                           ry: shape.props?.bubbleType === 'speech' ? 10 : shape.height / 2,
+                           rx: shape.props?.bubbleType === 'speech' ? 10 : bubbleWidth / 2, // Basic corner radius
+                           ry: shape.props?.bubbleType === 'speech' ? 10 : bubbleHeight / 2,
+                           originX: 'left',
+                           originY: 'top',
                       });
 
                      const group = new fabric.Group([bubbleRect, textInBubble], {
@@ -260,8 +296,7 @@ const FabricCanvas: React.FC = () => {
                           visible: commonProps.visible,
                           originX: 'left',
                           originY: 'top',
-                          // Sub-targets might need disabling for simpler group interaction
-                          // subTargetCheck: true,
+                          // subTargetCheck: true, // Enable if interactions with text/rect needed
                       });
                       resolve(group);
                       break;
@@ -278,97 +313,137 @@ const FabricCanvas: React.FC = () => {
        const canvas = fabricCanvasRef.current;
        if (!canvas) return;
 
+       console.log("Syncing canvas with page:", currentPageId);
+
+        // Temporarily disable events during sync
+        canvas.selection = false;
+        canvas.skipTargetFind = true;
+
+
        // Get current object IDs on canvas
        const canvasObjectIds = new Set(canvas.getObjects().map(obj => (obj as any).id));
 
-       // Remove objects from canvas that are not in the store anymore
+       // Remove objects from canvas that are not in the current page's store anymore
        canvas.getObjects().forEach(obj => {
            const objId = (obj as any).id;
-           if (objId && !shapes.some(s => s.id === objId)) {
+           if (objId && !currentShapes.some(s => s.id === objId)) {
+               console.log("Removing object:", objId);
                canvas.remove(obj);
            }
        });
 
        // Add/Update objects on canvas based on store
-       const promises = shapes.map(shape => {
+       const promises = currentShapes.map(shape => {
            const existingObj = canvas.getObjects().find(obj => (obj as any).id === shape.id);
            if (existingObj) {
                // --- Update existing object properties ---
-               existingObj.set({
-                   left: shape.left,
-                   top: shape.top,
-                   angle: shape.angle,
-                   fill: shape.fill,
-                   stroke: shape.stroke,
-                   strokeWidth: shape.strokeWidth,
-                   opacity: shape.opacity,
-                   visible: shape.visible,
-                   // Note: width/height/scale update needs care based on type
-               });
+                // Only update if values have actually changed
+                const updates: any = {};
+                if (existingObj.left !== shape.left) updates.left = shape.left;
+                if (existingObj.top !== shape.top) updates.top = shape.top;
+                if (existingObj.angle !== shape.angle) updates.angle = shape.angle;
+                if (existingObj.fill !== shape.fill) updates.fill = shape.fill;
+                if (existingObj.stroke !== shape.stroke) updates.stroke = shape.stroke;
+                if (existingObj.strokeWidth !== shape.strokeWidth) updates.strokeWidth = shape.strokeWidth;
+                if (existingObj.opacity !== shape.opacity) updates.opacity = shape.opacity;
+                if (existingObj.visible !== shape.visible) updates.visible = shape.visible;
 
-                // Adjust width/height/scale - This differs between objects
-                if (existingObj.type === 'rect' || existingObj.type === 'textbox' || existingObj.type === 'group') {
-                    existingObj.set({
-                        width: shape.width / (existingObj.scaleX ?? 1), // Adjust base width by current scale
-                        height: shape.height / (existingObj.scaleY ?? 1), // Adjust base height by current scale
-                        scaleX: existingObj.scaleX ?? 1,
-                        scaleY: existingObj.scaleY ?? 1,
-                    });
-                } else if (existingObj.type === 'image') {
-                    // For images, scale affects rendered size, width/height are original image dims
-                    existingObj.set({
-                        scaleX: shape.width / (existingObj.width ?? 1),
-                        scaleY: shape.height / (existingObj.height ?? 1),
-                    });
-                }
+                 // Adjust width/height/scale carefully
+                 if (existingObj.type === 'rect' || existingObj.type === 'textbox') {
+                    const baseWidth = shape.width / (shape.scaleX ?? 1);
+                    const baseHeight = shape.height / (shape.scaleY ?? 1);
+                    if (existingObj.width !== baseWidth) updates.width = baseWidth;
+                    if (existingObj.height !== baseHeight) updates.height = baseHeight;
+                    if (existingObj.scaleX !== (shape.scaleX ?? 1)) updates.scaleX = shape.scaleX ?? 1;
+                    if (existingObj.scaleY !== (shape.scaleY ?? 1)) updates.scaleY = shape.scaleY ?? 1;
+                 } else if (existingObj.type === 'image') {
+                    const newScaleX = shape.width / (existingObj.width ?? 1);
+                    const newScaleY = shape.height / (existingObj.height ?? 1);
+                    if (existingObj.scaleX !== newScaleX) updates.scaleX = newScaleX;
+                    if (existingObj.scaleY !== newScaleY) updates.scaleY = newScaleY;
+                 } else if (existingObj.type === 'group') { // Bubble
+                     const group = existingObj as fabric.Group;
+                     const currentScaledWidth = group.width * group.scaleX;
+                     const currentScaledHeight = group.height * group.scaleY;
+
+                     if (currentScaledWidth !== shape.width || currentScaledHeight !== shape.height) {
+                        // Adjust scale to match target width/height
+                        if (group.width && group.height) {
+                            updates.scaleX = shape.width / group.width;
+                            updates.scaleY = shape.height / group.height;
+                        }
+                     }
+                 }
+
 
                 // Handle Textbox specific updates
                 if (shape.type === 'text' && existingObj.type === 'textbox') {
                     const textbox = existingObj as fabric.Textbox;
-                    textbox.set('text', shape.props?.text || '');
-                    textbox.set('fontSize', shape.props?.fontSize);
-                    textbox.set('fontFamily', shape.props?.fontFamily); // Update font family
-                    // Provide default value if undefined
-                    textbox.set('fontWeight', shape.props?.fontWeight || 'normal');
-                    // Provide default value if undefined
-                    textbox.set('textAlign', shape.props?.textAlign || 'left');
-                    // Trigger recalculation if width changed, crucial for wrapping
-                    if (existingObj.width !== shape.width / (existingObj.scaleX ?? 1)) {
-                         textbox.set('width', shape.width / (existingObj.scaleX ?? 1));
-                    }
+                    if (textbox.text !== shape.props?.text) updates.text = shape.props?.text || '';
+                    if (textbox.fontSize !== shape.props?.fontSize) updates.fontSize = shape.props?.fontSize;
+                    if (textbox.fontFamily !== shape.props?.fontFamily) updates.fontFamily = shape.props?.fontFamily;
+                    if (textbox.fontWeight !== (shape.props?.fontWeight || 'normal')) updates.fontWeight = shape.props?.fontWeight || 'normal';
+                    if (textbox.textAlign !== (shape.props?.textAlign || 'left')) updates.textAlign = shape.props?.textAlign || 'left';
                 }
                  // Handle Bubble (Group) specific updates - update text inside
                  if (shape.type === 'bubble' && existingObj.type === 'group') {
                     const group = existingObj as fabric.Group;
                     const textObj = group.getObjects('textbox')[0] as fabric.Textbox;
+                    const rectObj = group.getObjects('rect')[0] as fabric.Rect;
+                    let groupNeedsUpdate = false;
+
                     if (textObj) {
-                        textObj.set('text', shape.props?.text || '');
-                        textObj.set('fontSize', shape.props?.fontSize);
-                        textObj.set('fontFamily', shape.props?.fontFamily);
-                        textObj.set('fill', shape.props?.textColor || 'black');
-                        // Potentially update bubble shape/rect too based on props.bubbleType etc.
+                        const textUpdates: any = {};
+                         if (textObj.text !== shape.props?.text) textUpdates.text = shape.props?.text || '';
+                         if (textObj.fontSize !== shape.props?.fontSize) textUpdates.fontSize = shape.props?.fontSize;
+                         if (textObj.fontFamily !== shape.props?.fontFamily) textUpdates.fontFamily = shape.props?.fontFamily;
+                         if (textObj.fill !== (shape.props?.textColor || 'black')) textUpdates.fill = shape.props?.textColor || 'black';
+                         if (Object.keys(textUpdates).length > 0) {
+                            textObj.set(textUpdates);
+                            groupNeedsUpdate = true;
+                         }
                     }
-                    // Update group dimensions/scale if needed
-                    group.set({
-                         // Group scale is different, width/height are based on contents
-                         // Direct width/height setting might not work as expected
-                         // Use scaleX/scaleY on the group instead if resizing is needed
-                         scaleX: shape.width / group.getScaledWidth() * group.scaleX,
-                         scaleY: shape.height / group.getScaledHeight() * group.scaleY,
-                    });
+                    if (rectObj) {
+                        const rectUpdates: any = {};
+                        if (rectObj.fill !== shape.fill) rectUpdates.fill = shape.fill;
+                        if (rectObj.stroke !== shape.stroke) rectUpdates.stroke = shape.stroke;
+                        if (rectObj.strokeWidth !== shape.strokeWidth) rectUpdates.strokeWidth = shape.strokeWidth;
+                        // Update corner radius based on type if needed
+                         if (Object.keys(rectUpdates).length > 0) {
+                            rectObj.set(rectUpdates);
+                            groupNeedsUpdate = true;
+                         }
+                    }
+
+                    // Recalculate group layout if children changed
+                    if(groupNeedsUpdate) {
+                        group.addWithUpdate();
+                    }
                  }
 
-               // Handle image src update (more complex, might require replacing object)
+               // Handle image src update (recreate object)
                if (shape.type === 'image' && shape.src && (existingObj as fabric.Image).getSrc() !== shape.src) {
-                    // Need to remove old and add new image object
-                    console.warn("Image source update requires object replacement (implementation needed).");
-                    // For now, just log it. Replace logic would involve removing existingObj
-                    // and asynchronously adding the new one via createFabricObject.
-                    return Promise.resolve(); // Indicate handled (though not fully)
+                    console.log("Replacing image object for:", shape.id);
+                    canvas.remove(existingObj); // Remove old one
+                    return createFabricObject(shape).then(newObj => { // Create and add new one
+                        if (newObj) {
+                            canvas.add(newObj);
+                        }
+                    });
+               }
+
+               // Apply collected updates if any
+               if (Object.keys(updates).length > 0) {
+                    existingObj.set(updates);
+                    // If dimensions changed, trigger re-render and control updates
+                    if(updates.width || updates.height || updates.scaleX || updates.scaleY) {
+                        existingObj.setCoords(); // Recalculate controls
+                    }
                }
                return Promise.resolve(); // Resolve immediately for updates
            } else {
                // Add new object
+                console.log("Adding new object:", shape.id);
                return createFabricObject(shape).then(newObj => {
                    if (newObj) {
                        canvas.add(newObj);
@@ -380,9 +455,13 @@ const FabricCanvas: React.FC = () => {
        // Wait for all potentially async creations (like images) to complete
        Promise.all(promises).then(() => {
            canvas.requestRenderAll(); // Render after all updates/additions
+            // Re-enable events
+            canvas.selection = true;
+            canvas.skipTargetFind = false;
+             console.log("Canvas sync complete for page:", currentPageId);
        });
 
-   }, [shapes, updateShape]); // Include updateShape in dependencies
+   }, [currentShapes, currentPageId, updateShape]); // Rerun when shapes or page changes
 
 
    // Update active object based on selectedShapeId from store
@@ -423,3 +502,4 @@ const FabricCanvas: React.FC = () => {
 };
 
 export default FabricCanvas;
+```
