@@ -1,16 +1,30 @@
 'use client';
 
 import React, { useRef, useEffect, useState } from 'react';
-import { Image as KonvaImage, Group } from 'react-konva';
+import { Image as KonvaImage, Group, Text } from 'react-konva'; // Import Text
 import Konva from 'konva';
 import type { ImageShapeConfig } from '@/types/editor'; // Define specific props type
+import { useEditorStore } from '@/store/editor-store'; // Import store
 
-interface ImageShapeComponentProps {
+interface ImageShapeComponentProps extends React.ComponentProps<typeof Group> { // Inherit Group props
   shapeConfig: ImageShapeConfig;
 }
 
-const ImageShape: React.FC<ImageShapeComponentProps> = ({ shapeConfig }) => {
-  const { id, x, y, width, height, rotation, src, draggable = true, props } = shapeConfig;
+const ImageShape: React.FC<ImageShapeComponentProps> = ({
+  shapeConfig,
+  id, // Receive common props
+  x,
+  y,
+  width,
+  height,
+  rotation,
+  draggable,
+  onDragEnd,
+  onTransformEnd,
+  className,
+  ...groupProps // Collect remaining Group props
+ }) => {
+  const { src, props } = shapeConfig; // Destructure specific props from shapeConfig
   const imageRef = useRef<Konva.Image>(null);
   const [imageElement, setImageElement] = useState<HTMLImageElement | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -48,65 +62,42 @@ const ImageShape: React.FC<ImageShapeComponentProps> = ({ shapeConfig }) => {
    }, [imageElement]);
 
 
-  // Use store actions for drag/transform if needed
-   const { updateShape } = useEditorStore();
+  // Use store actions for drag/transform if needed (handled by parent KonvaCanvas via props)
+   // const { updateShape } = useEditorStore(); // No need for direct store access here if props are passed
 
-   const handleDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => {
-       const node = e.target;
-       updateShape(id, {
-           x: node.x(),
-           y: node.y(),
-       });
-   };
-
-   const handleTransformEnd = (e: Konva.KonvaEventObject<Event>) => {
-       const node = e.target as Konva.Image; // Cast to Konva.Image
-        const scaleX = node.scaleX();
-        const scaleY = node.scaleY();
-        const rotationVal = node.rotation();
-
-        // Reset scale after applying transformation
-        node.scaleX(1);
-        node.scaleY(1);
-
-        updateShape(id, {
-            x: node.x(),
-            y: node.y(),
-            width: Math.max(5, node.width() * scaleX),
-            height: Math.max(5, node.height() * scaleY),
-            rotation: rotationVal,
-        });
-   };
+   /* Remove local handlers - use props passed from KonvaCanvas
+   const handleDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => { ... };
+   const handleTransformEnd = (e: Konva.KonvaEventObject<Event>) => { ... };
+   */
 
   return (
     <Group
-      id={id}
-      x={x}
-      y={y}
-      // Group dimensions might not directly correspond to image if scaled/rotated within
-      draggable={draggable}
-      onDragEnd={handleDragEnd}
-      onTransformEnd={handleTransformEnd}
-      rotation={rotation ?? 0} // Ensure rotation is applied to the group if needed
-      // Use Group's width/height for transformer bounding box,KonvaImage itself uses image dimensions
-      width={width}
-      height={height}
+      id={id} // Use passed id
+      x={x} // Use passed x
+      y={y} // Use passed y
+      width={width} // Use passed width for transformer bounding box
+      height={height} // Use passed height for transformer bounding box
+      draggable={draggable} // Use passed draggable
+      onDragEnd={onDragEnd} // Use passed onDragEnd
+      onTransformEnd={onTransformEnd} // Use passed onTransformEnd
+      rotation={rotation ?? 0} // Use passed rotation
+      className={className} // Pass className
+      {...groupProps} // Pass other Group props
     >
         <KonvaImage
             ref={imageRef}
             // Position relative to group
             x={0}
             y={0}
-            width={width}
+            width={width} // KonvaImage uses its own width/height
             height={height}
             image={imageElement} // Set the loaded image element
             stroke={error ? 'red' : props?.stroke} // Indicate error with red border
             strokeWidth={error ? 2 : props?.strokeWidth}
             dash={error ? [5, 5] : undefined}
-            // KonvaImage doesn't need draggable if Group handles it
             // Pass other specific Konva Image props if necessary
-            {...props} // Pass through other stored props (like fill, stroke etc. though less common for images)
-            // Do NOT pass rotation here if the Group handles it
+            {...props} // Pass through other stored props (like fill, opacity etc.)
+            // Do NOT pass transformational props here if Group handles them
         />
         {error && (
             <Text

@@ -1,4 +1,4 @@
-'use client';
+'use client'; // Add this directive
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Stage, Layer, Rect, Text as KonvaText } from 'react-konva'; // Renamed Text to avoid conflict
@@ -161,6 +161,8 @@ const KonvaCanvas: React.FC = () => {
                     draggable: true,
                     onDragEnd: (e: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(e, shape.id),
                     onTransformEnd: (e: Konva.KonvaEventObject<Event>) => handleTransformEnd(e, shape.id),
+                    // Tag the Konva group/shape for easier selection/filtering if needed
+                    className: 'konva-shape', // Add a common class name
                 };
 
                 switch (shape.type) {
@@ -170,7 +172,7 @@ const KonvaCanvas: React.FC = () => {
                         return <BubbleShape {...commonProps} {...shape.props} />;
                     case 'image':
                         // ImageShape takes the full config
-                        return <ImageShape shapeConfig={shape} />;
+                        return <ImageShape shapeConfig={shape} {...commonProps} />; // Pass common props here too
                     case 'text': // Use TextShape component
                          // Pass common transform props and specific text props
                          return (
