@@ -1,15 +1,16 @@
 
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react'; // Added useCallback
 import { motion, AnimatePresence } from 'framer-motion';
-import { SendHorizonal, Bot, User, Loader2, Wand2, Pencil, X } from 'lucide-react'; // Added X
+import { SendHorizonal, Bot, User, Loader2, Wand2, Pencil, X, ChevronDown, ChevronUp, Minus } from 'lucide-react'; // Added minimize/maximize icons
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollAreaViewport } from '@/components/ui/scroll-area'; // Import ScrollAreaViewport
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { useVisualEditorStore } from '@/store/visual-editor-store'; // Import store
+import { cn } from '@/lib/utils'; // Import cn utility
 
 // Import Genkit flow functions
 import { createChapterFromPrompt } from '@/ai/flows/create-chapter-from-prompt';
@@ -43,12 +44,29 @@ interface Message {
     isThinking?: boolean;
 }
 
+const chatboxVariants = {
+    open: {
+        opacity: 1,
+        y: 0,
+        height: '450px', // Max height when open
+        transition: { type: 'spring', stiffness: 300, damping: 30 }
+    },
+    closed: {
+        opacity: 1,
+        y: 0,
+        height: '60px', // Height when minimized (adjust as needed)
+        transition: { type: 'spring', stiffness: 300, damping: 30 }
+    }
+};
+
 export default function Chatbox() {
     const [input, setInput] = useState('');
     const [messages, setMessages] = useState<Message[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [isMinimized, setIsMinimized] = useState(false); // State for minimize/maximize
     const { toast } = useToast();
     const scrollAreaRef = useRef<HTMLDivElement>(null);
+    const viewportRef = useRef<HTMLDivElement>(null); // Ref for the viewport element
     const selectedNode = useVisualEditorStore((state) => state.selectedNode);
     const setSelectedNode = useVisualEditorStore((state) => state.setSelectedNode);
     const refreshFlowData = useVisualEditorStore((state) => state.refreshFlowData);
@@ -58,21 +76,33 @@ export default function Chatbox() {
     const currentProjectTitle = 'My First Manga Project'; // Hardcoded for now, could fetch if needed
     // ---- End Context ----
 
-    const scrollToBottom = () => {
+    const scrollToBottom = useCallback(() => {
+        // Ensure this runs after the DOM has updated
         setTimeout(() => {
-            if (scrollAreaRef.current) {
-                 const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-                 if (viewport) {
-                    viewport.scrollTop = viewport.scrollHeight;
-                 }
+            const viewport = viewportRef.current;
+            if (viewport) {
+                viewport.scrollTop = viewport.scrollHeight;
+            } else {
+                // Fallback if viewportRef isn't set yet (less likely but possible)
+                const scrollArea = scrollAreaRef.current;
+                if (scrollArea) {
+                    // Try to query the viewport element inside ScrollArea
+                     const viewportEl = scrollArea.querySelector('[data-radix-scroll-area-viewport]');
+                     if (viewportEl) {
+                         viewportEl.scrollTop = viewportEl.scrollHeight;
+                     }
+                }
             }
-        }, 100);
-    };
+        }, 50); // Small delay to ensure DOM update
+    }, []);
 
 
     useEffect(() => {
-        scrollToBottom();
-    }, [messages]);
+        // Scroll to bottom whenever messages change and chatbox is not minimized
+        if (!isMinimized && messages.length > 0) {
+            scrollToBottom();
+        }
+    }, [messages, isMinimized, scrollToBottom]);
 
     const processUserInput = async (userInput: string) => {
         // No need to check project ID existence for in-memory
@@ -80,7 +110,7 @@ export default function Chatbox() {
         setIsLoading(true);
         const thinkingId = Date.now().toString() + '-think';
         setMessages((prev) => [...prev, { id: thinkingId, text: 'Thinking...', sender: 'ai', isThinking: true }]);
-        scrollToBottom();
+        // scrollToBottom(); // Scroll is handled by useEffect
 
         let aiResponse: Message | null = null;
         let actionTaken = false;
@@ -103,7 +133,7 @@ export default function Chatbox() {
                     });
                      aiResponse = { id: Date.now().toString(), sender: 'ai', text: (
                          <div>
-                             <p>✅ Chapter "{title}" (ID: {result.chapterId.substring(0, 6)}...) created!</p>
+                             <p>✅ Chapter "{title}" (ID: {result.chapterId?.substring(0, 6)}...) created!</p>
                              <p>   - Scenes created: {result.sceneIds.length}</p>
                              {result.panelIds && result.panelIds.length > 0 && <p>   - Panels created: {result.panelIds.length}</p>}
                              {result.dialogueIds && result.dialogueIds.length > 0 && <p>   - Dialogues created: {result.dialogueIds.length}</p>}
@@ -156,7 +186,7 @@ export default function Chatbox() {
 
                       aiResponse = { id: Date.now().toString(), sender: 'ai', text: (
                           <div>
-                              <p>{result.success ? '✅' : '⚠️'} Update for {entityType} (ID: {result.updatedEntityId.substring(0, 6)}...) processed.</p>
+                              <p>{result.success ? '✅' : '⚠️'} Update for {entityType} (ID: {result.updatedEntityId?.substring(0, 6)}...) processed.</p>
                               <p className="text-xs italic">{result.message}</p>
                           </div>
                       )};
@@ -196,7 +226,7 @@ export default function Chatbox() {
             });
 
             setIsLoading(false);
-            scrollToBottom();
+            // scrollToBottom(); // Scroll is handled by useEffect
         }
     };
 
@@ -204,6 +234,12 @@ export default function Chatbox() {
     const handleSend = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!input.trim() || isLoading) return;
+
+        // If minimized, maximize first
+        if (isMinimized) {
+            setIsMinimized(false);
+             await new Promise(resolve => setTimeout(resolve, 50)); // Short delay for animation
+        }
 
         const userMessageText = input;
         const userMessage: Message = { id: Date.now().toString(), text: userMessageText, sender: 'user' };
@@ -221,86 +257,123 @@ export default function Chatbox() {
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="bg-card border border-border rounded-lg shadow-xl overflow-hidden max-h-[450px] flex flex-col backdrop-blur-sm bg-opacity-90"
-        >
-            {/* Message Area */}
-            <ScrollArea className="flex-grow p-4" ref={scrollAreaRef}>
-                <AnimatePresence initial={false}>
-                    {messages.map((message) => (
-                        <motion.div
-                            key={message.id}
-                            layout
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, x: message.sender === 'ai' ? -10 : 10 }}
-                            transition={{ duration: 0.2 }}
-                            className={`flex gap-3 my-3 ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                        >
-                            {message.sender === 'ai' && (
-                                <Avatar className="h-8 w-8 border border-primary/20">
-                                    <AvatarFallback className="bg-primary/10 text-primary">
-                                        <Bot size={18} />
-                                    </AvatarFallback>
-                                </Avatar>
-                            )}
-                            <div
-                                className={`rounded-lg p-2.5 max-w-[80%] text-sm shadow-sm break-words ${message.sender === 'user'
-                                        ? 'bg-primary text-primary-foreground'
-                                        : 'bg-secondary text-secondary-foreground'
-                                    } ${message.isThinking ? 'italic text-muted-foreground' : ''}`}
-                            >
-                                {message.isThinking ? (
-                                     <div className="flex items-center gap-2">
-                                         <Loader2 className="h-4 w-4 animate-spin" />
-                                         {typeof message.text === 'string' ? message.text : 'Processing...'}
-                                     </div>
-                                ) : (
-                                    message.text
-                                )}
-                            </div>
-                            {message.sender === 'user' && (
-                                <Avatar className="h-8 w-8">
-                                    <AvatarFallback>
-                                        <User size={18} />
-                                    </AvatarFallback>
-                                </Avatar>
-                            )}
-                        </motion.div>
-                    ))}
-                </AnimatePresence>
-            </ScrollArea>
-
-             {/* Selected Item Indicator */}
-            {selectedNode && (
-                <div className="p-2 border-t border-border bg-background/80 text-xs text-muted-foreground flex items-center gap-2 justify-center">
-                    <Pencil size={14} className="text-primary shrink-0" />
-                    <span>Editing: <span className="font-medium text-foreground">{selectedNode.data.label}</span> ({selectedNode.data.type})</span>
-                    <Button variant="ghost" size="icon" className="h-5 w-5 ml-auto" onClick={() => setSelectedNode(null)} title="Clear selection">
-                        <X size={14} />
-                        <span className="sr-only">Clear Selection</span>
-                    </Button>
-                </div>
+            layout // Animate layout changes (like height)
+            variants={chatboxVariants}
+            initial={false} // Don't animate on initial render based on variants
+            animate={isMinimized ? "closed" : "open"}
+            className={cn(
+                "bg-card border border-border rounded-lg shadow-xl overflow-hidden flex flex-col backdrop-blur-sm bg-opacity-90",
+                isMinimized ? "max-h-[60px]" : "max-h-[450px]" // Explicit max-height for non-JS scenarios
             )}
-
-
-            {/* Input Area */}
-            <form onSubmit={handleSend} className="p-3 border-t border-border bg-background/80 flex items-center gap-2">
-                <Input
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder={placeholderText}
-                    className="flex-grow bg-input focus-visible:ring-primary text-sm"
-                    disabled={isLoading}
-                    aria-label="Chat input"
-                />
-                <Button type="submit" size="icon" disabled={isLoading || !input.trim()} className="bg-primary hover:bg-primary/90 shrink-0">
-                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizonal className="h-4 w-4" />}
-                    <span className="sr-only">Send</span>
+        >
+            {/* Header with Minimize/Maximize Button */}
+            <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-background/80 shrink-0">
+                <h3 className="text-sm font-medium text-muted-foreground">AI Assistant</h3>
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => setIsMinimized(!isMinimized)}
+                    aria-label={isMinimized ? "Maximize Chat" : "Minimize Chat"}
+                >
+                    {isMinimized ? <ChevronUp size={16} /> : <Minus size={16} />}
                 </Button>
-            </form>
+            </div>
+
+            {/* AnimatePresence for smooth showing/hiding of content */}
+            <AnimatePresence initial={false}>
+                {!isMinimized && (
+                    <motion.div
+                        key="chat-content"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="flex flex-col flex-grow min-h-0" // Important for flex layout with scroll
+                    >
+                        {/* Message Area */}
+                        <ScrollArea className="flex-grow p-4" ref={scrollAreaRef}>
+                           {/* Pass viewportRef to the ScrollAreaViewport */}
+                            <ScrollAreaViewport ref={viewportRef} className="h-full w-full">
+                                <AnimatePresence initial={false}>
+                                    {messages.map((message) => (
+                                        <motion.div
+                                            key={message.id}
+                                            layout // Animate message position changes
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, x: message.sender === 'ai' ? -10 : 10 }}
+                                            transition={{ duration: 0.2 }}
+                                            className={`flex gap-3 my-3 ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                                        >
+                                            {message.sender === 'ai' && (
+                                                <Avatar className="h-8 w-8 border border-primary/20">
+                                                    <AvatarFallback className="bg-primary/10 text-primary">
+                                                        <Bot size={18} />
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                            )}
+                                            <div
+                                                className={`rounded-lg p-2.5 max-w-[80%] text-sm shadow-sm break-words ${message.sender === 'user'
+                                                        ? 'bg-primary text-primary-foreground'
+                                                        : 'bg-secondary text-secondary-foreground'
+                                                    } ${message.isThinking ? 'italic text-muted-foreground' : ''}`}
+                                            >
+                                                {message.isThinking ? (
+                                                     <div className="flex items-center gap-2">
+                                                         <Loader2 className="h-4 w-4 animate-spin" />
+                                                         {typeof message.text === 'string' ? message.text : 'Processing...'}
+                                                     </div>
+                                                ) : (
+                                                    message.text
+                                                )}
+                                            </div>
+                                            {message.sender === 'user' && (
+                                                <Avatar className="h-8 w-8">
+                                                    <AvatarFallback>
+                                                        <User size={18} />
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                            )}
+                                        </motion.div>
+                                    ))}
+                                </AnimatePresence>
+                           </ScrollAreaViewport>
+                        </ScrollArea>
+
+                         {/* Selected Item Indicator */}
+                        {selectedNode && (
+                            <div className="p-2 border-t border-border bg-background/80 text-xs text-muted-foreground flex items-center gap-2 justify-center shrink-0">
+                                <Pencil size={14} className="text-primary shrink-0" />
+                                <span>Editing: <span className="font-medium text-foreground">{selectedNode.data.label}</span> ({selectedNode.data.type})</span>
+                                <Button variant="ghost" size="icon" className="h-5 w-5 ml-auto" onClick={() => setSelectedNode(null)} title="Clear selection">
+                                    <X size={14} />
+                                    <span className="sr-only">Clear Selection</span>
+                                </Button>
+                            </div>
+                        )}
+
+
+                        {/* Input Area */}
+                        <form onSubmit={handleSend} className="p-3 border-t border-border bg-background/80 flex items-center gap-2 shrink-0">
+                            <Input
+                                value={input}
+                                onChange={(e) => setInput(e.target.value)}
+                                placeholder={placeholderText}
+                                className="flex-grow bg-input focus-visible:ring-primary text-sm"
+                                disabled={isLoading}
+                                aria-label="Chat input"
+                            />
+                            <Button type="submit" size="icon" disabled={isLoading || !input.trim()} className="bg-primary hover:bg-primary/90 shrink-0">
+                                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizonal className="h-4 w-4" />}
+                                <span className="sr-only">Send</span>
+                            </Button>
+                        </form>
+                     </motion.div>
+                )}
+            </AnimatePresence>
         </motion.div>
     );
 }
+
+    

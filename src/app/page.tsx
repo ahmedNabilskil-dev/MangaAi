@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -30,8 +31,8 @@ export default function Home() {
         <VisualEditor />
       </div>
 
-      {/* Chatbox */}
-      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10 w-full max-w-3xl px-4"> {/* Increased max-width */}
+      {/* Chatbox - adjusted positioning */}
+      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10 w-full max-w-xl px-4"> {/* Adjusted max-width and positioning if needed */}
         {/* Chatbox also gets selection state from the store */}
         <Chatbox />
       </div>
@@ -46,3 +47,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
