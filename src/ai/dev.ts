@@ -1,1 +1,3 @@
-// Flows will be imported for their side effects in this file.
+import '@/ai/flows/summarize-scene-panel.ts';
+import '@/ai/flows/brainstorm-character-ideas.ts';
+import '@/ai/flows/create-chapter-from-prompt.ts';
