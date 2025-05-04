@@ -1,9 +1,10 @@
+
 'use client';
 
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import type * as z from 'zod';
+import * as z from 'zod'; // Import z from zod
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -106,8 +107,8 @@ export default function PropertyForm({ nodeType, initialValues = {}, onSubmit }:
 
     const form = useForm<CurrentSchemaType>({
         resolver: zodResolver(currentSchema),
-        // Use only the processed initial values. react-hook-form handles merging.
-        // The previous attempt `currentSchema.parse({})` caused errors for required fields.
+        // Use processedInitialValues directly. Zod default values will be applied
+        // by the resolver if fields are missing.
         defaultValues: processedInitialValues,
     });
 
@@ -260,6 +261,8 @@ export default function PropertyForm({ nodeType, initialValues = {}, onSubmit }:
                 className="space-y-6"
             >
                 {Object.keys(currentSchema.shape).map((fieldName) => {
+                     // Exclude the 'id' field from being rendered in the form
+                     if (fieldName === 'id') return null;
                      const fieldSchema = (currentSchema.shape as Record<string, z.ZodTypeAny>)[fieldName];
                      // Ensure fieldSchema is valid before rendering
                      if (!fieldSchema) return null;
