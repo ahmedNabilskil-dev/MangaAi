@@ -3,7 +3,7 @@
 
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Minus, PanelRightOpen, X } from 'lucide-react';
+import { Minus, PanelRightOpen, X, GripVertical } from 'lucide-react'; // Added GripVertical
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
@@ -24,6 +24,13 @@ import type { DeepPartial } from '@/types/utils';
 import { cn } from '@/lib/utils';
 import nodeFormConfig from '@/config/node-form-config'; // Import the new config
 import { Label } from '@/components/ui/label'; // Ensure Label is imported
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"; // Import Accordion components
+
 
 interface PropertiesPanelProps {
     isOpen: boolean;
@@ -43,14 +50,14 @@ const updateFunctionMap: Record<NodeType, (id: string, data: any) => Promise<any
 const panelVariants = {
     open: {
         opacity: 1,
-        x: 0,
-        height: 'auto', // Or a specific max height like '600px'
-        width: '384px', // Adjust width as needed (sm:max-w-md is 384px)
+        // x: 0, // Position controlled by Draggable
+        height: 'auto', // Let content define height, constrained by max-h
+        width: '384px', // Keep width fixed or allow resize if needed
         transition: { type: 'spring', stiffness: 300, damping: 30 }
     },
     closed: {
         opacity: 1,
-        x: 0,
+        // x: 0,
         height: '52px', // Height when minimized
         width: '384px',
         transition: { type: 'spring', stiffness: 300, damping: 30 }
@@ -116,27 +123,30 @@ export default function PropertiesPanel({ isOpen, node, onClose }: PropertiesPan
         });
     };
 
-    if (!isOpen) {
-        return null; // Don't render anything if not open
-    }
+    // Don't render anything if the parent Draggable wrapper isn't rendered
+    // The isOpen logic is handled in the parent component (src/app/page.tsx)
 
     return (
+        // This div is now positioned by the Draggable wrapper in page.tsx
         <motion.div
             layout
             variants={panelVariants}
             initial={false}
             animate={isMinimized ? "closed" : "open"}
             className={cn(
-                // Position just below the top bar (h-14 = 3.5rem = 56px). Adjust 'top-16' (4rem) if TopBar height changes.
-                 "absolute top-16 right-4 z-10 bg-card border border-border rounded-lg shadow-xl overflow-hidden flex flex-col backdrop-blur-sm bg-opacity-95",
-                 isMinimized ? "max-h-[52px]" : "max-h-[calc(100vh-5rem)]" // Adjust max height considering top-16 positioning
+                 "bg-card border border-border rounded-lg shadow-xl overflow-hidden flex flex-col backdrop-blur-sm bg-opacity-95",
+                 isMinimized ? "max-h-[52px]" : "max-h-[calc(100vh-5rem)]" // Keep max height relative to viewport
             )}
+            // Remove absolute positioning styles here
         >
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-background/80 shrink-0">
-                <div className="flex items-center gap-2">
-                     {nodeType && nodeFormConfig[nodeType]?.icon && React.createElement(nodeFormConfig[nodeType].icon, { className: "h-4 w-4 text-muted-foreground"})}
-                    <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
+            {/* Header - Make this the draggable handle */}
+            <div
+                 className="properties-panel-drag-handle flex items-center justify-between px-4 py-2 border-b border-border bg-background/80 shrink-0 cursor-grab active:cursor-grabbing"
+            >
+                <div className="flex items-center gap-2 text-muted-foreground">
+                    <GripVertical size={14} />
+                     {nodeType && nodeFormConfig[nodeType]?.icon && React.createElement(nodeFormConfig[nodeType].icon, { className: "h-4 w-4 shrink-0"})}
+                    <h3 className="text-sm font-medium truncate">{title}</h3>
                 </div>
                 <div className="flex items-center gap-1">
                     <Button
@@ -152,7 +162,7 @@ export default function PropertiesPanel({ isOpen, node, onClose }: PropertiesPan
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6"
-                        onClick={onClose} // Use the onClose prop to hide the panel
+                        onClick={onClose} // Use the onClose prop to hide the panel (via parent state)
                         aria-label="Close Panel"
                     >
                         <X size={16} />
@@ -179,6 +189,7 @@ export default function PropertiesPanel({ isOpen, node, onClose }: PropertiesPan
                                     initialValues={nodeData.properties}
                                     onSubmit={handleFormSubmit}
                                     isLoading={mutation.isPending}
+                                    formId="property-form" // Pass the form ID down
                                 />
                             ) : (
                                 <div className="flex items-center justify-center h-full text-sm text-muted-foreground p-4">

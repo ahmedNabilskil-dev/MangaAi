@@ -159,3 +159,25 @@ body {
 .dark .ring-indigo-500 { --tw-ring-color: hsl(230 60% 70%); }
 .dark .bg-indigo-200 { background-color: hsl(230 50% 35% / 0.9); }
 .dark .border-indigo-500 { border-color: hsl(230 60% 70% / 0.9); }
+
+/* Draggable handle styling */
+.chatbox-drag-handle, .properties-panel-drag-handle {
+    cursor: grab;
+}
+.chatbox-drag-handle:active, .properties-panel-drag-handle:active {
+    cursor: grabbing;
+}
+
+/* Resizable Chatbox (Basic Example) */
+/* You might need more specific styles or JavaScript for advanced resizing handles */
+.resizable-chat {
+    resize: both; /* Enable browser's native resize */
+    overflow: auto; /* Important for resize to work */
+    min-width: 300px; /* Example minimums */
+    min-height: 200px;
+    max-width: 90vw; /* Example maximums */
+    max-height: 80vh;
+}
+
+/* Hide browser default resize handle if using custom handles */
+/* .resizable-chat::-webkit-resizer { display: none; } */

@@ -27,7 +27,8 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    "src/types/react-flow-fix.d.ts" // Include the fix file
+    "src/types/react-flow-fix.d.ts", // Include the fix file
+    "src/types/react-draggable-fix.d.ts" // Include the draggable types fix
 ],
   "exclude": ["node_modules"]
 }

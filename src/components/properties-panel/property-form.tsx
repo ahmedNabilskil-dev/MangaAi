@@ -4,7 +4,7 @@
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+import { z } from 'zod'; // Import Zod
 import { Button } from "@/components/ui/button";
 import {
     Form,
@@ -37,9 +37,10 @@ interface PropertyFormProps {
     initialValues?: Record<string, any>;
     onSubmit: (data: any) => void;
     isLoading?: boolean;
+    formId: string; // Add formId prop
 }
 
-export default function PropertyForm({ nodeType, initialValues = {}, onSubmit, isLoading }: PropertyFormProps) {
+export default function PropertyForm({ nodeType, initialValues = {}, onSubmit, isLoading, formId }: PropertyFormProps) {
     const config = nodeFormConfig[nodeType];
     if (!config) {
         return <p className="text-destructive">Form configuration not found for node type: {nodeType}</p>;
@@ -50,32 +51,44 @@ export default function PropertyForm({ nodeType, initialValues = {}, onSubmit, i
     // Pre-process initialValues based on field type
     const processedInitialValues = React.useMemo(() => {
         const values = { ...initialValues };
+        // Attempt to create default object from schema BEFORE merging initial values
+        const schemaDefaults = currentSchema.safeParse({}).success
+          ? currentSchema.parse({}) // Use parsed defaults if safeParse succeeds
+          : {}; // Fallback to empty object if schema is complex and parse({}) fails
+
+        // Merge defaults with initial values provided
+        const mergedValues = { ...schemaDefaults, ...initialValues };
+
         config.fields.forEach(field => {
             const fieldName = field.name;
-            const value = values[fieldName];
-            if (field.type === 'multi-select' && value === undefined) {
-                values[fieldName] = []; // Ensure multi-select defaults to empty array
-            } else if (field.type === 'checkbox' && typeof value === 'undefined') {
-                values[fieldName] = false;
-            } else if (field.type === 'number' && (typeof value !== 'number' || isNaN(value))) {
-                 // Default to empty string or 0 based on schema/preference
-                 values[fieldName] = field.numberConfig?.defaultValue ?? '';
-            } else if (field.type !== 'checkbox' && field.type !== 'multi-select' && field.type !== 'number' && typeof value === 'undefined') {
-                values[fieldName] = ''; // Default empty strings for others
-            }
+            const value = mergedValues[fieldName]; // Check merged value
+
+             // Ensure arrays/booleans/numbers have correct default types if undefined AFTER merge
+             if (field.type === 'multi-select' && !Array.isArray(value)) {
+                 mergedValues[fieldName] = [];
+             } else if (field.type === 'checkbox' && typeof value !== 'boolean') {
+                 mergedValues[fieldName] = false;
+             } else if (field.type === 'number' && (typeof value !== 'number' || isNaN(value))) {
+                 mergedValues[fieldName] = field.numberConfig?.defaultValue ?? null; // Use null or 0 based on schema
+             } else if (field.type !== 'checkbox' && field.type !== 'multi-select' && field.type !== 'number' && typeof value === 'undefined') {
+                 // For text, textarea, select, combobox, file - default to empty string if undefined
+                  mergedValues[fieldName] = '';
+             }
         });
-        return values;
-    }, [initialValues, config.fields]);
+        return mergedValues;
+    }, [initialValues, config.fields, currentSchema]);
+
 
     const form = useForm<CurrentSchemaType>({
         resolver: zodResolver(currentSchema),
-        defaultValues: processedInitialValues, // Use processed values
+        defaultValues: processedInitialValues,
     });
 
-    // Reset form when initialValues change
+    // Reset form when initialValues change (after processing)
     React.useEffect(() => {
         form.reset(processedInitialValues);
     }, [form, processedInitialValues]);
+
 
     // Post-process form data before submitting
     const handleFormSubmit = async (data: CurrentSchemaType) => {
@@ -159,7 +172,11 @@ export default function PropertyForm({ nodeType, initialValues = {}, onSubmit, i
                                         max={numberConfig?.max}
                                         {...field}
                                         value={field.value ?? ''}
-                                        onChange={(e) => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))}
+                                        onChange={(e) => {
+                                             const val = e.target.value;
+                                             // Allow empty input, otherwise parse as float
+                                             field.onChange(val === '' ? undefined : parseFloat(val));
+                                         }}
                                         disabled={isLoading}
                                         className="h-8"
                                     />
@@ -206,7 +223,7 @@ export default function PropertyForm({ nodeType, initialValues = {}, onSubmit, i
                                         onFileChange={(file) => field.onChange(file)}
                                         accept={fileConfig?.accept}
                                         disabled={isLoading}
-                                        // currentFile={field.value} // Pass current value if needed for display
+                                        currentFile={field.value} // Pass current value for display
                                     />
                                 )}
                                 </>
@@ -224,19 +241,19 @@ export default function PropertyForm({ nodeType, initialValues = {}, onSubmit, i
     return (
         <Form {...form}>
             <form
-                id="property-form" // ID for external submit button
+                id={formId} // Use the passed formId
                 onSubmit={form.handleSubmit(handleFormSubmit)}
                 className="space-y-0" // Remove base spacing, handle inside accordion/fields
             >
                 <Accordion type="single" collapsible defaultValue={defaultOpenSection} className="w-full">
                     {sections.map((section) => (
-                        <AccordionItem value={section} key={section}>
-                            <AccordionTrigger className="text-sm font-medium py-2 hover:no-underline">
+                        <AccordionItem value={section} key={section} className="border-b-0"> {/* Remove internal border */}
+                            <AccordionTrigger className="text-sm font-medium py-2 hover:no-underline border-b">
                                 {section}
                             </AccordionTrigger>
                             <AccordionContent>
                                 {/* Add space within the content area */}
-                                <div className="space-y-4 pt-2">
+                                <div className="space-y-4 pt-3">
                                     {fieldsBySection[section].map((fieldConfig) => renderFormField(fieldConfig))}
                                 </div>
                             </AccordionContent>

@@ -1,9 +1,9 @@
 
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback } from 'react'; // Added useCallback
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { SendHorizonal, Bot, User, Loader2, Wand2, Pencil, X, ChevronDown, ChevronUp, Minus } from 'lucide-react'; // Added minimize/maximize icons
+import { SendHorizonal, Bot, User, Loader2, Wand2, Pencil, X, ChevronDown, ChevronUp, Minus, GripVertical } from 'lucide-react'; // Added GripVertical
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea, ScrollAreaViewport } from '@/components/ui/scroll-area'; // Import ScrollAreaViewport
@@ -255,20 +255,39 @@ export default function Chatbox() {
         ? `Editing ${selectedNode.data.type} "${selectedNode.data.label}". What should I change?`
         : "Ask AI: 'create chapter 1 titled...' or 'brainstorm characters...'";
 
+    // Handle resizing state
+    const [chatSize, setChatSize] = useState({ width: 500, height: 450 }); // Initial size
+
     return (
+        // Use motion.div for layout animation, but size is controlled by resize interaction
         <motion.div
-            layout // Animate layout changes (like height)
-            variants={chatboxVariants}
-            initial={false} // Don't animate on initial render based on variants
+            layout // Animate layout changes (like height) if needed
             animate={isMinimized ? "closed" : "open"}
+            variants={chatboxVariants} // Still use variants for minimize/maximize animation
+            initial={false}
             className={cn(
                 "bg-card border border-border rounded-lg shadow-xl overflow-hidden flex flex-col backdrop-blur-sm bg-opacity-90",
-                isMinimized ? "max-h-[60px]" : "max-h-[450px]" // Explicit max-height for non-JS scenarios
+                "resizable-chat", // Add a class for potential resizing styles/JS targeting
+                isMinimized ? "max-h-[60px]" : "max-h-[80vh]" // Allow larger max height when open
             )}
+             style={{
+                 width: isMinimized ? undefined : `${chatSize.width}px`, // Control width/height via state when not minimized
+                 height: isMinimized ? undefined : `${chatSize.height}px`,
+                 position: 'absolute', // Required for react-draggable positioning
+                 bottom: '1rem', // Example initial position (overridden by Draggable)
+                 left: '50%',
+                 transform: 'translateX(-50%)',
+                 resize: 'both', // Allow resizing
+                 overflow: 'auto', // Needed for resize handles
+             }}
         >
-            {/* Header with Minimize/Maximize Button */}
-            <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-background/80 shrink-0">
-                <h3 className="text-sm font-medium text-muted-foreground">AI Assistant</h3>
+            {/* Header with Minimize/Maximize Button & Drag Handle */}
+            {/* Added 'chatbox-drag-handle' class */}
+            <div className="chatbox-drag-handle flex items-center justify-between px-3 py-1.5 border-b border-border bg-background/80 shrink-0 cursor-grab active:cursor-grabbing">
+                 <div className="flex items-center gap-1 text-muted-foreground">
+                    <GripVertical size={14} />
+                    <h3 className="text-sm font-medium">AI Assistant</h3>
+                 </div>
                 <Button
                     variant="ghost"
                     size="icon"
@@ -375,5 +394,3 @@ export default function Chatbox() {
         </motion.div>
     );
 }
-
-    
