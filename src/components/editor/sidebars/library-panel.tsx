@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { Square, MessageCircle, Image as ImageIcon, Type, Upload, LayoutTemplate, Minus } from 'lucide-react'; // Added more icons
+import { Square, MessageCircle, Image as ImageIcon, Type, Upload, LayoutTemplate, Minus, X } from 'lucide-react'; // Added X icon
 import { useEditorStore } from '@/store/editor-store';
 import type { ShapeConfig, PanelProps, BubbleProps, ImageShapeConfig, TextShapeConfig } from '@/types/editor';
 import { v4 as uuidv4 } from 'uuid'; // For generating unique IDs
