@@ -1,46 +1,46 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { ReactFlowProvider } from 'reactflow';
 import VisualEditor from '@/components/visual-editor/visual-editor';
 import Chatbox from '@/components/chatbox/chatbox';
 import PropertiesPanel from '@/components/properties-panel/properties-panel';
-import { type NodeData } from '@/types/nodes'; // Ensure this type exists and is defined
+import { useVisualEditorStore } from '@/store/visual-editor-store'; // Import the store
 
 export default function Home() {
-  const [selectedNodeData, setSelectedNodeData] = useState<NodeData | null>(null);
-  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  // Get state and actions from the store
+  const selectedNode = useVisualEditorStore((state) => state.selectedNode);
+  const setSelectedNode = useVisualEditorStore((state) => state.setSelectedNode);
 
-  const handleNodeClick = (data: NodeData) => {
-    setSelectedNodeData(data);
-    setIsPanelOpen(true);
-  };
+  // Panel state can be derived from selectedNode
+  const isPanelOpen = !!selectedNode;
 
   const handlePanelClose = () => {
-    setIsPanelOpen(false);
-    setSelectedNodeData(null);
+    setSelectedNode(null); // Clear selection in the store
   };
 
   return (
-    <ReactFlowProvider>
-      <div className="relative h-screen w-screen flex flex-col overflow-hidden">
-        {/* Visual Editor */}
-        <div className="flex-grow relative">
-          <VisualEditor onNodeClick={handleNodeClick} />
-        </div>
-
-        {/* Chatbox */}
-        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10 w-full max-w-2xl px-4">
-          <Chatbox />
-        </div>
-
-        {/* Properties Panel */}
-        <PropertiesPanel
-          isOpen={isPanelOpen}
-          nodeData={selectedNodeData}
-          onClose={handlePanelClose}
-        />
+    // No need to wrap VisualEditor in ReactFlowProvider here, it's handled internally
+    <div className="relative h-screen w-screen flex flex-col overflow-hidden">
+      {/* Visual Editor */}
+      <div className="flex-grow relative">
+        {/* VisualEditor now gets selection state from the store */}
+        <VisualEditor />
       </div>
-    </ReactFlowProvider>
+
+      {/* Chatbox */}
+      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10 w-full max-w-3xl px-4"> {/* Increased max-width */}
+        {/* Chatbox also gets selection state from the store */}
+        <Chatbox />
+      </div>
+
+      {/* Properties Panel */}
+      <PropertiesPanel
+        isOpen={isPanelOpen}
+        // Pass the selected node *object* directly from the store
+        node={selectedNode}
+        onClose={handlePanelClose}
+      />
+    </div>
   );
 }

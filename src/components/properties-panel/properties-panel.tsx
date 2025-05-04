@@ -12,12 +12,11 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useToast } from '@/hooks/use-toast'; // Import useToast
-import PropertyForm from './property-form';
+import { useToast } from '@/hooks/use-toast';
+import PropertyForm from './property-form'; // Assuming PropertyForm exists and is adapted
 import { type NodeData, type NodeType } from '@/types/nodes';
-import { useMutation, useQueryClient } from '@tanstack/react-query'; // Import React Query hooks
-
-// Import update functions from Strapi service
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useVisualEditorStore } from '@/store/visual-editor-store'; // Import store
 import {
     updateProject,
     updateChapter,
@@ -25,14 +24,13 @@ import {
     updatePanel,
     updatePanelDialogue,
     updateCharacter
-} from '@/services/strapi';
+} from '@/services/strapi'; // Assuming Strapi service functions are correctly typed
+import type { Node } from 'reactflow'; // Import Node type
 
 interface PropertiesPanelProps {
     isOpen: boolean;
-    nodeData: NodeData | null; // Accepts the generic NodeData
+    node: Node<NodeData> | null; // Receive the full React Flow Node object or null
     onClose: () => void;
-    // Add a way to refetch React Flow data if needed
-    // onSaveSuccess?: () => void;
 }
 
 // Map NodeType to the corresponding update function
@@ -46,41 +44,46 @@ const updateFunctionMap: Record<NodeType, (id: string, data: any) => Promise<any
 };
 
 
-export default function PropertiesPanel({ isOpen, nodeData, onClose /*, onSaveSuccess */}: PropertiesPanelProps) {
+export default function PropertiesPanel({ isOpen, node, onClose }: PropertiesPanelProps) {
     const { toast } = useToast();
-    const queryClient = useQueryClient(); // Get Query Client instance
+    const queryClient = useQueryClient();
+    const refreshFlowData = useVisualEditorStore((state) => state.refreshFlowData); // Get refresh action
+    const formRef = React.useRef<{ reset: (values?: any) => void, formState: any }>(null); // Ref to access form methods if needed
 
-     // Determine title and description based on node type
-     const title = nodeData ? `${nodeData.type.charAt(0).toUpperCase() + nodeData.type.slice(1)} Properties` : 'Properties';
-     const description = nodeData ? `Edit the properties for the selected ${nodeData.type}.` : 'Select a node to view its properties.';
+    // Derive nodeData from the node prop
+    const nodeData = node?.data;
+    const nodeId = node?.data?.properties?.id;
+    const nodeType = node?.data?.type;
 
-     // --- Mutation Setup ---
+    // Determine title and description based on node type
+    const title = nodeType ? `${nodeType.charAt(0).toUpperCase() + nodeType.slice(1)} Properties` : 'Properties';
+    const description = nodeType ? `Edit the properties for the selected ${nodeType}.` : 'Select an item in the editor to view its properties.';
+
+    // --- Mutation Setup ---
      const mutation = useMutation({
         mutationFn: ({ nodeType, id, data }: { nodeType: NodeType, id: string, data: any }) => {
             const updateFn = updateFunctionMap[nodeType];
             if (!updateFn) {
                 throw new Error(`No update function found for node type: ${nodeType}`);
             }
-            // Ensure complex fields are stringified if needed by the service/backend
-            // The form already handles parsing back from strings, so data should be correct JS objects/arrays here
+            // The form should handle processing (e.g., JSON stringify/parse),
+            // so `data` should be the correct payload for the service.
             return updateFn(id, data);
         },
-        onSuccess: (data, variables) => {
+        onSuccess: (updatedStrapiData, variables) => {
             toast({
                 title: "Success",
                 description: `${variables.nodeType.charAt(0).toUpperCase() + variables.nodeType.slice(1)} properties saved successfully.`,
             });
-            // Invalidate queries related to the updated node to refetch data
+            // Invalidate queries related to the updated node or the whole flow
             // Example: queryClient.invalidateQueries({ queryKey: [variables.nodeType, variables.id] });
-            // Example: queryClient.invalidateQueries({ queryKey: ['reactFlowNodes'] }); // Or invalidate the whole flow data
-
-            // Potentially trigger React Flow update if necessary
-            // onSaveSuccess?.();
+            // queryClient.invalidateQueries({ queryKey: ['projectFlowData'] }); // Invalidate the main flow query
+            refreshFlowData(); // Trigger data refresh via Zustand store action
 
             onClose(); // Close panel after successful save
         },
         onError: (error: any, variables) => {
-            console.error(`Error updating ${variables.nodeType}:`, error);
+            console.error(`Error updating ${variables.nodeType} (${variables.id}):`, error);
             toast({
                 title: "Error",
                 description: `Failed to save ${variables.nodeType} properties: ${error.message || 'Unknown error'}`,
@@ -90,64 +93,81 @@ export default function PropertiesPanel({ isOpen, nodeData, onClose /*, onSaveSu
     });
 
     const handleFormSubmit = (formData: any) => {
-        if (!nodeData || !nodeData.properties?.id) { // Check if nodeData and its ID exist
-            toast({ title: "Error", description: "No node selected or node ID missing.", variant: "destructive" });
+        if (!nodeType || !nodeId) {
+            toast({ title: "Error", description: "No node selected or node ID/type missing.", variant: "destructive" });
             return;
         }
 
         const updateData = { ...formData };
-        // Remove ID from the data being sent for update if it exists in the form data itself
-        // The ID is passed separately to the mutation function.
+        // Remove fields that shouldn't be sent in an update payload
         delete updateData.id;
-        // Remove other Strapi metadata if accidentally included in the form
         delete updateData.createdAt;
         delete updateData.updatedAt;
-        delete updateData.publishedAt; // etc.
+        delete updateData.publishedAt;
+        // Remove relational fields if they are complex objects and shouldn't be sent directly
+        // (depends on how your Strapi update expects relations - IDs vs objects)
+        // e.g., delete updateData.mangaProject; delete updateData.scenes; etc.
+        // Keep foreign keys if needed by the backend (e.g., mangaProjectId)
+
+        console.log("Submitting update for:", nodeType, nodeId, updateData); // Debug log
 
         mutation.mutate({
-            nodeType: nodeData.type,
-            id: nodeData.properties.id, // Pass the ID from nodeData.properties
+            nodeType: nodeType,
+            id: nodeId,
             data: updateData,
         });
     };
 
+    // Reset form when the selected node changes
+    // useEffect(() => {
+    //     if (formRef.current && nodeData?.properties) {
+    //         formRef.current.reset(nodeData.properties);
+    //     } else if (formRef.current && !nodeData) {
+    //          formRef.current.reset({}); // Reset to empty if no node selected
+    //     }
+    // }, [nodeData]);
+
 
     return (
         <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
-             {/* Ensure content has flex-col and h-full for proper layout */}
-            <SheetContent className="sm:max-w-md w-[90vw] md:w-full md:max-w-md flex flex-col h-full" side="right">
-                <SheetHeader className="px-6 pt-6">
+            <SheetContent className="sm:max-w-md w-[90vw] md:w-full md:max-w-md flex flex-col h-full p-0" side="right"> {/* Remove padding */}
+                <SheetHeader className="px-6 pt-6 pb-4 border-b"> {/* Add padding back here */}
                     <SheetTitle>{title}</SheetTitle>
                     <SheetDescription>{description}</SheetDescription>
                 </SheetHeader>
 
-                {/* ScrollArea should wrap only the form content */}
-                <ScrollArea className="flex-grow px-6 py-4">
-                   {nodeData ? (
+                {/* ScrollArea wraps only the form content */}
+                <ScrollArea className="flex-grow px-6 py-4"> {/* Add padding */}
+                   {nodeData && nodeType ? (
                        <PropertyForm
-                           nodeType={nodeData.type}
-                           // Pass the properties object directly. Ensure it contains the ID.
+                           // Use a key to force re-mount when node changes, ensuring form resets
+                           key={nodeId || 'no-node'}
+                           nodeType={nodeType}
+                           // Pass the properties object directly. Ensure it contains the ID for context if needed,
+                           // but the form schema should exclude it from submitted data.
                            initialValues={nodeData.properties || {}}
-                           onSubmit={handleFormSubmit} // Pass the submit handler
+                           onSubmit={handleFormSubmit}
+                           // Pass ref if needed for external control like reset
+                           // ref={formRef}
                        />
                    ) : (
                        <div className="flex items-center justify-center h-full text-muted-foreground">
-                           <p>No node selected.</p>
+                           <p>Select an item in the editor to see its properties.</p>
                        </div>
                    )}
                 </ScrollArea>
 
                 {/* Footer should be outside the ScrollArea */}
-                <SheetFooter className="px-6 pb-6 pt-4 border-t mt-auto">
+                <SheetFooter className="px-6 pb-6 pt-4 border-t mt-auto bg-background"> {/* Add padding and background */}
                     <SheetClose asChild>
                         <Button variant="outline" onClick={onClose} disabled={mutation.isPending}>Cancel</Button>
                     </SheetClose>
-                    {/* Conditionally render save button only if form is present and ready */}
+                    {/* Conditionally render save button only if form is present */}
                     {nodeData && (
                         <Button
                             type="submit"
                             form="property-form" // Link button to the form within ScrollArea
-                            disabled={mutation.isPending || !form.formState.isDirty} // Disable if submitting or no changes
+                            disabled={mutation.isPending } // || !formRef?.current?.formState?.isDirty Check isDirty if form state access is implemented
                         >
                             {mutation.isPending ? 'Saving...' : 'Save Changes'}
                         </Button>
@@ -157,19 +177,3 @@ export default function PropertiesPanel({ isOpen, nodeData, onClose /*, onSaveSu
         </Sheet>
     );
 }
-
-// Helper hook to access form state (optional, could be managed within PropertyForm)
-// If needed, you'd pass the form instance up or use context
-const useFormRef = () => {
-    // In a real scenario, this might involve context or refs
-    // For now, we assume PropertyForm internally handles its state
-    // and the parent relies on the onSubmit callback.
-    // We can access formState via the mutation or by passing form up.
-    // A simpler way for the button disable state is checking mutation.isPending
-    // and potentially adding a check for form dirtiness if needed.
-    // Let's assume mutation.isPending is sufficient for now.
-    return { formState: { isDirty: true } }; // Placeholder
-};
-
-// Add a reference to the form instance to check its state
-const form = useFormRef(); // Placeholder hook
