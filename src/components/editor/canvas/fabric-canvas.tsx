@@ -1,3 +1,4 @@
+
 // src/components/editor/canvas/fabric-canvas.tsx
 'use client';
 
@@ -131,7 +132,7 @@ const FabricCanvas: React.FC = () => {
       };
     }
      // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canvasSize.width, canvasSize.height]); // Rerun if size changes significantly
+  }, []); // Use [] to run only once, size changes handled by resize observer
 
 
     // Function to create Fabric objects from ShapeConfig
@@ -176,8 +177,8 @@ const FabricCanvas: React.FC = () => {
                           fontSize: shape.props?.fontSize || 20,
                           fontFamily: shape.props?.fontFamily || 'Arial, sans-serif', // Apply font family
                           fill: shape.fill || 'black', // Text color is fill in Fabric
-                          textAlign: shape.props?.textAlign || 'left',
-                          fontWeight: shape.props?.fontWeight || 'normal',
+                          textAlign: shape.props?.textAlign || 'left', // Default textAlign
+                          fontWeight: shape.props?.fontWeight || 'normal', // Default fontWeight
                           // Important: width needs to be set for textbox wrapping
                            width: shape.width,
                           ...(shape.props as fabric.ITextboxOptions), // Spread other Textbox options
@@ -223,7 +224,6 @@ const FabricCanvas: React.FC = () => {
                     }
                     break;
 
-                // TODO: Implement 'bubble' creation (likely fabric.Group of path/ellipse + text)
                  case 'bubble':
                       // Simplified: Create a rect with text inside (Placeholder)
                       // Proper implementation needs custom shape or group
@@ -328,8 +328,10 @@ const FabricCanvas: React.FC = () => {
                     textbox.set('text', shape.props?.text || '');
                     textbox.set('fontSize', shape.props?.fontSize);
                     textbox.set('fontFamily', shape.props?.fontFamily); // Update font family
-                    textbox.set('fontWeight', shape.props?.fontWeight);
-                    textbox.set('textAlign', shape.props?.textAlign);
+                    // Provide default value if undefined
+                    textbox.set('fontWeight', shape.props?.fontWeight || 'normal');
+                    // Provide default value if undefined
+                    textbox.set('textAlign', shape.props?.textAlign || 'left');
                     // Trigger recalculation if width changed, crucial for wrapping
                     if (existingObj.width !== shape.width / (existingObj.scaleX ?? 1)) {
                          textbox.set('width', shape.width / (existingObj.scaleX ?? 1));
@@ -380,7 +382,7 @@ const FabricCanvas: React.FC = () => {
            canvas.requestRenderAll(); // Render after all updates/additions
        });
 
-   }, [shapes]); // Rerun whenever shapes array changes
+   }, [shapes, updateShape]); // Include updateShape in dependencies
 
 
    // Update active object based on selectedShapeId from store
