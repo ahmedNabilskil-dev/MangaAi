@@ -24,8 +24,9 @@ import 'reactflow/dist/style.css';
 import { type NodeData, NodeType } from '@/types/nodes';
 import { useQuery } from '@tanstack/react-query';
 import { useVisualEditorStore } from '@/store/visual-editor-store';
-// Import the in-memory service layer
-import { getProject, DEFAULT_PROJECT_ID } from '@/services/in-memory';
+// Import the in-memory service layer function
+import { getProject } from '@/services/in-memory';
+import { DEFAULT_PROJECT_ID } from '@/config/constants'; // Import default project ID
 import { layoutElements } from '@/lib/layout-utils';
 import { Pencil } from 'lucide-react';
 import type { MangaProject, Character } from '@/types/entities'; // Import entity types
@@ -94,14 +95,14 @@ function VisualEditorInternal() {
   // Query Key depends on the refresh counter
   const queryKey = ['projectFlowData', refreshCounter];
 
-  // Use the default project ID from the in-memory service
+  // Use the default project ID from the constants file
   const currentProjectId = DEFAULT_PROJECT_ID;
 
   const { data: projectData, isLoading, error, isFetching } = useQuery({
     queryKey: queryKey,
     queryFn: async () => {
       if (!currentProjectId) {
-          console.warn("Default Project ID is not defined in the in-memory service.");
+          console.warn("Default Project ID is not defined.");
           throw new Error("Default Project ID is not configured.");
       }
       console.log("Fetching flow data for project:", currentProjectId);
@@ -166,7 +167,7 @@ function VisualEditorInternal() {
 
    // Display loading or error states
    if (!currentProjectId) {
-       return <div className="flex items-center justify-center h-full w-full bg-background text-destructive-foreground p-4 text-center">Error: Default Project ID not configured in in-memory service.</div>;
+       return <div className="flex items-center justify-center h-full w-full bg-background text-destructive-foreground p-4 text-center">Error: Default Project ID not configured.</div>;
    }
 
    if (isLoading && refreshCounter === 0) {

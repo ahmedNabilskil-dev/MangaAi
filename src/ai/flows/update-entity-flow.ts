@@ -28,8 +28,8 @@ import {
     getPanelDialogueForContext,
     getCharacter as getCharacterForContext,
     getAllCharacters,
-    DEFAULT_PROJECT_ID
 } from '@/services/in-memory';
+import { DEFAULT_PROJECT_ID } from '@/config/constants'; // Import default project ID
 import type { NodeType } from '@/types/nodes';
 import type { MangaProject, Chapter, Scene, Panel, PanelDialogue, Character } from '@/types/entities';
 import type { DeepPartial } from '@/types/utils';

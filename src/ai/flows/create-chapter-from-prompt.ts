@@ -25,9 +25,10 @@ import {
     getChapterForContext as getChapter, // Use context getter
     getSceneForContext as getScene, // Use context getter
     getPanelForContext as getPanel, // Use context getter
-    DEFAULT_PROJECT_ID // Import default project ID
 } from '@/services/in-memory'; // Import from in-memory service
 import type { Scene, Panel, PanelDialogue, Character } from '@/types/entities'; // Import types for context
+import { DEFAULT_PROJECT_ID } from '@/config/constants'; // Import default project ID
+
 
 // --- Input and Output Schemas ---
 
@@ -299,7 +300,7 @@ Follow these steps meticulously using the available tools IN ORDER:
     *   Determine its sequential \`order\` within its scene.
     *   Describe the core \`action\`, character poses/expressions (\`characterPoses\`), emotion, camera angle, shot type, background, lighting, visual effects (\`effects\`), narrative purpose (\`dramaticPurpose\`), and flow position (\`narrativePosition\`) based *strictly* on the prompt.
     *   List the names of characters present in \`characterNames\`.
-    *   Generate a concise \`aiPrompt\` for image generation ONLY IF the panel description clearly implies a visual is needed.
+    *   Generate a concise \`aiPrompt\` for image generation ONLY if the panel description clearly implies a visual is needed.
     *   Use the \`createPanel\` tool to create it, providing the scene ID returned by the corresponding \`createScene\` call.
 4.  **Assign Characters to Panels:** After creating a panel where characters are present, use the \`assignCharacterToPanel\` tool for EACH character mentioned. You MUST provide the correct panel ID and the character's ID (you might need to create the character first using \`createCharacter\` if they don't exist, or look them up if they do - assume character IDs are known or created).
 5.  **Create Dialogue:** For panels where dialogue or captions are specified in the prompt:

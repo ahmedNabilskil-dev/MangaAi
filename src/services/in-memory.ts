@@ -4,6 +4,7 @@
 import type { MangaProject, Chapter, Scene, Panel, PanelDialogue, Character } from '@/types/entities';
 import type { DeepPartial } from '@/types/utils';
 import { MangaStatus } from '@/types/enums';
+import { DEFAULT_PROJECT_ID } from '@/config/constants'; // Import for internal use
 
 // --- In-Memory Data Store ---
 let projects = new Map<string, MangaProject>();
@@ -28,16 +29,30 @@ function initializeDefaultProject() {
     panels.clear();
     dialogues.clear();
     characters.clear();
-    nextProjectId = 1;
+    nextProjectId = 1; // Reset counters
     nextChapterId = 1;
     nextSceneId = 1;
     nextPanelId = 1;
     nextDialogueId = 1;
     nextCharacterId = 1;
 
-    const defaultProjectId = `proj-${nextProjectId++}`;
+    const defaultProjectId = generateId('proj'); // Use generator to ensure it matches DEFAULT_PROJECT_ID = 'proj-1'
+    if (defaultProjectId !== DEFAULT_PROJECT_ID) {
+        console.error(`Generated ID ${defaultProjectId} does not match expected DEFAULT_PROJECT_ID ${DEFAULT_PROJECT_ID}. Resetting counter.`);
+        // Adjust counter if needed, though generateId should handle it based on initial values
+        nextProjectId = 1; // Force reset if logic changes
+        // Re-generate - this should now produce 'proj-1' if nextProjectId starts at 1
+        const correctedId = `proj-${nextProjectId++}`;
+        if (correctedId !== DEFAULT_PROJECT_ID) {
+             console.error("CRITICAL: Could not align generated ID with DEFAULT_PROJECT_ID. Store may be inconsistent.");
+             // Proceeding, but there might be issues.
+        }
+
+    }
+
+
     const defaultProject: MangaProject = {
-        id: defaultProjectId,
+        id: DEFAULT_PROJECT_ID, // Use the constant
         title: 'My First Manga Project',
         description: 'A sample project using the in-memory store.',
         status: MangaStatus.DRAFT,
@@ -53,13 +68,13 @@ function initializeDefaultProject() {
         chapters: [],
         characters: [],
     };
-    projects.set(defaultProjectId, defaultProject);
-    console.log("Initialized in-memory store with default project:", defaultProjectId);
+    projects.set(DEFAULT_PROJECT_ID, defaultProject);
+    console.log("Initialized in-memory store with default project:", DEFAULT_PROJECT_ID);
 }
 
 // Initialize on server start (or first import)
 initializeDefaultProject();
-const DEFAULT_PROJECT_ID = 'proj-1';
+
 
 // --- Helper Functions ---
 function generateId(prefix: 'proj' | 'chap' | 'scene' | 'panel' | 'dlg' | 'char'): string {
@@ -75,7 +90,25 @@ function generateId(prefix: 'proj' | 'chap' | 'scene' | 'panel' | 'dlg' | 'char'
 
 // Deep copy helper to prevent accidental mutation
 function deepCopy<T>(obj: T): T {
-    return JSON.parse(JSON.stringify(obj));
+    if (obj === null || typeof obj !== 'object') {
+      return obj;
+    }
+
+    if (obj instanceof Date) {
+        return new Date(obj.getTime()) as any;
+    }
+
+    if (Array.isArray(obj)) {
+      return obj.map(deepCopy) as any;
+    }
+
+    const copiedObject = {} as T;
+    for (const key in obj) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
+        copiedObject[key] = deepCopy(obj[key]);
+      }
+    }
+    return copiedObject;
 }
 
 // --- MangaProject Functions ---
@@ -489,6 +522,3 @@ export async function getPanelDialogueForContext(id: string): Promise<PanelDialo
     const dialogue = dialogues.get(id);
     return dialogue ? deepCopy(dialogue) : null;
 }
-
-// Export the default project ID for use in the UI
-export { DEFAULT_PROJECT_ID };

@@ -16,8 +16,8 @@ import { createChapterFromPrompt } from '@/ai/flows/create-chapter-from-prompt';
 import { brainstormCharacterIdeas } from '@/ai/flows/brainstorm-character-ideas';
 import { updateEntity } from '@/ai/flows/update-entity-flow';
 import type { NodeType } from '@/types/nodes';
-// Import the default project ID from the in-memory service
-import { DEFAULT_PROJECT_ID } from '@/services/in-memory';
+// Import the default project ID from the constants file
+import { DEFAULT_PROJECT_ID } from '@/config/constants';
 
 // Placeholder for the general assistant
 async function askGeneralAssistant(message: string): Promise<string> {
@@ -50,7 +50,7 @@ export default function Chatbox() {
     const refreshFlowData = useVisualEditorStore((state) => state.refreshFlowData);
 
     // ---- Project Context ----
-    const currentProjectId = DEFAULT_PROJECT_ID; // Use the default ID from in-memory service
+    const currentProjectId = DEFAULT_PROJECT_ID; // Use the default ID from constants
     const currentProjectTitle = 'My First Manga Project'; // Hardcoded for now, could fetch if needed
     // ---- End Context ----
 
