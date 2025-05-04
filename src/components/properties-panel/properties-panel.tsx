@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect } from 'react';
@@ -17,6 +18,7 @@ import PropertyForm from './property-form';
 import { type NodeData, type NodeType } from '@/types/nodes';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useVisualEditorStore } from '@/store/visual-editor-store';
+// Import the in-memory service functions
 import {
     updateProject,
     updateChapter,
@@ -24,7 +26,7 @@ import {
     updatePanel,
     updatePanelDialogue,
     updateCharacter
-} from '@/services/firebase'; // Import Firebase service functions
+} from '@/services/in-memory';
 import type { Node } from 'reactflow';
 import type { DeepPartial } from '@/types/utils'; // Assuming you have a DeepPartial utility type
 
@@ -34,7 +36,7 @@ interface PropertiesPanelProps {
     onClose: () => void;
 }
 
-// Map NodeType to the corresponding Firebase update function
+// Map NodeType to the corresponding in-memory update function
 const updateFunctionMap: Record<NodeType, (id: string, data: any) => Promise<any>> = {
     project: updateProject,
     chapter: updateChapter,
@@ -66,10 +68,10 @@ export default function PropertiesPanel({ isOpen, node, onClose }: PropertiesPan
                 throw new Error(`No update function found for node type: ${nodeType}`);
             }
              // Data should already be processed by PropertyForm's onSubmit handler
-             // It will be a partial object ready for Firestore update
+             // It will be a partial object ready for in-memory update
             return updateFn(id, data);
         },
-        onSuccess: (updatedData, variables) => { // Firebase update might not return data, depends on service impl.
+        onSuccess: (updatedData, variables) => { // In-memory update might not return data
             toast({
                 title: "Success",
                 description: `${variables.nodeType.charAt(0).toUpperCase() + variables.nodeType.slice(1)} properties saved successfully.`,
@@ -84,7 +86,7 @@ export default function PropertiesPanel({ isOpen, node, onClose }: PropertiesPan
             console.error(`Error updating ${variables.nodeType} (${variables.id}):`, error);
             toast({
                 title: "Error saving properties",
-                description: `Failed to save ${variables.nodeType}: ${error.message || 'Unknown Firestore error'}`,
+                description: `Failed to save ${variables.nodeType}: ${error.message || 'Unknown error'}`,
                 variant: "destructive",
             });
         },
@@ -103,14 +105,13 @@ export default function PropertiesPanel({ isOpen, node, onClose }: PropertiesPan
         const updateData = { ...formData };
         delete updateData.id; // Remove id if present in form values
 
-        console.log("Submitting update to Firestore for:", nodeType, nodeId, updateData);
+        console.log("Submitting update to in-memory store for:", nodeType, nodeId, updateData);
 
         mutation.mutate({
             nodeType: nodeType,
             id: nodeId,
             data: updateData, // Pass the processed data
         });
-        // Removed extra closing brace and parenthesis here: });
     };
 
     // Trigger form validation and submission from the external button

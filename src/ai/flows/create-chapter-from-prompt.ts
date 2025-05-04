@@ -3,7 +3,7 @@
 
 /**
  * @fileOverview This file defines a Genkit flow for creating a chapter, its scenes, and potentially related elements based on a user prompt.
- * It utilizes specific tools to interact with the backend service (Firebase Firestore).
+ * It utilizes specific tools to interact with the backend service (in-memory store).
  *
  * - createChapterFromPrompt - A function that takes a prompt and orchestrates the creation process using tools.
  * - CreateChapterFromPromptInput - The input type for the createChapterFromPrompt function.
@@ -12,7 +12,7 @@
 
 import { ai } from '@/ai/ai-instance';
 import { z } from 'genkit';
-// Import specific CRUD operations from the Firebase service
+// Import specific CRUD operations from the in-memory service
 import {
     createChapter as createChapterService,
     createScene as createSceneService,
@@ -22,16 +22,17 @@ import {
     assignCharacterToPanel as assignCharacterToPanelService,
     getCharacter, // Needed to potentially resolve speaker names to IDs
     getAllCharacters, // Needed to find characters by name
-    getChapter, // To get projectId from chapter
-    getScene, // To get chapterId from scene
-    getPanel // To get sceneId from panel
-} from '@/services/firebase'; // Import from firebase service
+    getChapterForContext as getChapter, // Use context getter
+    getSceneForContext as getScene, // Use context getter
+    getPanelForContext as getPanel, // Use context getter
+    DEFAULT_PROJECT_ID // Import default project ID
+} from '@/services/in-memory'; // Import from in-memory service
 import type { Scene, Panel, PanelDialogue, Character } from '@/types/entities'; // Import types for context
 
 // --- Input and Output Schemas ---
 
 const CreateChapterFromPromptInputSchema = z.object({
-  projectId: z.string().describe('The Firestore Document ID of the project to which the chapter will belong.'),
+  projectId: z.string().describe('The ID of the project to which the chapter will belong (currently uses default).'),
   chapterTitle: z.string().describe('The title of the chapter to be created.'),
   chapterNumber: z.number().int().positive().describe('The number for the chapter.'),
   prompt: z.string().describe('A prompt describing the desired chapter content, including potential scenes, panels, characters, and dialogue.'),
@@ -39,57 +40,39 @@ const CreateChapterFromPromptInputSchema = z.object({
 
 export type CreateChapterFromPromptInput = z.infer<typeof CreateChapterFromPromptInputSchema>;
 
-// Output now includes IDs as strings (Firestore Document IDs)
+// Output now includes IDs as strings (In-memory generated IDs)
 const CreateChapterFromPromptOutputSchema = z.object({
-  chapterId: z.string().describe('The Firestore Document ID of the created chapter.'),
-  sceneIds: z.array(z.string()).describe('The Document IDs of the scenes created within the chapter.'),
-  panelIds: z.array(z.string()).optional().describe('The Document IDs of the panels created.'),
-  dialogueIds: z.array(z.string()).optional().describe('The Document IDs of the dialogues created.'),
-  characterIds: z.array(z.string()).optional().describe('Document IDs of any characters created or assigned.'), // Optional: if flow creates chars
+  chapterId: z.string().describe('The ID of the created chapter.'),
+  sceneIds: z.array(z.string()).describe('The IDs of the scenes created within the chapter.'),
+  panelIds: z.array(z.string()).optional().describe('The IDs of the panels created.'),
+  dialogueIds: z.array(z.string()).optional().describe('The IDs of the dialogues created.'),
+  characterIds: z.array(z.string()).optional().describe('IDs of any characters created or assigned.'), // Optional: if flow creates chars
 });
 
 export type CreateChapterFromPromptOutput = z.infer<typeof CreateChapterFromPromptOutputSchema>;
 
-// Helper to get projectId, potentially needed for character lookup
+// Helper to get projectId for context (simplified for in-memory)
 async function getProjectIdForTool(context: { chapterId?: string, sceneId?: string, panelId?: string }): Promise<string | undefined> {
-    if (context.chapterId) {
-        const chapter = await getChapter(context.chapterId);
-        return chapter?.mangaProjectId;
-    }
-    if (context.sceneId) {
-        const scene = await getScene(context.sceneId);
-        if (scene?.chapterId) {
-            const chapter = await getChapter(scene.chapterId);
-            return chapter?.mangaProjectId;
-        }
-    }
-    if (context.panelId) {
-        const panel = await getPanel(context.panelId);
-        if (panel?.sceneId) {
-            const scene = await getScene(panel.sceneId);
-            if (scene?.chapterId) {
-                const chapter = await getChapter(scene.chapterId);
-                return chapter?.mangaProjectId;
-            }
-        }
-    }
-    return process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID; // Fallback to env var if needed
+    // In memory, we typically work within the default project context
+    return DEFAULT_PROJECT_ID;
 }
 
 
 // --- Exposed Function ---
 
 export async function createChapterFromPrompt(input: CreateChapterFromPromptInput): Promise<CreateChapterFromPromptOutput> {
-  return createChapterFromPromptFlow(input);
+  // Ensure projectId uses the default for in-memory store if not provided otherwise
+  const finalInput = { ...input, projectId: input.projectId || DEFAULT_PROJECT_ID };
+  return createChapterFromPromptFlow(finalInput);
 }
 
-// --- Genkit Tools (Wrapping Firebase Service Functions) ---
+// --- Genkit Tools (Wrapping In-Memory Service Functions) ---
 
 const createChapterTool = ai.defineTool({
   name: 'createChapter',
   description: 'Creates a new chapter in the manga project. Call this first.',
   inputSchema: z.object({
-    mangaProjectId: z.string().describe('The Document ID of the parent project.'),
+    mangaProjectId: z.string().describe('The ID of the parent project.'),
     title: z.string().describe('The title of the chapter.'),
     chapterNumber: z.number().int().positive().describe('The chapter number.'),
     summary: z.string().optional().describe('A brief summary of the chapter, if inferrable from the prompt.'),
@@ -97,11 +80,11 @@ const createChapterTool = ai.defineTool({
     tone: z.string().optional().describe("The overall tone (e.g., comedic, dramatic, mysterious)."),
     keyCharacters: z.array(z.string()).optional().describe("Names of key characters appearing in this chapter."),
   }),
-  outputSchema: z.string().describe('The Document ID of the created chapter.'),
+  outputSchema: z.string().describe('The ID of the created chapter.'),
 }, async (input) => {
   const chapter = await createChapterService({
     ...input,
-    // Defaults for Firestore chapter
+    // Defaults for in-memory chapter
     isAiGenerated: true,
     isPublished: false,
     viewCount: 0,
@@ -113,7 +96,7 @@ const createSceneTool = ai.defineTool({
   name: 'createScene',
   description: 'Creates a new scene within a specific chapter. Must be called after createChapter.',
   inputSchema: z.object({
-    chapterId: z.string().describe('The Document ID of the chapter this scene belongs to (from createChapter tool).'),
+    chapterId: z.string().describe('The ID of the chapter this scene belongs to (from createChapter tool).'),
     title: z.string().describe('A descriptive title for the scene.'),
     order: z.number().int().nonnegative().describe('The sequential order of the scene within the chapter (starts from 0 or 1).'),
     description: z.string().optional().describe('A brief description or summary of the scene.'),
@@ -125,17 +108,11 @@ const createSceneTool = ai.defineTool({
         weather: z.string().optional().describe('Weather conditions if relevant (e.g., "Snowing", "Sunny").'),
     }).describe('Contextual details defining the scene environment and participants.'),
     dialogueOutline: z.string().optional().describe("A high-level outline or summary of the dialogue that occurs in this scene."),
-    // Need chapterId to associate the scene correctly in Firestore
-    // Although implied by flow, good to have explicitly if possible
   }),
-  outputSchema: z.string().describe('The Document ID of the created scene.'),
+  outputSchema: z.string().describe('The ID of the created scene.'),
 }, async (input) => {
-  // Fetch the chapter to get the projectId needed for context potentially, or assume it's implicitly handled
-   // We need mangaProjectId from the chapter for context potentially, but the input schema for createSceneService only requires chapterId.
-   // Assume the service function handles context or structure appropriately.
   const scene = await createSceneService({
     ...input,
-    // chapterId is already in input
     isAiGenerated: true,
   });
   return scene.id;
@@ -145,7 +122,7 @@ const createPanelTool = ai.defineTool({
     name: 'createPanel',
     description: 'Creates a new panel within a specific scene. Must be called after createScene. Panels depict visual moments and actions.',
     inputSchema: z.object({
-        sceneId: z.string().describe('The Document ID of the scene this panel belongs to (from createScene tool).'),
+        sceneId: z.string().describe('The ID of the scene this panel belongs to (from createScene tool).'),
         order: z.number().int().nonnegative().describe('The sequential order of the panel within the scene.'),
         aiPrompt: z.string().optional().describe('Concise prompt for AI image generation, summarizing the visual elements if an image is desired.'),
         panelContext: z.object({ // Align with Panel entity
@@ -168,12 +145,11 @@ const createPanelTool = ai.defineTool({
         // Pass character *names* mentioned in the panel context for potential linking later
         characterNames: z.array(z.string()).optional().describe('Names of characters present in this panel (for potential linking later using findCharacterByName tool).'),
     }),
-    // Output panel ID. Image generation happens separately or is triggered by the service.
-    outputSchema: z.string().describe('The Document ID of the created panel.'),
+    outputSchema: z.string().describe('The ID of the created panel.'),
 }, async (input) => {
     // Resolve character names to IDs if possible *before* creating the panel
     let characterIds: string[] = [];
-    const projectId = await getProjectIdForTool({ sceneId: input.sceneId });
+    const projectId = await getProjectIdForTool({ sceneId: input.sceneId }); // Should return default project ID
 
     if (input.characterNames && input.characterNames.length > 0 && projectId) {
         const charactersInProject = await getAllCharacters(projectId);
@@ -200,7 +176,7 @@ const createPanelDialogueTool = ai.defineTool({
     name: 'createPanelDialogue',
     description: 'Creates dialogue text associated with a specific panel. Call after createPanel. If speakerName is provided, attempt to find character ID.',
     inputSchema: z.object({
-        panelId: z.string().describe('The Document ID of the panel this dialogue belongs to (from createPanel tool).'),
+        panelId: z.string().describe('The ID of the panel this dialogue belongs to (from createPanel tool).'),
         order: z.number().int().nonnegative().describe('Order of this dialogue bubble/caption within the panel.'),
         content: z.string().describe('The exact dialogue text or caption.'),
         speakerName: z.string().optional().describe('Name of the character speaking (if applicable). Will try to resolve to ID.'),
@@ -210,10 +186,10 @@ const createPanelDialogueTool = ai.defineTool({
         emotion: z.string().optional().describe("Emotion conveyed by the dialogue delivery."),
         subtextNote: z.string().optional().describe("Underlying meaning or director's note."),
     }),
-    outputSchema: z.string().describe('The Document ID of the created dialogue entry.'),
+    outputSchema: z.string().describe('The ID of the created dialogue entry.'),
 }, async (input) => {
     let speakerId: string | undefined | null = null;
-    const projectId = await getProjectIdForTool({ panelId: input.panelId });
+    const projectId = await getProjectIdForTool({ panelId: input.panelId }); // Should return default project ID
 
     if (input.speakerName && projectId) {
          const characters = await getAllCharacters(projectId);
@@ -244,39 +220,40 @@ const createCharacterTool = ai.defineTool({
     name: 'createCharacter',
     description: 'Creates a new character profile within the project. Use if a character mentioned in the prompt does not exist.',
     inputSchema: z.object({
-        mangaProjectId: z.string().describe("The project the character belongs to."),
+        // mangaProjectId is implicit from context in in-memory store
+        mangaProjectId: z.string().describe("The project the character belongs to (uses default in-memory)."),
         name: z.string().describe("The character's name."),
         briefDescription: z.string().optional().describe("A short description."),
         role: z.enum(['protagonist', 'antagonist', 'supporting', 'minor']).optional(),
         // Add other key fields the AI might infer or need
     }),
-    outputSchema: z.string().describe("The Document ID of the created character."),
+    outputSchema: z.string().describe("The ID of the created character."),
 }, async (input) => {
     const character = await createCharacterService({
         ...input,
+        mangaProjectId: input.mangaProjectId || DEFAULT_PROJECT_ID, // Ensure default project ID
         isAiGenerated: true, // Assume AI generated
-        // Add defaults for other fields if needed
     });
     return character.id;
 });
 
-// Tool to link existing characters to panels (using Firebase service function)
+// Tool to link existing characters to panels (using in-memory service function)
 const assignCharacterToPanelTool = ai.defineTool({
     name: 'assignCharacterToPanel',
     description: 'Assigns an *existing* character to a specific panel. Call after createPanel and ensure the character exists.',
     inputSchema: z.object({
-        panelId: z.string().describe("The Document ID of the panel."),
+        panelId: z.string().describe("The ID of the panel."),
         // Requires character ID. LLM needs to know or retrieve this.
-        characterId: z.string().describe("The Document ID of the *existing* character to assign."),
+        characterId: z.string().describe("The ID of the *existing* character to assign."),
     }),
     outputSchema: z.boolean().describe("True if assignment was successful."),
 }, async (input) => {
     try {
-        // Firebase service function updates the panel's characterIds array
+        // In-memory service function updates the panel's characterIds array
         await assignCharacterToPanelService(input.panelId, input.characterId);
         return true;
-    } catch (error) {
-        console.error(`Failed to assign character ${input.characterId} to panel ${input.panelId}:`, error);
+    } catch (error: any) {
+        console.error(`Failed to assign character ${input.characterId} to panel ${input.panelId}:`, error.message);
         return false; // Or throw error
     }
 });
@@ -306,7 +283,7 @@ const prompt = ai.definePrompt({
     }),
   },
   // Enhanced prompt instructions
-  prompt: `You are an expert manga storyteller and AI assistant using Firebase Firestore. Your task is to generate the structure for Chapter {{chapterNumber}}: "{{chapterTitle}}" for the project (ID: {{projectId}}) based *only* on the user's prompt.
+  prompt: `You are an expert manga storyteller and AI assistant using an in-memory data store. Your task is to generate the structure for Chapter {{chapterNumber}}: "{{chapterTitle}}" for the project (ID: {{projectId}}) based *only* on the user's prompt.
 
 User Prompt:
 "{{prompt}}"
@@ -324,18 +301,18 @@ Follow these steps meticulously using the available tools IN ORDER:
     *   List the names of characters present in \`characterNames\`.
     *   Generate a concise \`aiPrompt\` for image generation ONLY IF the panel description clearly implies a visual is needed.
     *   Use the \`createPanel\` tool to create it, providing the scene ID returned by the corresponding \`createScene\` call.
-4.  **Assign Characters to Panels:** After creating a panel where characters are present, use the \`assignCharacterToPanel\` tool for EACH character mentioned. You MUST provide the correct panel ID and the character's Document ID (you might need to create the character first using \`createCharacter\` if they don't exist, or look them up if they do - this might require context or another tool not explicitly defined here, assume character IDs are known or created).
+4.  **Assign Characters to Panels:** After creating a panel where characters are present, use the \`assignCharacterToPanel\` tool for EACH character mentioned. You MUST provide the correct panel ID and the character's ID (you might need to create the character first using \`createCharacter\` if they don't exist, or look them up if they do - assume character IDs are known or created).
 5.  **Create Dialogue:** For panels where dialogue or captions are specified in the prompt:
     *   Determine the dialogue \`content\`, its \`order\` within the panel, the speaker's name (\`speakerName\`) if mentioned, and any specified style, emotion, or subtext.
     *   Use the \`createPanelDialogue\` tool for EACH piece of dialogue/caption, providing the panel ID from the corresponding \`createPanel\` call. The tool will attempt to find the speaker's ID from their name.
-6.  **(Optional Character Creation):** If the prompt mentions a new character needed for a scene or panel, use the \`createCharacter\` tool FIRST, providing the \`mangaProjectId\`.
+6.  **(Optional Character Creation):** If the prompt mentions a new character needed for a scene or panel, use the \`createCharacter\` tool FIRST, providing the \`mangaProjectId\` (it will default correctly).
 
 **CRITICAL RULES:**
 *   **Strict Adherence:** ONLY create entities and details explicitly mentioned or strongly implied by the user's prompt for THIS chapter. Do not add extra scenes, panels, dialogue, or details not requested.
 *   **Tool Order:** Create Chapter -> (Optional Characters) -> Scenes -> Panels -> Assign Characters -> Dialogue. Use the IDs returned by previous tool calls.
-*   **IDs:** You MUST use the Firestore Document IDs returned by the tools when calling subsequent tools (e.g., use chapterId from \`createChapter\` when calling \`createScene\`).
+*   **IDs:** You MUST use the IDs returned by the tools when calling subsequent tools (e.g., use chapterId from \`createChapter\` when calling \`createScene\`).
 *   **No Image Generation:** You are only creating the structure. Do not generate images directly. The \`aiPrompt\` in \`createPanel\` is for *potential* later generation.
-*   **Confirmation:** After attempting all creations based on the prompt, respond ONLY with a confirmation message summarizing what was created (e.g., "Chapter created with X scenes, Y panels, Z dialogues.") and mention any parts of the prompt you couldn't fulfill due to lack of detail or tool constraints. Do not include the generated Document IDs in your confirmation message.
+*   **Confirmation:** After attempting all creations based on the prompt, respond ONLY with a confirmation message summarizing what was created (e.g., "Chapter created with X scenes, Y panels, Z dialogues.") and mention any parts of the prompt you couldn't fulfill due to lack of detail or tool constraints. Do not include the generated IDs in your confirmation message.
 `,
 });
 
@@ -365,7 +342,7 @@ const createChapterFromPromptFlow = ai.defineFlow<
     if (toolResponses) {
         for (const response of toolResponses) {
             const toolName = response.toolRequest.toolName;
-            const result = response.result; // Result is the Document ID or boolean
+            const result = response.result; // Result is the ID or boolean
 
             if (toolName === 'createChapter' && typeof result === 'string') {
                 chapterId = result;
@@ -409,4 +386,3 @@ const createChapterFromPromptFlow = ai.defineFlow<
      };
   }
 );
-

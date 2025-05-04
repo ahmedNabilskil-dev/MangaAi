@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useCallback, useEffect, useRef } from 'react';
@@ -23,10 +24,11 @@ import 'reactflow/dist/style.css';
 import { type NodeData, NodeType } from '@/types/nodes';
 import { useQuery } from '@tanstack/react-query';
 import { useVisualEditorStore } from '@/store/visual-editor-store';
-import { getProject } from '@/services/firebase'; // Import Firebase service
+// Import the new in-memory service layer
+import { getProject, DEFAULT_PROJECT_ID } from '@/services/in-memory';
 import { layoutElements } from '@/lib/layout-utils';
 import { Pencil } from 'lucide-react';
-import type { MangaProject } from '@/types/entities'; // Import the entity type
+import type { MangaProject, Character } from '@/types/entities'; // Import entity types
 
 // Import or define custom node components (kept as is)
 const DefaultNodeComponent = ({ data, selected }: { data: NodeData, selected: boolean }) => (
@@ -92,30 +94,30 @@ function VisualEditorInternal() {
   // Query Key depends on the refresh counter
   const queryKey = ['projectFlowData', refreshCounter];
 
-  // Get the current project ID from environment variables
-  const currentProjectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  // Use the default project ID from the in-memory service
+  const currentProjectId = DEFAULT_PROJECT_ID;
 
   const { data: projectData, isLoading, error, isFetching } = useQuery({
     queryKey: queryKey,
     queryFn: async () => {
       if (!currentProjectId) {
-          console.warn("Firebase Project ID is not configured in environment variables (NEXT_PUBLIC_FIREBASE_PROJECT_ID).");
-          // Return empty state or throw error depending on desired behavior
-          throw new Error("Firebase Project ID is not configured. Please set NEXT_PUBLIC_FIREBASE_PROJECT_ID in your environment variables.");
+          console.warn("Default Project ID is not defined in the in-memory service.");
+          throw new Error("Default Project ID is not configured.");
       }
       console.log("Fetching flow data for project:", currentProjectId);
-      // Use Firebase service to get project data (which includes nested fetching)
+      // Use in-memory service to get project data
       const project = await getProject(currentProjectId);
       if (!project) {
-        throw new Error(`Project ${currentProjectId} not found in Firestore.`);
+        // Should not happen with the initialized default project, but good to check
+        throw new Error(`Project ${currentProjectId} not found in memory.`);
       }
-      // Convert the fetched Firebase project structure into React Flow elements
-      const { nodes: fetchedNodes, edges: fetchedEdges } = convertFirebaseProjectToFlowElements(project);
+      // Convert the fetched in-memory project structure into React Flow elements
+      const { nodes: fetchedNodes, edges: fetchedEdges } = convertInMemoryProjectToFlowElements(project);
       console.log("Converted flow elements:", { fetchedNodes, fetchedEdges });
       return layoutElements(fetchedNodes, fetchedEdges); // Apply layout
     },
     enabled: !!currentProjectId, // Only run query if projectId is valid
-    staleTime: 5 * 60 * 1000,
+    staleTime: 5 * 60 * 1000, // Cache for 5 mins
     refetchOnWindowFocus: false,
   });
 
@@ -164,7 +166,7 @@ function VisualEditorInternal() {
 
    // Display loading or error states
    if (!currentProjectId) {
-       return <div className="flex items-center justify-center h-full w-full bg-background text-destructive-foreground p-4 text-center">Error: NEXT_PUBLIC_FIREBASE_PROJECT_ID environment variable is not set. Please configure it in your environment.</div>;
+       return <div className="flex items-center justify-center h-full w-full bg-background text-destructive-foreground p-4 text-center">Error: Default Project ID not configured in in-memory service.</div>;
    }
 
    if (isLoading && refreshCounter === 0) {
@@ -172,12 +174,11 @@ function VisualEditorInternal() {
    }
 
    if (error) {
-        // Display a more user-friendly error, potentially guiding towards Firestore setup/rules
         return (
             <div className="flex flex-col items-center justify-center h-full w-full bg-destructive text-destructive-foreground p-4 text-center">
                 <p className="font-semibold mb-2">Error loading project data:</p>
                 <p className="text-sm mb-4">{error.message}</p>
-                <p className="text-xs">Ensure the project ID ('{currentProjectId}') exists in Firestore and that Firestore security rules allow read access.</p>
+                <p className="text-xs">Could not load data from the in-memory store.</p>
             </div>
         );
    }
@@ -199,7 +200,7 @@ function VisualEditorInternal() {
         onConnect={onConnect}
         nodeTypes={nodeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
-        fitView={false}
+        fitView={false} // Fit view is handled by useEffect now
         fitViewOptions={{ padding: 0.2 }}
         className="bg-background"
         onNodeClick={handleNodeClick}
@@ -224,8 +225,9 @@ export default function VisualEditor() {
 }
 
 
-// --- Helper Function: Convert Firebase Project Data to Flow Elements ---
-function convertFirebaseProjectToFlowElements(project: MangaProject): { nodes: Node<NodeData>[], edges: Edge[] } {
+// --- Helper Function: Convert In-Memory Project Data to Flow Elements ---
+// This function is very similar to the Firebase one, just using the in-memory data structure
+function convertInMemoryProjectToFlowElements(project: MangaProject): { nodes: Node<NodeData>[], edges: Edge[] } {
     const nodes: Node<NodeData>[] = [];
     const edges: Edge[] = [];
 
@@ -239,12 +241,12 @@ function convertFirebaseProjectToFlowElements(project: MangaProject): { nodes: N
         data: {
             label: project.title || 'Project',
             type: 'project',
-            // Pass the full project data, excluding potentially large/recursive nested arrays initially
+            // Pass the full project data, excluding the nested arrays handled below
             properties: { ...project, chapters: undefined, characters: undefined },
         }
     });
 
-    // 7. Characters linked to Project (Character Nodes) - Add these near the project
+    // 7. Characters linked to Project (Character Nodes)
      project.characters?.forEach((character) => {
          if (!character || !character.id) return;
          const charId = character.id;

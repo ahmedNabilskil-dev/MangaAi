@@ -1,9 +1,9 @@
 
 'use server';
 /**
- * @fileOverview Defines a Genkit flow for updating various manga entities (Project, Chapter, Scene, Panel, Dialogue, Character) in Firebase Firestore based on user prompts.
+ * @fileOverview Defines a Genkit flow for updating various manga entities (Project, Chapter, Scene, Panel, Dialogue, Character) in the in-memory store based on user prompts.
  *
- * This flow uses specific tools to interact with the backend service (Firebase) for updates.
+ * This flow uses specific tools to interact with the backend service (in-memory) for updates.
  * - updateEntity - A function that takes an entity type, ID, and prompt, then orchestrates the update using tools.
  * - UpdateEntityInput - The input type for the updateEntity function.
  * - UpdateEntityOutput - The return type for the updateEntity function.
@@ -11,6 +11,7 @@
 
 import { ai } from '@/ai/ai-instance';
 import { z } from 'genkit';
+// Import in-memory service functions
 import {
     updateProject,
     updateChapter,
@@ -20,14 +21,15 @@ import {
     updateCharacter,
     assignCharacterToPanel,
     removeCharacterFromPanel,
-    getProject,
-    getChapter,
-    getScene,
-    getPanel,
-    getPanelDialogue,
-    getCharacter,
-    getAllCharacters
-} from '@/services/firebase'; // Import Firebase service functions
+    getProject, // Use the main getter which populates relations
+    getChapterForContext,
+    getSceneForContext,
+    getPanelForContext,
+    getPanelDialogueForContext,
+    getCharacter as getCharacterForContext,
+    getAllCharacters,
+    DEFAULT_PROJECT_ID
+} from '@/services/in-memory';
 import type { NodeType } from '@/types/nodes';
 import type { MangaProject, Chapter, Scene, Panel, PanelDialogue, Character } from '@/types/entities';
 import type { DeepPartial } from '@/types/utils';
@@ -35,10 +37,6 @@ import type { DeepPartial } from '@/types/utils';
 // --- Schemas for Tools (Subset of Full Entities, Focusing on Updatable Fields) ---
 // Define schemas for *data the AI can provide* for updates. Exclude read-only fields like ID, createdAt etc.
 // Use DeepPartial as updates modify only parts of the entity.
-
-// Note: Firebase update function expects a flat object with fields to update.
-// Nested objects (like panelContext) need to be handled carefully (either update the whole object or use dot notation).
-// For simplicity here, we'll pass the partial object and let the Firebase service handle it if needed (though direct update might require dot notation for nested fields).
 
 const UpdateProjectSchema = z.custom<DeepPartial<Omit<MangaProject, 'id' | 'createdAt' | 'updatedAt' | 'chapters' | 'characters'>>>()
     .describe("Fields that can be updated for a Manga Project.");
@@ -49,9 +47,9 @@ const UpdateChapterSchema = z.custom<DeepPartial<Omit<Chapter, 'id' | 'createdAt
 const UpdateSceneSchema = z.custom<DeepPartial<Omit<Scene, 'id' | 'createdAt' | 'updatedAt' | 'panels'>>>()
     .describe("Fields that can be updated for a Scene.");
 
-// For panels, specifically allow updating characterIds array
-const UpdatePanelSchema = z.custom<DeepPartial<Omit<Panel, 'id' | 'createdAt' | 'updatedAt' | 'dialogues' | 'characters'>>>()
-    .describe("Fields that can be updated for a Panel, including 'characterIds'.");
+// For panels, specifically allow updating characterIds array via assignment tools
+const UpdatePanelSchema = z.custom<DeepPartial<Omit<Panel, 'id' | 'createdAt' | 'updatedAt' | 'dialogues' | 'characters' | 'characterIds'>>>()
+    .describe("Fields that can be updated for a Panel (excluding characterIds). Use assign/remove tools for character list changes.");
 
 const UpdatePanelDialogueSchema = z.custom<DeepPartial<Omit<PanelDialogue, 'id' | 'createdAt' | 'updatedAt' | 'speaker'>>>()
     .describe("Fields that can be updated for Panel Dialogue.");
@@ -64,10 +62,10 @@ const UpdateCharacterSchema = z.custom<DeepPartial<Omit<Character, 'id' | 'creat
 
 const UpdateEntityInputSchema = z.object({
   entityType: z.enum(['project', 'chapter', 'scene', 'panel', 'dialogue', 'character']).describe("The type of entity to update."),
-  entityId: z.string().describe("The Firestore Document ID of the specific entity instance to update."),
+  entityId: z.string().describe("The ID of the specific entity instance to update."),
   prompt: z.string().describe("The user's instruction for how to update the entity (e.g., 'Change the scene setting to a dark forest', 'Add character X to the panel', 'Rewrite the dialogue to be more menacing')."),
-  // Add projectId context if needed, especially for finding characters
-  projectId: z.string().optional().describe("The Firestore Document ID of the project context (important for character lookups)."),
+  // ProjectId is less critical for in-memory but good practice
+  projectId: z.string().optional().default(DEFAULT_PROJECT_ID).describe("The ID of the project context (defaults to the standard in-memory project)."),
 });
 export type UpdateEntityInput = z.infer<typeof UpdateEntityInputSchema>;
 
@@ -91,51 +89,27 @@ type AugmentedUpdateEntityInput = z.infer<typeof AugmentedUpdateEntityInputSchem
 export async function updateEntity(input: UpdateEntityInput): Promise<UpdateEntityOutput> {
     // Fetch current data to provide context to the LLM if needed
     let currentData: any = null;
+    const projectId = input.projectId || DEFAULT_PROJECT_ID; // Ensure project ID
+
     try {
         console.log(`Fetching current data for ${input.entityType} ${input.entityId}`);
         switch (input.entityType) {
-            case 'project': currentData = await getProject(input.entityId); break; // Project fetch already gets deep data
-            case 'chapter': currentData = await getChapter(input.entityId); break; // Fetch chapter only
-            case 'scene': currentData = await getScene(input.entityId); break; // Fetch scene only
-            case 'panel': currentData = await getPanel(input.entityId); break; // Fetch panel only
-            case 'dialogue': currentData = await getPanelDialogue(input.entityId); break; // Fetch dialogue only
-            case 'character': currentData = await getCharacter(input.entityId); break; // Fetch character only
+            // Use the specific context getters which don't fetch nested data
+            case 'project': currentData = await getProject(input.entityId); break; // Get full project for context
+            case 'chapter': currentData = await getChapterForContext(input.entityId); break;
+            case 'scene': currentData = await getSceneForContext(input.entityId); break;
+            case 'panel': currentData = await getPanelForContext(input.entityId); break;
+            case 'dialogue': currentData = await getPanelDialogueForContext(input.entityId); break;
+            case 'character': currentData = await getCharacterForContext(input.entityId); break;
         }
          console.log("Current data fetched:", currentData ? 'Data found' : 'Not found');
-    } catch (error) {
-        console.warn(`Could not fetch current data for ${input.entityType} ${input.entityId}:`, error);
+    } catch (error: any) {
+        console.warn(`Could not fetch current data for ${input.entityType} ${input.entityId}:`, error.message);
         // Proceed without currentData, but the LLM might be less effective
     }
 
-     // Find projectId if not provided and needed for context (e.g., character lookups)
-     let projectId = input.projectId || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID; // Use env var as fallback
-     if (!projectId && input.entityType !== 'project' && currentData) {
-        // Try to infer projectId from the fetched data's hierarchy
-        if (currentData.mangaProjectId) projectId = currentData.mangaProjectId;
-        else if (currentData.chapterId) { // Scene
-            const chapter = await getChapter(currentData.chapterId);
-            if (chapter?.mangaProjectId) projectId = chapter.mangaProjectId;
-        } else if (currentData.sceneId) { // Panel
-            const scene = await getScene(currentData.sceneId);
-            if(scene?.chapterId) {
-                const chapter = await getChapter(scene.chapterId);
-                if (chapter?.mangaProjectId) projectId = chapter.mangaProjectId;
-            }
-        } else if (currentData.panelId) { // Dialogue
-            const panel = await getPanel(currentData.panelId);
-            if(panel?.sceneId) {
-                 const scene = await getScene(panel.sceneId);
-                 if (scene?.chapterId) {
-                     const chapter = await getChapter(scene.chapterId);
-                     if (chapter?.mangaProjectId) projectId = chapter.mangaProjectId;
-                 }
-            }
-        }
-         console.log("Inferred projectId:", projectId);
-     }
 
-
-    // Augment input with current data and potentially inferred projectId for the flow
+    // Augment input with current data and project ID for the flow
     const flowInput: AugmentedUpdateEntityInput = { ...input, projectId, currentData };
 
     return updateEntityFlow(flowInput);
@@ -148,7 +122,7 @@ const updateProjectTool = ai.defineTool({
     name: 'updateProject',
     description: 'Updates specific fields of a Manga Project entity.',
     inputSchema: z.object({
-        id: z.string().describe("The Document ID of the project to update."),
+        id: z.string().describe("The ID of the project to update."),
         data: UpdateProjectSchema.describe("The fields and new values to update."),
     }),
     outputSchema: z.boolean().describe("True if update succeeded."),
@@ -156,14 +130,14 @@ const updateProjectTool = ai.defineTool({
     try {
         await updateProject(id, data);
         return true;
-    } catch (e) { console.error("updateProjectTool Error:", e); return false; }
+    } catch (e: any) { console.error("updateProjectTool Error:", e.message); return false; }
 });
 
 const updateChapterTool = ai.defineTool({
     name: 'updateChapter',
     description: 'Updates specific fields of a Chapter entity.',
     inputSchema: z.object({
-        id: z.string().describe("The Document ID of the chapter to update."),
+        id: z.string().describe("The ID of the chapter to update."),
         data: UpdateChapterSchema.describe("The fields and new values to update."),
     }),
     outputSchema: z.boolean().describe("True if update succeeded."),
@@ -171,14 +145,14 @@ const updateChapterTool = ai.defineTool({
      try {
         await updateChapter(id, data);
         return true;
-    } catch (e) { console.error("updateChapterTool Error:", e); return false; }
+    } catch (e: any) { console.error("updateChapterTool Error:", e.message); return false; }
 });
 
 const updateSceneTool = ai.defineTool({
     name: 'updateScene',
     description: 'Updates specific fields of a Scene entity.',
     inputSchema: z.object({
-        id: z.string().describe("The Document ID of the scene to update."),
+        id: z.string().describe("The ID of the scene to update."),
         data: UpdateSceneSchema.describe("The fields and new values to update."),
     }),
     outputSchema: z.boolean().describe("True if update succeeded."),
@@ -186,31 +160,29 @@ const updateSceneTool = ai.defineTool({
      try {
         await updateScene(id, data);
         return true;
-    } catch (e) { console.error("updateSceneTool Error:", e); return false; }
+    } catch (e: any) { console.error("updateSceneTool Error:", e.message); return false; }
 });
 
 const updatePanelTool = ai.defineTool({
     name: 'updatePanel',
     description: 'Updates specific fields of a Panel entity. Use assign/remove tools for character list changes.',
     inputSchema: z.object({
-        id: z.string().describe("The Document ID of the panel to update."),
-        // Exclude characterIds from direct update data here, force use of assignment tools
-        data: z.custom<DeepPartial<Omit<Panel, 'id' | 'createdAt' | 'updatedAt' | 'dialogues' | 'characters' | 'characterIds'>>>()
-            .describe("The fields and new values to update (excluding characterIds)."),
+        id: z.string().describe("The ID of the panel to update."),
+        data: UpdatePanelSchema.describe("The fields and new values to update (excluding characterIds)."),
     }),
     outputSchema: z.boolean().describe("True if update succeeded."),
 }, async ({ id, data }) => {
      try {
         await updatePanel(id, data); // Service function handles the update
         return true;
-    } catch (e) { console.error("updatePanelTool Error:", e); return false; }
+    } catch (e: any) { console.error("updatePanelTool Error:", e.message); return false; }
 });
 
 const updatePanelDialogueTool = ai.defineTool({
     name: 'updatePanelDialogue',
     description: 'Updates specific fields of a Panel Dialogue entity.',
     inputSchema: z.object({
-        id: z.string().describe("The Document ID of the dialogue to update."),
+        id: z.string().describe("The ID of the dialogue to update."),
         data: UpdatePanelDialogueSchema.describe("The fields and new values to update."),
     }),
     outputSchema: z.boolean().describe("True if update succeeded."),
@@ -218,14 +190,14 @@ const updatePanelDialogueTool = ai.defineTool({
      try {
         await updatePanelDialogue(id, data);
         return true;
-    } catch (e) { console.error("updatePanelDialogueTool Error:", e); return false; }
+    } catch (e: any) { console.error("updatePanelDialogueTool Error:", e.message); return false; }
 });
 
 const updateCharacterTool = ai.defineTool({
     name: 'updateCharacter',
     description: 'Updates specific fields of a Character entity.',
     inputSchema: z.object({
-        id: z.string().describe("The Document ID of the character to update."),
+        id: z.string().describe("The ID of the character to update."),
         data: UpdateCharacterSchema.describe("The fields and new values to update."),
     }),
     outputSchema: z.boolean().describe("True if update succeeded."),
@@ -233,24 +205,24 @@ const updateCharacterTool = ai.defineTool({
      try {
         await updateCharacter(id, data);
         return true;
-    } catch (e) { console.error("updateCharacterTool Error:", e); return false; }
+    } catch (e: any) { console.error("updateCharacterTool Error:", e.message); return false; }
 });
 
 // Tool to find character ID by name (needed for assignment tools)
 const findCharacterByNameTool = ai.defineTool({
     name: "findCharacterByName",
-    description: "Finds the Document ID of an existing character given their name within the current project context.",
+    description: "Finds the ID of an existing character given their name within the current project context.",
     inputSchema: z.object({
         characterName: z.string().describe("The exact name of the character to find."),
-        projectId: z.string().optional().describe("The Document ID of the current project context (REQUIRED for lookup)."),
+        projectId: z.string().optional().default(DEFAULT_PROJECT_ID).describe("The ID of the current project context (uses default)."),
     }),
     // Return ID or null explicitly
-    outputSchema: z.string().nullable().describe("The Document ID of the found character, or null if not found or projectId is missing."),
+    outputSchema: z.string().nullable().describe("The ID of the found character, or null if not found."),
 }, async ({ characterName, projectId }) => {
-    const finalProjectId = projectId || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    const finalProjectId = projectId || DEFAULT_PROJECT_ID;
     if (!finalProjectId) {
          console.warn("findCharacterByNameTool requires projectId for context.");
-         return null; // Cannot search without project context
+         return null; // Should not happen with default
     }
     try {
         console.log(`Finding character "${characterName}" in project ${finalProjectId}`);
@@ -258,28 +230,28 @@ const findCharacterByNameTool = ai.defineTool({
         const found = characters.find(c => c.name.toLowerCase() === characterName.toLowerCase());
         console.log(`Found character: ${found?.id ?? 'null'}`);
         return found?.id ?? null;
-    } catch (error) {
-        console.error(`Error finding character "${characterName}" in project ${finalProjectId}:`, error);
+    } catch (error: any) {
+        console.error(`Error finding character "${characterName}" in project ${finalProjectId}:`, error.message);
         return null;
     }
 });
 
 
-// Use Firebase assignment tools
+// Use in-memory assignment tools
 const assignCharacterToPanelTool = ai.defineTool({
     name: 'assignCharacterToPanel',
     description: 'Assigns an *existing* character to a specific panel. Use findCharacterByName first if you only have the name.',
     inputSchema: z.object({
-        panelId: z.string().describe("The Document ID of the panel."),
-        characterId: z.string().describe("The Document ID of the *existing* character to assign."),
+        panelId: z.string().describe("The ID of the panel."),
+        characterId: z.string().describe("The ID of the *existing* character to assign."),
     }),
     outputSchema: z.boolean().describe("True if assignment was successful."),
 }, async (input) => {
     try {
-        await assignCharacterToPanel(input.panelId, input.characterId); // Firebase service
+        await assignCharacterToPanel(input.panelId, input.characterId); // In-memory service
         return true;
-    } catch (error) {
-        console.error(`Failed to assign character ${input.characterId} to panel ${input.panelId}:`, error);
+    } catch (error: any) {
+        console.error(`Failed to assign character ${input.characterId} to panel ${input.panelId}:`, error.message);
         return false;
     }
 });
@@ -288,16 +260,16 @@ const removeCharacterFromPanelTool = ai.defineTool({
     name: 'removeCharacterFromPanel',
     description: 'Removes a character from a specific panel. Use findCharacterByName first if you only have the name.',
      inputSchema: z.object({
-        panelId: z.string().describe("The Document ID of the panel."),
-        characterId: z.string().describe("The Document ID of the character to remove."),
+        panelId: z.string().describe("The ID of the panel."),
+        characterId: z.string().describe("The ID of the character to remove."),
     }),
     outputSchema: z.boolean().describe("True if removal was successful."),
 }, async (input) => {
     try {
-        await removeCharacterFromPanel(input.panelId, input.characterId); // Firebase service
+        await removeCharacterFromPanel(input.panelId, input.characterId); // In-memory service
         return true;
-    } catch (error) {
-        console.error(`Failed to remove character ${input.characterId} from panel ${input.panelId}:`, error);
+    } catch (error: any) {
+        console.error(`Failed to remove character ${input.characterId} from panel ${input.panelId}:`, error.message);
         return false;
     }
 });
@@ -326,7 +298,7 @@ const prompt = ai.definePrompt({
         confirmation: z.string().describe("Confirmation message indicating if the update was attempted based on the prompt and which tools were used.")
     }),
   },
-  prompt: `You are an AI assistant helping update elements of a manga project stored in Firebase Firestore. The user wants to modify a specific {{entityType}} with Document ID: {{entityId}}. The project context ID is {{#if projectId}}{{projectId}}{{else}}UNKNOWN{{/if}}.
+  prompt: `You are an AI assistant helping update elements of a manga project stored in memory. The user wants to modify a specific {{entityType}} with ID: {{entityId}}. The project context ID is {{projectId}}.
 
 User Prompt:
 "{{prompt}}"
@@ -340,22 +312,21 @@ Based *only* on the user's prompt and the current data:
 1.  Determine the specific changes requested.
 2.  Identify the correct tool(s) to apply these changes (e.g., \`updateScene\`, \`assignCharacterToPanel\`).
 3.  If the prompt involves adding or removing a character from a panel BY NAME:
-    a. FIRST use \`findCharacterByName\` to get their Document ID, providing the \`projectId\` ({{projectId}}) for context. **CRITICAL: If projectId is UNKNOWN or not provided, you CANNOT find the character by name. Inform the user.**
+    a. FIRST use \`findCharacterByName\` to get their ID, providing the \`projectId\` ({{projectId}}) for context.
     b. If the character ID is found, use \`assignCharacterToPanel\` or \`removeCharacterFromPanel\` with the panel ID and the found character ID.
-    c. If the character ID is NOT found (or projectId was missing), inform the user in the confirmation message and DO NOT attempt to assign/remove.
+    c. If the character ID is NOT found, inform the user in the confirmation message and DO NOT attempt to assign/remove.
 4.  If the prompt involves updating fields of an entity (e.g., changing title, description, context):
     a. Construct the \`data\` object for the appropriate update tool (e.g., \`updateScene\`, \`updatePanelDialogue\`). Include ONLY the fields to be changed with their NEW values.
     b. For \`updatePanel\`, DO NOT include \`characterIds\` in the \`data\` object; use the assignment/removal tools instead.
     c. Call the appropriate update tool with the entity ID (\`{{entityId}}\`) and the update \`data\`.
-5.  Handle speaker changes in dialogue: If the prompt requests changing the speaker by name, use \`findCharacterByName\` to get the ID (requires \`projectId\`), then call \`updatePanelDialogue\` with the new \`speakerId\`. If the name is not found (or projectId is missing), report it.
+5.  Handle speaker changes in dialogue: If the prompt requests changing the speaker by name, use \`findCharacterByName\` to get the ID (requires \`projectId\`), then call \`updatePanelDialogue\` with the new \`speakerId\`. If the name is not found, report it.
 
 **CRITICAL RULES:**
 *   **Targeted Updates:** Only update the fields or relationships explicitly requested or strongly implied by the user's prompt. Do not change unrelated data.
 *   **Correct Tool:** Use the tool corresponding to the \`entityType\` (e.g., use \`updateSceneTool\` for a scene). Use assignment/removal tools for panel character list changes.
 *   **Use IDs:** Provide the correct \`entityId\` (\`{{entityId}}\`) to the tools. Use character IDs found via \`findCharacterByName\` when required by other tools. Provide the \`projectId\` ({{projectId}}) to \`findCharacterByName\`.
-*   **Project ID:** If \`projectId\` is UNKNOWN or missing, any operation requiring it (like \`findCharacterByName\`) will fail. Inform the user.
-*   **Character IDs:** Only use \`assignCharacterToPanel\` or \`removeCharacterFromPanel\` if you have the character's Document ID.
-*   **Confirmation:** After attempting the updates, respond ONLY with a confirmation message summarizing the actions taken (or why they couldn't be taken, e.g., character not found, missing projectId). Do not include full data structures in the response.
+*   **Character IDs:** Only use \`assignCharacterToPanel\` or \`removeCharacterFromPanel\` if you have the character's ID.
+*   **Confirmation:** After attempting the updates, respond ONLY with a confirmation message summarizing the actions taken (or why they couldn't be taken, e.g., character not found). Do not include full data structures in the response.
 `,
 });
 
@@ -372,15 +343,6 @@ const updateEntityFlow = ai.defineFlow<
   },
   async (input: AugmentedUpdateEntityInput): Promise<UpdateEntityOutput> => {
     console.log("Executing updateEntityFlow with input:", input);
-
-    // Ensure projectId is available if needed for character lookup
-    if (!input.projectId && (input.prompt.toLowerCase().includes('character') || input.prompt.toLowerCase().includes('speaker'))) {
-         console.warn("Update prompt mentions character/speaker but projectId is missing. Character lookup might fail.");
-         // Add note to prompt context as well
-         // input.prompt += "\n\n(System Note: Project ID is missing, character lookups by name will fail)";
-         // We pass projectId to the prompt itself, so the LLM knows if it's missing.
-    }
-
 
     // Invoke the prompt with the input (including currentData and projectId)
     const { output: toolCallOutput, toolRequests, toolResponses } = await prompt(input);
@@ -421,4 +383,3 @@ const updateEntityFlow = ai.defineFlow<
      };
   }
 );
-

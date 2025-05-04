@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -10,22 +11,24 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { useVisualEditorStore } from '@/store/visual-editor-store'; // Import store
 
-// Import Firebase Genkit flow functions
+// Import Genkit flow functions
 import { createChapterFromPrompt } from '@/ai/flows/create-chapter-from-prompt';
 import { brainstormCharacterIdeas } from '@/ai/flows/brainstorm-character-ideas';
 import { updateEntity } from '@/ai/flows/update-entity-flow';
 import type { NodeType } from '@/types/nodes';
+// Import the default project ID from the in-memory service
+import { DEFAULT_PROJECT_ID } from '@/services/in-memory';
 
 // Placeholder for the general assistant
 async function askGeneralAssistant(message: string): Promise<string> {
     console.log('Sending to General AI:', message);
     await new Promise(resolve => setTimeout(resolve, 800));
     if (message.toLowerCase().includes('hello') || message.toLowerCase().includes('hi')) {
-        return "Hello there! How can I help you create or edit your manga today using Firebase?";
+        return "Hello there! How can I help you create or edit your manga today using the in-memory store?";
     } else if (message.toLowerCase().includes('help')) {
-        return "I can help create/edit chapters, scenes, panels, characters, dialogues stored in Firestore. Try 'create chapter 1 titled...' or 'brainstorm characters...'. Select an item to edit it, e.g., 'change the scene setting to a beach'.";
+        return "I can help create/edit chapters, scenes, panels, characters, dialogues stored in memory. Try 'create chapter 1 titled...' or 'brainstorm characters...'. Select an item to edit it, e.g., 'change the scene setting to a beach'.";
     }
-    return `I received: "${message}". I can assist with manga creation tasks like generating or editing chapters, scenes, characters, etc., interacting with Firestore. Select an item or use commands like 'create ...' or 'brainstorm ...'.`;
+    return `I received: "${message}". I can assist with manga creation tasks like generating or editing chapters, scenes, characters, etc., interacting with the in-memory store. Select an item or use commands like 'create ...' or 'brainstorm ...'.`;
 }
 
 
@@ -46,9 +49,9 @@ export default function Chatbox() {
     const setSelectedNode = useVisualEditorStore((state) => state.setSelectedNode);
     const refreshFlowData = useVisualEditorStore((state) => state.refreshFlowData);
 
-    // ---- Firebase Project Context ----
-    const currentProjectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-    const currentProjectTitle = 'My Awesome Manga'; // Replace if dynamic title is needed
+    // ---- Project Context ----
+    const currentProjectId = DEFAULT_PROJECT_ID; // Use the default ID from in-memory service
+    const currentProjectTitle = 'My First Manga Project'; // Hardcoded for now, could fetch if needed
     // ---- End Context ----
 
     const scrollToBottom = () => {
@@ -68,15 +71,7 @@ export default function Chatbox() {
     }, [messages]);
 
     const processUserInput = async (userInput: string) => {
-        if (!currentProjectId) {
-             toast({
-                title: "Project ID Missing",
-                description: "Firebase Project ID is not configured. Please set NEXT_PUBLIC_FIREBASE_PROJECT_ID in your environment variables.",
-                variant: "destructive",
-            });
-            setInput(userInput); // Put input back if failed pre-check
-            return;
-        }
+        // No need to check project ID existence for in-memory
 
         setIsLoading(true);
         const thinkingId = Date.now().toString() + '-think';
@@ -97,7 +92,7 @@ export default function Chatbox() {
                     const [, chapterNum, title, prompt] = match;
                     toast({ title: "AI Action", description: `Creating Chapter ${chapterNum}: ${title}...` });
                     const result = await createChapterFromPrompt({
-                        projectId: currentProjectId, // Use Firestore project ID
+                        projectId: currentProjectId, // Use default project ID
                         chapterNumber: parseInt(chapterNum, 10),
                         chapterTitle: title.trim(),
                         prompt: prompt.trim() || `Create content for ${title}`,
@@ -136,12 +131,12 @@ export default function Chatbox() {
                          </ul>
                      </div>
                  )};
-                 // Note: Brainstorming doesn't automatically add characters to Firestore yet.
+                 // Note: Brainstorming doesn't automatically add characters yet.
 
              // 2. Update Command (if a node is selected)
              } else if (selectedNode && selectedNode.data?.properties?.id && selectedNode.data.type) {
                   actionTaken = true;
-                  const entityId = selectedNode.data.properties.id; // Firestore ID
+                  const entityId = selectedNode.data.properties.id; // In-memory ID
                   const entityType = selectedNode.data.type as NodeType;
 
                   toast({ title: "AI Action", description: `Updating ${entityType} "${selectedNode.data.label}"...` });
@@ -150,7 +145,7 @@ export default function Chatbox() {
                       entityType: entityType,
                       entityId: entityId,
                       prompt: userInput,
-                      projectId: currentProjectId, // Pass project context for potential lookups
+                      projectId: currentProjectId, // Pass default project context
                   });
 
                   aiResponse = { id: Date.now().toString(), sender: 'ai', text: (
@@ -286,20 +281,14 @@ export default function Chatbox() {
                     onChange={(e) => setInput(e.target.value)}
                     placeholder={placeholderText}
                     className="flex-grow bg-input focus-visible:ring-primary text-sm"
-                    disabled={isLoading || !currentProjectId} // Disable if no project ID
+                    disabled={isLoading}
                     aria-label="Chat input"
                 />
-                <Button type="submit" size="icon" disabled={isLoading || !input.trim() || !currentProjectId} className="bg-primary hover:bg-primary/90 shrink-0">
+                <Button type="submit" size="icon" disabled={isLoading || !input.trim()} className="bg-primary hover:bg-primary/90 shrink-0">
                     {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizonal className="h-4 w-4" />}
                     <span className="sr-only">Send</span>
                 </Button>
             </form>
-            {/* Warning if Project ID is missing */}
-             {!currentProjectId && (
-                <div className="p-2 bg-destructive/10 text-destructive text-xs text-center border-t border-destructive/20">
-                    Warning: Firebase Project ID not configured. Please set NEXT_PUBLIC_FIREBASE_PROJECT_ID in your environment variables.
-                </div>
-            )}
         </motion.div>
     );
 }
