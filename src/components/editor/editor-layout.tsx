@@ -2,15 +2,24 @@
 'use client';
 
 import React from 'react';
-// Remove dynamic import for KonvaCanvas, import directly
-import KonvaCanvas from './canvas/konva-canvas';
+import dynamic from 'next/dynamic'; // Import dynamic
 import LibraryPanel from './sidebars/library-panel';
 import PropertiesPanel from './sidebars/properties-panel';
 import TopBar from '@/components/layout/top-bar'; // Reuse existing TopBar if suitable
 import { Separator } from '@/components/ui/separator';
 import { useEditorStore } from '@/store/editor-store'; // Import the new store
-// Remove Skeleton import if no longer needed here
-// import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton for loading state
+
+// Dynamically import KonvaCanvas with ssr: false
+const KonvaCanvas = dynamic(() => import('./canvas/konva-canvas'), {
+  ssr: false,
+  loading: () => (
+    // Provide a loading state while the canvas loads
+    <div className="w-full h-full flex justify-center items-center p-4 bg-muted">
+       <Skeleton className="w-full h-full max-w-[800px] max-h-[1100px] rounded-md" />
+    </div>
+   ),
+});
 
 
 export default function EditorLayout() {
@@ -34,7 +43,7 @@ export default function EditorLayout() {
 
         {/* Center Area: Canvas */}
         <main className="flex-1 relative bg-muted/30 overflow-auto">
-          {/* Render KonvaCanvas directly */}
+          {/* Render the dynamically loaded KonvaCanvas */}
           <KonvaCanvas />
         </main>
 
