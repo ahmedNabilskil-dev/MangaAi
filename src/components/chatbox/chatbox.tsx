@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { SendHorizonal, Bot, User, Loader2, Wand2, Pencil } from 'lucide-react'; // Added Pencil for edit
+import { SendHorizonal, Bot, User, Loader2, Wand2, Pencil, X } from 'lucide-react'; // Added X
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -10,31 +10,30 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { useVisualEditorStore } from '@/store/visual-editor-store'; // Import store
 
-// Import actual Genkit flow functions
+// Import Firebase Genkit flow functions
 import { createChapterFromPrompt } from '@/ai/flows/create-chapter-from-prompt';
 import { brainstormCharacterIdeas } from '@/ai/flows/brainstorm-character-ideas';
-import { updateEntity } from '@/ai/flows/update-entity-flow'; // Import the update flow
-import type { NodeType } from '@/types/nodes'; // Import NodeType
+import { updateEntity } from '@/ai/flows/update-entity-flow';
+import type { NodeType } from '@/types/nodes';
 
-// Placeholder for the general assistant - replace with actual flow later
+// Placeholder for the general assistant
 async function askGeneralAssistant(message: string): Promise<string> {
     console.log('Sending to General AI:', message);
     await new Promise(resolve => setTimeout(resolve, 800));
-    // Basic keyword matching for demo
     if (message.toLowerCase().includes('hello') || message.toLowerCase().includes('hi')) {
-        return "Hello there! How can I help you create or edit your manga today?";
+        return "Hello there! How can I help you create or edit your manga today using Firebase?";
     } else if (message.toLowerCase().includes('help')) {
-        return "I can help you create chapters, scenes, panels, characters, and dialogues. Try 'create chapter 1 titled...' or 'brainstorm characters...'. To edit, select an item in the editor and tell me what to change, like 'change the scene setting to a beach'.";
+        return "I can help create/edit chapters, scenes, panels, characters, dialogues stored in Firestore. Try 'create chapter 1 titled...' or 'brainstorm characters...'. Select an item to edit it, e.g., 'change the scene setting to a beach'.";
     }
-    return `I received: "${message}". I can assist with manga creation tasks like generating or editing chapters, scenes, characters, etc. Select an item or use commands like 'create ...' or 'brainstorm ...'.`;
+    return `I received: "${message}". I can assist with manga creation tasks like generating or editing chapters, scenes, characters, etc., interacting with Firestore. Select an item or use commands like 'create ...' or 'brainstorm ...'.`;
 }
 
 
 interface Message {
     id: string;
-    text: string | React.ReactNode; // Allow React nodes for richer messages
+    text: string | React.ReactNode;
     sender: 'user' | 'ai';
-    isThinking?: boolean; // Flag for AI thinking state
+    isThinking?: boolean;
 }
 
 export default function Chatbox() {
@@ -43,18 +42,17 @@ export default function Chatbox() {
     const [isLoading, setIsLoading] = useState(false);
     const { toast } = useToast();
     const scrollAreaRef = useRef<HTMLDivElement>(null);
-    const selectedNode = useVisualEditorStore((state) => state.selectedNode); // Get selected node from Zustand store
-    const setSelectedNode = useVisualEditorStore((state) => state.setSelectedNode); // For clearing selection if needed
-    const refreshFlowData = useVisualEditorStore((state) => state.refreshFlowData); // Function to trigger refetch
+    const selectedNode = useVisualEditorStore((state) => state.selectedNode);
+    const setSelectedNode = useVisualEditorStore((state) => state.setSelectedNode);
+    const refreshFlowData = useVisualEditorStore((state) => state.refreshFlowData);
 
-    // ---- Mock Project Context ----
-    // TODO: Replace with actual project context from state/props/store
-    const currentProjectId = 'proj-123'; // Example UUID - Make sure this exists or is created
-    const currentProjectTitle = 'My Awesome Manga';
-    // ---- End Mock Context ----
+    // ---- Firebase Project Context ----
+    // TODO: Replace with actual project ID from state/props/store/auth
+    const currentProjectId = 'YOUR_PROJECT_ID_HERE'; // <<<<< IMPORTANT: Replace with actual project ID
+    const currentProjectTitle = 'My Awesome Manga'; // Replace if dynamic title is needed
+    // ---- End Context ----
 
     const scrollToBottom = () => {
-        // Debounce or use timeout to ensure scroll happens after render
         setTimeout(() => {
             if (scrollAreaRef.current) {
                  const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
@@ -62,7 +60,7 @@ export default function Chatbox() {
                     viewport.scrollTop = viewport.scrollHeight;
                  }
             }
-        }, 100); // Adjust delay if needed
+        }, 100);
     };
 
 
@@ -70,21 +68,29 @@ export default function Chatbox() {
         scrollToBottom();
     }, [messages]);
 
-    // Function to interpret user input and call the appropriate AI flow
     const processUserInput = async (userInput: string) => {
+        if (!currentProjectId || currentProjectId === 'YOUR_PROJECT_ID_HERE') {
+             toast({
+                title: "Project ID Missing",
+                description: "Cannot process command. Please configure the project ID.",
+                variant: "destructive",
+            });
+            setInput(userInput); // Put input back if failed pre-check
+            return;
+        }
+
         setIsLoading(true);
-        // Use a temporary thinking message ID
         const thinkingId = Date.now().toString() + '-think';
         setMessages((prev) => [...prev, { id: thinkingId, text: 'Thinking...', sender: 'ai', isThinking: true }]);
         scrollToBottom();
 
         let aiResponse: Message | null = null;
-        let actionTaken = false; // Flag to see if a specific action was triggered
+        let actionTaken = false;
 
         try {
              // --- Command Interpretation ---
 
-             // 1. Creation Commands (e.g., "create chapter", "brainstorm")
+             // 1. Creation Commands
              if (userInput.toLowerCase().startsWith('create chapter')) {
                  actionTaken = true;
                  const match = userInput.match(/create chapter (\d+)\s+titled\s+["']?([^"']+)["']?\s*(?:about|:)?\s*(.*)/i);
@@ -92,21 +98,21 @@ export default function Chatbox() {
                     const [, chapterNum, title, prompt] = match;
                     toast({ title: "AI Action", description: `Creating Chapter ${chapterNum}: ${title}...` });
                     const result = await createChapterFromPrompt({
-                        // Ensure a valid project ID exists for this to work
-                        projectId: currentProjectId || "default-project-id", // Provide a fallback or ensure it's set
+                        projectId: currentProjectId, // Use Firestore project ID
                         chapterNumber: parseInt(chapterNum, 10),
                         chapterTitle: title.trim(),
                         prompt: prompt.trim() || `Create content for ${title}`,
                     });
                      aiResponse = { id: Date.now().toString(), sender: 'ai', text: (
                          <div>
-                             <p>✅ Chapter "{title}" (ID: ...{result.chapterId.slice(-6)}) created!</p>
+                             <p>✅ Chapter "{title}" (ID: {result.chapterId.substring(0, 6)}...) created!</p>
                              <p>   - Scenes created: {result.sceneIds.length}</p>
                              {result.panelIds && result.panelIds.length > 0 && <p>   - Panels created: {result.panelIds.length}</p>}
                              {result.dialogueIds && result.dialogueIds.length > 0 && <p>   - Dialogues created: {result.dialogueIds.length}</p>}
+                             {result.characterIds && result.characterIds.length > 0 && <p className="text-xs italic">   - Characters created/assigned: {result.characterIds.length}</p>}
                          </div>
                      )};
-                     refreshFlowData(); // Refresh editor after creation
+                     refreshFlowData(); // Refresh editor
                  } else {
                       aiResponse = { id: Date.now().toString(), sender: 'ai', text: "Please use the format: 'create chapter [number] titled \"[Title]\" about [prompt]'." };
                  }
@@ -117,8 +123,8 @@ export default function Chatbox() {
                  const prompt = match?.[1]?.trim() || 'general manga';
                  toast({ title: "AI Action", description: "Brainstorming character ideas..." });
                  const result = await brainstormCharacterIdeas({
-                     projectId: currentProjectId || "default-project-id", // Provide context
-                     projectTitle: currentProjectTitle,
+                     projectId: currentProjectId, // Provide project context
+                     projectTitle: currentProjectTitle, // Optional title context
                      prompt: `Brainstorm characters for: ${prompt}`,
                  });
                  aiResponse = { id: Date.now().toString(), sender: 'ai', text: (
@@ -131,37 +137,39 @@ export default function Chatbox() {
                          </ul>
                      </div>
                  )};
-                 // Brainstorming might not directly affect the flow view unless characters are added
+                 // Note: Brainstorming doesn't automatically add characters to Firestore yet.
 
              // 2. Update Command (if a node is selected)
              } else if (selectedNode && selectedNode.data?.properties?.id && selectedNode.data.type) {
                   actionTaken = true;
-                  toast({ title: "AI Action", description: `Updating ${selectedNode.data.type} "${selectedNode.data.label}"...` });
+                  const entityId = selectedNode.data.properties.id; // Firestore ID
+                  const entityType = selectedNode.data.type as NodeType;
+
+                  toast({ title: "AI Action", description: `Updating ${entityType} "${selectedNode.data.label}"...` });
 
                   const result = await updateEntity({
-                      entityType: selectedNode.data.type as NodeType, // Cast as we know it exists here
-                      entityId: selectedNode.data.properties.id,
+                      entityType: entityType,
+                      entityId: entityId,
                       prompt: userInput,
+                      projectId: currentProjectId, // Pass project context for potential lookups
                   });
 
                   aiResponse = { id: Date.now().toString(), sender: 'ai', text: (
                       <div>
-                          <p>{result.success ? '✅' : '⚠️'} Update for {selectedNode.data.type} (ID: ...{result.updatedEntityId.slice(-6)}) processed.</p>
+                          <p>{result.success ? '✅' : '⚠️'} Update for {entityType} (ID: {result.updatedEntityId.substring(0, 6)}...) processed.</p>
                           <p className="text-xs italic">{result.message}</p>
                       </div>
                   )};
                   if (result.success) {
-                      refreshFlowData(); // Refresh editor after successful update
-                      setSelectedNode(null); // Optionally clear selection after update
+                      refreshFlowData(); // Refresh editor
+                      setSelectedNode(null); // Clear selection after update
                   }
 
              // 3. General Assistant Fallback
              } else {
-                  // Check if it looks like an update command but nothing is selected
                  if (['change', 'update', 'edit', 'set', 'add', 'remove'].some(keyword => userInput.toLowerCase().startsWith(keyword)) && !selectedNode) {
                      aiResponse = { id: Date.now().toString(), text: "Please select an item in the visual editor first before asking me to make changes to it.", sender: 'ai' };
                  } else {
-                     // Call general assistant if no specific command matched
                      const generalResponseText = await askGeneralAssistant(userInput);
                      aiResponse = { id: Date.now().toString(), text: generalResponseText, sender: 'ai' };
                  }
@@ -178,9 +186,8 @@ export default function Chatbox() {
             aiResponse = { id: Date.now().toString(), text: `Sorry, I encountered an error: ${errorMessage}`, sender: 'ai' };
         } finally {
              setMessages((prev) => {
-                // Replace the "Thinking..." message with the actual response
-                return prev.map(msg => msg.id === thinkingId ? (aiResponse ?? { id: thinkingId, text: '...', sender: 'ai' }) : msg) // Ensure response exists
-                           .filter(msg => !(msg.id === thinkingId && !aiResponse)); // Remove thinking if no response
+                return prev.map(msg => msg.id === thinkingId ? (aiResponse ?? { id: thinkingId, text: '...', sender: 'ai' }) : msg)
+                           .filter(msg => !(msg.id === thinkingId && !aiResponse));
             });
 
             setIsLoading(false);
@@ -198,13 +205,10 @@ export default function Chatbox() {
 
         setMessages((prev) => [...prev, userMessage]);
         setInput('');
-        // No need to scroll here, useEffect handles it
 
-        // Process the input using AI
         await processUserInput(userMessageText);
     };
 
-     // Determine placeholder text based on selection
      const placeholderText = selectedNode
         ? `Editing ${selectedNode.data.type} "${selectedNode.data.label}". What should I change?`
         : "Ask AI: 'create chapter 1 titled...' or select an item to edit...";
@@ -222,10 +226,10 @@ export default function Chatbox() {
                     {messages.map((message) => (
                         <motion.div
                             key={message.id}
-                            layout // Animate layout changes
+                            layout
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, x: message.sender === 'ai' ? -10 : 10 }} // Slide out based on sender
+                            exit={{ opacity: 0, x: message.sender === 'ai' ? -10 : 10 }}
                             transition={{ duration: 0.2 }}
                             className={`flex gap-3 my-3 ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                         >
@@ -275,25 +279,29 @@ export default function Chatbox() {
                 </div>
             )}
 
+            )}
+
             {/* Input Area */}
             <form onSubmit={handleSend} className="p-3 border-t border-border bg-background/80 flex items-center gap-2">
-                 {/* Optional AI Action Button (Placeholder) */}
-                 {/* <Button type="button" variant="ghost" size="icon" className="text-primary" onClick={() => alert("AI Actions Menu Placeholder")}>
-                     <Wand2 className="h-5 w-5" />
-                 </Button> */}
                 <Input
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    placeholder={placeholderText} // Dynamic placeholder
+                    placeholder={placeholderText}
                     className="flex-grow bg-input focus-visible:ring-primary text-sm"
-                    disabled={isLoading}
+                    disabled={isLoading || (!currentProjectId || currentProjectId === 'YOUR_PROJECT_ID_HERE')} // Disable if no project ID
                     aria-label="Chat input"
                 />
-                <Button type="submit" size="icon" disabled={isLoading || !input.trim()} className="bg-primary hover:bg-primary/90 shrink-0">
+                <Button type="submit" size="icon" disabled={isLoading || !input.trim() || (!currentProjectId || currentProjectId === 'YOUR_PROJECT_ID_HERE')} className="bg-primary hover:bg-primary/90 shrink-0">
                     {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizonal className="h-4 w-4" />}
                     <span className="sr-only">Send</span>
                 </Button>
             </form>
+            {/* Warning if Project ID is missing */}
+             {(!currentProjectId || currentProjectId === 'YOUR_PROJECT_ID_HERE') && (
+                <div className="p-2 bg-destructive/10 text-destructive text-xs text-center border-t border-destructive/20">
+                    Warning: Project ID not configured. Please set it in the Chatbox component.
+                </div>
+            )}
         </motion.div>
     );
 }

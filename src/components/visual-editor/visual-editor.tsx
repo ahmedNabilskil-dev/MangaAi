@@ -17,17 +17,18 @@ import ReactFlow, {
   type DefaultEdgeOptions,
   MarkerType,
   useReactFlow,
-  ReactFlowProvider, // Wrap with provider if useReactFlow is used outside main component
+  ReactFlowProvider,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { type NodeData, NodeType } from '@/types/nodes';
 import { useQuery } from '@tanstack/react-query';
-import { useVisualEditorStore } from '@/store/visual-editor-store'; // Import Zustand store
-import { getProject } from '@/services/strapi'; // Import service to fetch project data
-import { layoutElements } from '@/lib/layout-utils'; // Import layout function
+import { useVisualEditorStore } from '@/store/visual-editor-store';
+import { getProject } from '@/services/firebase'; // Import Firebase service
+import { layoutElements } from '@/lib/layout-utils';
 import { Pencil } from 'lucide-react';
+import type { MangaProject } from '@/types/entities'; // Import the entity type
 
-// Import or define custom node components
+// Import or define custom node components (kept as is)
 const DefaultNodeComponent = ({ data, selected }: { data: NodeData, selected: boolean }) => (
     <div style={{
         padding: '10px 15px',
@@ -39,18 +40,15 @@ const DefaultNodeComponent = ({ data, selected }: { data: NodeData, selected: bo
         minWidth: '150px',
         textAlign: 'center',
         boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-        position: 'relative', // For potential absolute elements like icons
+        position: 'relative',
     }}>
          {selected && <Pencil size={12} style={{ position: 'absolute', top: '4px', right: '4px', color: 'hsl(var(--primary))' }} />}
         <strong style={{ display: 'block', marginBottom: '5px', textTransform: 'capitalize', fontWeight: '500' }}>{data.type}</strong>
         {data.label || `(${data.type})`}
-        {/* Optionally display ID for debugging */}
-        {/* {data.properties?.id && <div style={{ fontSize: '10px', color: '#999', marginTop: '4px' }}>ID: {data.properties.id.substring(0, 8)}...</div>} */}
     </div>
 );
 
-
-// Define custom node types mapping
+// Define custom node types mapping (kept as is)
 const nodeTypes: NodeTypes = {
     project: DefaultNodeComponent,
     chapter: DefaultNodeComponent,
@@ -58,11 +56,10 @@ const nodeTypes: NodeTypes = {
     panel: DefaultNodeComponent,
     dialogue: DefaultNodeComponent,
     character: DefaultNodeComponent,
-    // Add more specific custom nodes as needed
 };
 
 const defaultEdgeOptions: DefaultEdgeOptions = {
-    animated: false, // Less distracting for structure view
+    animated: false,
     markerEnd: {
         type: MarkerType.ArrowClosed,
         width: 15,
@@ -71,13 +68,11 @@ const defaultEdgeOptions: DefaultEdgeOptions = {
     },
     style: {
         strokeWidth: 1.5,
-        stroke: 'hsl(var(--border))', // Subtler edge color
+        stroke: 'hsl(var(--border))',
     },
-    // type: 'smoothstep', // Optional: change edge routing style
 };
 
 // --- Main Component ---
-// No longer needs onNodeClick prop, handled by store
 function VisualEditorInternal() {
   const {
     nodes,
@@ -86,39 +81,44 @@ function VisualEditorInternal() {
     setNodes,
     setEdges,
     setSelectedNode,
-    refreshCounter, // Use counter to trigger refetch
+    refreshCounter,
     setViewportInitialized,
     viewportInitialized
   } = useVisualEditorStore();
 
-  const { fitView, getViewport, setViewport } = useReactFlow();
+  const { fitView } = useReactFlow();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
   // Query Key depends on the refresh counter
   const queryKey = ['projectFlowData', refreshCounter];
 
-  // Fetch initial/refreshed data using React Query
-  // TODO: Get the current project ID dynamically
-  const currentProjectId = 'proj-123'; // Placeholder
+  // TODO: Get the current project ID dynamically - using placeholder
+  const currentProjectId = 'YOUR_PROJECT_ID_HERE'; // <<<<< IMPORTANT: Replace with actual logic to get project ID
+
   const { data: projectData, isLoading, error, isFetching } = useQuery({
     queryKey: queryKey,
     queryFn: async () => {
-      console.log("Fetching flow data for project:", currentProjectId);
-      const project = await getProject(currentProjectId); // Fetch project with deep population
-      if (!project) {
-        throw new Error(`Project ${currentProjectId} not found.`);
+      if (!currentProjectId || currentProjectId === 'YOUR_PROJECT_ID_HERE') {
+          console.warn("No valid project ID provided for fetching.");
+          // Return empty state or throw error depending on desired behavior
+          return { nodes: [], edges: [] };
+          // Or throw new Error("Project ID is missing.");
       }
-      // TODO: Convert the deeply populated project structure into React Flow nodes and edges
-      // This requires a mapping function `convertProjectToFlowElements`
-       const { nodes: fetchedNodes, edges: fetchedEdges } = convertProjectToFlowElements(project);
-       console.log("Converted flow elements:", { fetchedNodes, fetchedEdges });
-       return layoutElements(fetchedNodes, fetchedEdges); // Apply layout
+      console.log("Fetching flow data for project:", currentProjectId);
+      // Use Firebase service to get project data (which includes nested fetching)
+      const project = await getProject(currentProjectId);
+      if (!project) {
+        throw new Error(`Project ${currentProjectId} not found in Firestore.`);
+      }
+      // Convert the fetched Firebase project structure into React Flow elements
+      const { nodes: fetchedNodes, edges: fetchedEdges } = convertFirebaseProjectToFlowElements(project);
+      console.log("Converted flow elements:", { fetchedNodes, fetchedEdges });
+      return layoutElements(fetchedNodes, fetchedEdges); // Apply layout
     },
-    enabled: !!currentProjectId, // Only run query if projectId is available
-    staleTime: 5 * 60 * 1000, // Cache for 5 mins
+    enabled: !!currentProjectId && currentProjectId !== 'YOUR_PROJECT_ID_HERE', // Only run query if projectId is valid
+    staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
-
 
  // Effect to update store when data is fetched/refreshed
  useEffect(() => {
@@ -127,19 +127,14 @@ function VisualEditorInternal() {
         setNodes(projectData.nodes);
         setEdges(projectData.edges);
 
-        // Fit view only after initial load or significant refresh
-        const initialLoad = refreshCounter === 0; // Check if it's the initial load
-        if (initialLoad && !viewportInitialized) {
-             // Use timeout to allow nodes to render before fitting view
+        const initialLoad = refreshCounter === 0;
+        if (initialLoad && !viewportInitialized && projectData.nodes.length > 0) {
              const timer = setTimeout(() => {
                 console.log("Fitting view on initial load...");
                 fitView({ padding: 0.2, duration: 600 });
-                setViewportInitialized(true); // Mark viewport as initialized
+                setViewportInitialized(true);
              }, 150);
              return () => clearTimeout(timer);
-        } else if (!initialLoad) {
-            // On subsequent refreshes, maybe don't auto-fit, or fit gently
-            // fitView({ padding: 0.2, duration: 300, includeHiddenNodes: false });
         }
     }
  }, [projectData, setNodes, setEdges, fitView, refreshCounter, viewportInitialized, setViewportInitialized]);
@@ -158,31 +153,37 @@ function VisualEditorInternal() {
     [setEdges, edges]
   );
 
-  // Handle node click to update the store's selected node
   const handleNodeClick = useCallback((event: React.MouseEvent, node: Node<NodeData>) => {
     console.log("Node clicked, updating store:", node.id, node.data.type);
-    setSelectedNode(node); // Store the entire selected node object
+    setSelectedNode(node);
   }, [setSelectedNode]);
 
-  // Handle pane click to clear selection
   const handlePaneClick = useCallback(() => {
       console.log("Pane clicked, clearing selection.");
       setSelectedNode(null);
   }, [setSelectedNode]);
 
-
    // Display loading or error states
-   if (isLoading && refreshCounter === 0) { // Show initial loading
+   if (!currentProjectId || currentProjectId === 'YOUR_PROJECT_ID_HERE') {
+       return <div className="flex items-center justify-center h-full w-full bg-background text-muted-foreground p-4">Please configure your Firebase Project ID in `visual-editor.tsx` (around line 80).</div>;
+   }
+
+   if (isLoading && refreshCounter === 0) {
         return <div className="flex items-center justify-center h-full w-full bg-background text-muted-foreground">Loading Editor...</div>;
    }
 
    if (error) {
-        return <div className="flex items-center justify-center h-full w-full bg-destructive text-destructive-foreground p-4">Error loading flow data: {error.message}</div>;
+        // Display a more user-friendly error, potentially guiding towards Firestore setup/rules
+        return (
+            <div className="flex flex-col items-center justify-center h-full w-full bg-destructive text-destructive-foreground p-4 text-center">
+                <p className="font-semibold mb-2">Error loading project data:</p>
+                <p className="text-sm mb-4">{error.message}</p>
+                <p className="text-xs">Ensure the project ID ('{currentProjectId}') exists in Firestore and that Firestore security rules allow read access.</p>
+            </div>
+        );
    }
 
-   // Show subtle fetching indicator on refresh
    const isRefreshing = isFetching && refreshCounter > 0;
-
 
   return (
     <div ref={reactFlowWrapper} style={{ height: '100%', width: '100%', position: 'relative' }}>
@@ -199,16 +200,12 @@ function VisualEditorInternal() {
         onConnect={onConnect}
         nodeTypes={nodeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
-        fitView={false} // Disable automatic fitView, handled manually in useEffect
+        fitView={false}
         fitViewOptions={{ padding: 0.2 }}
         className="bg-background"
         onNodeClick={handleNodeClick}
-        onPaneClick={handlePaneClick} // Clear selection on pane click
-        // Only select nodes on click, not drag
+        onPaneClick={handlePaneClick}
         selectNodesOnDrag={false}
-        // Keep viewport state across refreshes if desired
-        // defaultViewport={viewport}
-        // onMoveEnd={(_, viewport) => setViewport(viewport)}
       >
         <Controls showInteractive={false} position="bottom-right" />
         <MiniMap nodeStrokeWidth={3} zoomable pannable position="bottom-left" />
@@ -228,28 +225,28 @@ export default function VisualEditor() {
 }
 
 
-// --- Helper Function: Convert Strapi Project Data to Flow Elements ---
-// This is a crucial function you need to implement based on your Strapi data structure
-function convertProjectToFlowElements(project: MangaProject): { nodes: Node<NodeData>[], edges: Edge[] } {
+// --- Helper Function: Convert Firebase Project Data to Flow Elements ---
+function convertFirebaseProjectToFlowElements(project: MangaProject): { nodes: Node<NodeData>[], edges: Edge[] } {
     const nodes: Node<NodeData>[] = [];
     const edges: Edge[] = [];
 
-    if (!project) return { nodes, edges };
+    if (!project || !project.id) return { nodes, edges };
 
     // 1. Project Node
     nodes.push({
         id: project.id,
         type: 'project',
-        position: { x: 0, y: 0 }, // Position will be set by layout
+        position: { x: 0, y: 0 }, // Layout engine will position
         data: {
             label: project.title || 'Project',
             type: 'project',
-            properties: project, // Pass the full project data
+            properties: project, // Pass the full project data (dates might be Timestamps)
         }
     });
 
     // 2. Chapters and connect to Project
-    project.chapters?.forEach((chapter, chapIndex) => {
+    project.chapters?.forEach((chapter) => {
+        if (!chapter || !chapter.id) return;
         const chapterId = chapter.id;
         nodes.push({
             id: chapterId,
@@ -268,7 +265,8 @@ function convertProjectToFlowElements(project: MangaProject): { nodes: Node<Node
         });
 
         // 3. Scenes and connect to Chapter
-        chapter.scenes?.forEach((scene, sceneIndex) => {
+        chapter.scenes?.forEach((scene) => {
+             if (!scene || !scene.id) return;
              const sceneId = scene.id;
              nodes.push({
                  id: sceneId,
@@ -287,14 +285,14 @@ function convertProjectToFlowElements(project: MangaProject): { nodes: Node<Node
              });
 
              // 4. Panels and connect to Scene
-             scene.panels?.forEach((panel, panelIndex) => {
+             scene.panels?.forEach((panel) => {
+                 if (!panel || !panel.id) return;
                  const panelId = panel.id;
                  nodes.push({
                      id: panelId,
                      type: 'panel',
                      position: { x: 0, y: 0 },
                      data: {
-                          // Use action or order for label
                          label: panel.panelContext?.action || `Panel ${panel.order + 1}`,
                          type: 'panel',
                          properties: panel,
@@ -307,14 +305,14 @@ function convertProjectToFlowElements(project: MangaProject): { nodes: Node<Node
                  });
 
                  // 5. Dialogues and connect to Panel
-                 panel.dialogues?.forEach((dialogue, diaIndex) => {
+                 panel.dialogues?.forEach((dialogue) => {
+                     if (!dialogue || !dialogue.id) return;
                      const dialogueId = dialogue.id;
                      nodes.push({
                          id: dialogueId,
                          type: 'dialogue',
                          position: { x: 0, y: 0 },
                          data: {
-                              // Show snippet of content
                              label: dialogue.content ? `"${dialogue.content.substring(0, 20)}..."` : `Dialogue ${dialogue.order + 1}`,
                              type: 'dialogue',
                              properties: dialogue,
@@ -324,36 +322,33 @@ function convertProjectToFlowElements(project: MangaProject): { nodes: Node<Node
                          id: `e-${panelId}-${dialogueId}`,
                          source: panelId,
                          target: dialogueId,
-                         // Optional: style dialogue edges differently
-                         // style: { strokeDasharray: '5,5', stroke: 'hsl(var(--muted-foreground))' },
-                         // type: 'step', // Example edge type
                      });
                  });
 
-                 // 6. Characters linked to Panels (Optional Nodes, or just data)
-                 // Decide if characters should be nodes themselves, or just data within panels/project
-                 // If they are nodes, link them here. Edges might go FROM character TO panel.
-                 panel.characters?.forEach(char => {
-                     // Example: Add edge if character node exists
-                     // if (nodes.some(n => n.id === char.id && n.type === 'character')) {
-                     //     edges.push({
-                     //         id: `e-char-${char.id}-panel-${panelId}`,
-                     //         source: char.id, // Character node ID
-                     //         target: panelId,
-                     //         type: 'step',
-                     //         style: { stroke: 'hsl(var(--secondary))', strokeDasharray: '3 3' }
-                     //     });
-                     // }
+                 // 6. Characters linked to Panels (Edges from Character to Panel)
+                 // Requires character nodes to be added first (see step 7)
+                 panel.characterIds?.forEach(charId => {
+                     // Check if character node exists before adding edge
+                     if (project.characters?.some(c => c.id === charId)) {
+                         edges.push({
+                             id: `e-char-${charId}-panel-${panelId}`,
+                             source: charId, // Character node ID
+                             target: panelId,
+                             type: 'step', // Optional styling
+                             style: { stroke: 'hsl(var(--secondary))', strokeDasharray: '3 3', strokeWidth: 1 },
+                             animated: false,
+                         });
+                     }
                  });
-
              });
         });
     });
 
-     // 7. Characters linked to Project (Optional Nodes)
+     // 7. Characters linked to Project (Character Nodes)
      project.characters?.forEach((character) => {
+         if (!character || !character.id) return;
          const charId = character.id;
-         // Check if node already exists (e.g., if added via panel links)
+         // Ensure character node is only added once
          if (!nodes.some(n => n.id === charId)) {
              nodes.push({
                  id: charId,
@@ -370,8 +365,8 @@ function convertProjectToFlowElements(project: MangaProject): { nodes: Node<Node
                  id: `e-${project.id}-char-${charId}`,
                  source: project.id,
                  target: charId,
-                 type: 'step', // Example style
-                 style: { stroke: 'hsl(var(--secondary))', strokeDasharray: '3 3' }
+                 type: 'step',
+                 style: { stroke: 'hsl(var(--secondary))', strokeDasharray: '3 3', strokeWidth: 1 }
              });
          }
      });
