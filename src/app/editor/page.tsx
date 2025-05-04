@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -6,11 +7,11 @@ import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton for load
 
 // Dynamically import EditorLayout with ssr: false to ensure client-side rendering
 const EditorLayout = dynamic(() => import('@/components/editor/editor-layout'), {
-  ssr: false, // This is crucial to prevent server-side rendering of Konva components
+  ssr: false, // This is crucial to prevent server-side rendering of canvas components
   loading: () => (
      // Optional: Add a loading skeleton or placeholder for the entire layout
      <div className="flex justify-center items-center h-screen w-screen">
-       <Skeleton className="w-[90%] h-[90%] rounded-md" />
+       <Skeleton className="w-[90%] h-[90%] rounded-md bg-background" /> {/* Use background color */}
      </div>
    ),
 });

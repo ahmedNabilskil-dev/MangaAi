@@ -8,6 +8,7 @@ interface EditorState {
   history: ShapeConfig[][]; // For undo/redo
   historyIndex: number;
   addShape: (shape: ShapeConfig) => void;
+  // Update signature to reflect potential Fabric properties directly
   updateShape: (id: string, updates: Partial<ShapeConfig> | { props: Record<string, any> }) => void;
   deleteShape: (id: string) => void;
   setSelectedShapeId: (id: string | null) => void;
@@ -25,43 +26,62 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   historyIndex: 0,
 
   addShape: (shape) => set(produce((state: EditorState) => {
-    state.shapes.push(shape);
+    // Ensure default Fabric properties if not provided
+    const newShapeWithDefaults: ShapeConfig = {
+        scaleX: 1,
+        scaleY: 1,
+        angle: 0,
+        opacity: 1,
+        visible: true,
+        ...shape,
+        left: shape.left ?? 100 + Math.random() * 100, // Default position
+        top: shape.top ?? 100 + Math.random() * 100,
+    };
+    state.shapes.push(newShapeWithDefaults);
     // Add to history
      const nextHistory = state.history.slice(0, state.historyIndex + 1);
      nextHistory.push([...state.shapes]); // Add deep copy
      state.history = nextHistory.slice(-MAX_HISTORY); // Limit history size
      state.historyIndex = state.history.length - 1;
-     state.selectedShapeId = shape.id; // Select the newly added shape
+     state.selectedShapeId = newShapeWithDefaults.id; // Select the newly added shape
   })),
 
   updateShape: (id, updates) => set(produce((state: EditorState) => {
     const shapeIndex = state.shapes.findIndex((s) => s.id === id);
     if (shapeIndex !== -1) {
         const currentShape = state.shapes[shapeIndex];
+        let changed = false;
 
-        // Check if updating props or top-level properties
-        if ('props' in updates && updates.props) {
-            // Merge new props with existing props
-            state.shapes[shapeIndex].props = {
-               ...currentShape.props,
-               ...updates.props,
-            };
-             // Merge other top-level updates if provided alongside props
-             Object.keys(updates).forEach(key => {
-                if (key !== 'props') {
-                    (state.shapes[shapeIndex] as any)[key] = (updates as any)[key];
+        // Apply updates intelligently
+        const newUpdates = { ...updates }; // Clone updates to avoid modifying the original object
+
+        // Handle nested 'props' update first if present
+        if ('props' in newUpdates && typeof newUpdates.props === 'object' && newUpdates.props !== null) {
+            const mergedProps = { ...currentShape.props, ...newUpdates.props };
+            if (JSON.stringify(currentShape.props) !== JSON.stringify(mergedProps)) {
+                state.shapes[shapeIndex].props = mergedProps;
+                changed = true;
+            }
+            delete newUpdates.props; // Remove props from top-level updates
+        }
+
+        // Apply remaining top-level updates (left, top, width, height, angle, fill, etc.)
+        for (const key in newUpdates) {
+            if (Object.prototype.hasOwnProperty.call(newUpdates, key)) {
+                const updateKey = key as keyof ShapeConfig;
+                 // Type assertion needed as newUpdates is Partial<ShapeConfig>
+                 const newValue = (newUpdates as any)[updateKey];
+                if (currentShape[updateKey] !== newValue) {
+                     // Type assertion needed for dynamic assignment
+                    (state.shapes[shapeIndex] as any)[updateKey] = newValue;
+                    changed = true;
                 }
-             });
-
-        } else {
-             // Merge top-level updates directly
-             state.shapes[shapeIndex] = { ...currentShape, ...updates };
+            }
         }
 
 
-       // Update history only if shape actually changed (simple check)
-       // A more robust check might compare objects deeply
-       if (JSON.stringify(currentShape) !== JSON.stringify(state.shapes[shapeIndex])) {
+       // Update history only if shape actually changed
+       if (changed) {
             const nextHistory = state.history.slice(0, state.historyIndex + 1);
             nextHistory.push([...state.shapes]); // Add deep copy
             state.history = nextHistory.slice(-MAX_HISTORY);
@@ -111,14 +131,3 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     return {}; // No change if at the end of history
   }),
 }));
-
-// Optional: Add middleware like persist for local storage saving
-// import { persist } from 'zustand/middleware';
-// export const useEditorStore = create(persist<EditorState>( (set, get) => ({ ... }), { name: 'editor-storage' } ));
-
-// Add devtools middleware for debugging
-// import { devtools } from 'zustand/middleware';
-// export const useEditorStore = create(devtools<EditorState>( (set, get) => ({ ... }) ));
-
-// Combine middleware
-// export const useEditorStore = create(devtools(persist<EditorState>( (set, get) => ({ ... }), { name: 'editor-storage' } )));

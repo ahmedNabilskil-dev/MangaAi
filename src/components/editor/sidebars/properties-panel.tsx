@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -6,70 +7,94 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
+// Removed Checkbox import as it wasn't used after refactor
 import { useEditorStore } from '@/store/editor-store';
-import type { ShapeConfig } from '@/types/editor';
+import type { ShapeConfig, ShapePropertiesFormValues } from '@/types/editor'; // Import ShapePropertiesFormValues if defined
 
-interface PropertiesPanelProps {
-  selectedShape: ShapeConfig | undefined;
-}
-
-const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedShape }) => {
+const PropertiesPanel: React.FC<{ selectedShape: ShapeConfig | undefined }> = ({ selectedShape }) => {
   const { updateShape } = useEditorStore();
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  // --- Generic Input Change Handler ---
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
+    propertyName: keyof ShapeConfig | string // Allow nested props like 'props.text'
+  ) => {
     if (!selectedShape) return;
-    const { name, value, type } = e.target;
-    const isNumeric = type === 'number';
-    const isCheckbox = type === 'checkbox';
 
-    const newValue = isCheckbox
-        ? (e.target as HTMLInputElement).checked
-        : isNumeric
-        ? parseFloat(value) || 0 // Handle potential NaN
-        : value;
+    const { value, type } = e.target;
+    let processedValue: any = value;
 
-
-    // Separate updates for transform props (x, y, width, height, rotation) vs other props
-     // Handle 'src' update specifically for images at the top level
-     if (selectedShape.type === 'image' && name === 'src') {
-        updateShape(selectedShape.id, { [name]: newValue });
-     } else if (['x', 'y', 'width', 'height', 'rotation'].includes(name)) {
-         updateShape(selectedShape.id, { [name]: newValue });
-    } else {
-        updateShape(selectedShape.id, {
-           props: {
-             ...selectedShape.props,
-             [name]: newValue,
-           },
-        });
+    // Process value based on input type
+    if (type === 'number') {
+      processedValue = parseFloat(value) || 0; // Default to 0 if parsing fails
+    } else if (type === 'checkbox') {
+      processedValue = (e.target as HTMLInputElement).checked;
     }
+    // Add specific processing for color, etc. if needed
+
+    // Split propertyName for nested updates (e.g., 'props.text')
+    const nameParts = propertyName.split('.');
+    let updatePayload: Partial<ShapeConfig> | { props: Record<string, any> } = {};
+
+    if (nameParts.length === 1) {
+      // Update top-level property (left, top, fill, src, etc.)
+      updatePayload = { [propertyName]: processedValue };
+    } else if (nameParts.length === 2 && nameParts[0] === 'props') {
+      // Update nested property within 'props'
+       updatePayload = {
+           props: {
+             [nameParts[1]]: processedValue,
+           },
+       };
+    } else {
+      console.warn("Unsupported property path:", propertyName);
+      return; // Don't update if path is not supported
+    }
+
+    updateShape(selectedShape.id, updatePayload);
   };
 
-   const handleSelectChange = (value: string, name: string) => {
+  // --- Specific Handler for Select Components ---
+  // Shadcn Select's onValueChange provides the value directly
+  const handleSelectChange = (value: string, propertyName: keyof ShapeConfig | string) => {
        if (!selectedShape) return;
-       updateShape(selectedShape.id, {
+
+       const nameParts = propertyName.split('.');
+       let updatePayload: Partial<ShapeConfig> | { props: Record<string, any> } = {};
+
+       if (nameParts.length === 1) {
+         updatePayload = { [propertyName]: value };
+       } else if (nameParts.length === 2 && nameParts[0] === 'props') {
+         updatePayload = {
            props: {
-               ...selectedShape.props,
-               [name]: value,
+             [nameParts[1]]: value,
            },
-       });
+         };
+       } else {
+         console.warn("Unsupported property path:", propertyName);
+         return;
+       }
+       updateShape(selectedShape.id, updatePayload);
    };
 
+
+   // --- Specific Handler for File Uploads ---
    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
      if (!selectedShape || selectedShape.type !== 'image') return;
      const file = e.target.files?.[0];
      if (file) {
        const reader = new FileReader();
        reader.onloadend = () => {
+         // Update the 'src' property directly at the top level
          updateShape(selectedShape.id, {
-           src: reader.result as string, // Update the src property directly
+           src: reader.result as string,
          });
        };
        reader.readAsDataURL(file);
      }
    };
 
+  // --- Render Logic ---
   if (!selectedShape) {
     return (
       <aside className="w-72 h-full bg-card border-l border-border flex flex-col p-4">
@@ -81,7 +106,99 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedShape }) => {
     );
   }
 
-  // Dynamically render fields based on selectedShape.type and its props
+  const renderInput = (
+        key: string,
+        label: string,
+        type: 'number' | 'text' | 'color' | 'textarea' | 'select' | 'file',
+        options?: { value: string; label: string }[]
+    ) => {
+        const path = key.split('.');
+        const value = path.length === 1
+                      ? (selectedShape as any)[path[0]]
+                      : (selectedShape.props as any)?.[path[1]] ?? ''; // Handle nested props
+
+        if (type === 'textarea') {
+            return (
+                <div key={key}>
+                    <Label htmlFor={key} className="text-xs">{label}</Label>
+                    <Textarea
+                        id={key}
+                        name={key}
+                        value={value || ''}
+                        onChange={(e) => handleInputChange(e, key)}
+                        className="mt-1"
+                        rows={3}
+                    />
+                </div>
+            );
+        } else if (type === 'select' && options) {
+             return (
+                 <div key={key}>
+                    <Label htmlFor={key} className="text-xs">{label}</Label>
+                    <Select
+                         name={key}
+                         value={String(value ?? '')} // Ensure value is string
+                         onValueChange={(selectValue) => handleSelectChange(selectValue, key)}
+                    >
+                        <SelectTrigger className="h-8 mt-1 w-full">
+                            <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {options.map(opt => (
+                                <SelectItem key={opt.value} value={opt.value}>
+                                    {opt.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                 </div>
+             );
+        } else if (type === 'file') {
+             // Special handling for image src - use top-level 'src' for display/update trigger
+             const displayValue = key === 'src' ? selectedShape.src : ''; // Or derive from props if stored differently
+             return (
+               <div key={key}>
+                   <Label htmlFor={key} className="text-xs">{label}</Label>
+                   <Input
+                       id={`${key}-url`} // Different ID for URL input
+                       name={key}
+                       type="text"
+                       value={displayValue || ''}
+                       onChange={(e) => handleInputChange(e, key)} // Update top-level src
+                       className="h-8 mt-1 mb-2"
+                       placeholder="Enter image URL..."
+                   />
+                   <Input
+                       id={key} // ID for file input
+                       type="file"
+                       accept="image/*" // Accept images
+                       onChange={handleFileChange} // Specific handler
+                       className="h-8 text-xs"
+                   />
+               </div>
+             )
+        }
+
+        // Default Input (text, number, color)
+        return (
+             <div key={key}>
+                 <Label htmlFor={key} className="text-xs">{label}</Label>
+                 <Input
+                    id={key}
+                    name={key}
+                    type={type}
+                    value={value ?? (type === 'number' ? 0 : '')}
+                    onChange={(e) => handleInputChange(e, key)}
+                    className="h-8 mt-1"
+                    min={type === 'number' ? 0 : undefined} // Basic min for numbers
+                    step={type === 'number' ? 0.1 : undefined}
+                 />
+             </div>
+        );
+    };
+
+
+  // --- Dynamically Render Fields Based on Shape Type ---
   return (
     <aside className="w-72 h-full bg-card border-l border-border flex flex-col">
       <h3 className="text-sm font-semibold p-4 border-b border-border text-muted-foreground">
@@ -89,252 +206,76 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedShape }) => {
       </h3>
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-4">
-          {/* Common Properties */}
-          <div>
-            <Label htmlFor="pos-x" className="text-xs">X Position</Label>
-            <Input
-              id="pos-x"
-              name="x"
-              type="number"
-              value={selectedShape.x ?? 0}
-              onChange={handleInputChange}
-              className="h-8 mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="pos-y" className="text-xs">Y Position</Label>
-            <Input
-              id="pos-y"
-              name="y"
-              type="number"
-              value={selectedShape.y ?? 0}
-              onChange={handleInputChange}
-              className="h-8 mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="width" className="text-xs">Width</Label>
-            <Input
-              id="width"
-              name="width"
-              type="number"
-              value={selectedShape.width ?? 100}
-              onChange={handleInputChange}
-              className="h-8 mt-1"
-              min={1}
-            />
-          </div>
-          <div>
-            <Label htmlFor="height" className="text-xs">Height</Label>
-            <Input
-              id="height"
-              name="height"
-              type="number"
-              value={selectedShape.height ?? 100}
-              onChange={handleInputChange}
-              className="h-8 mt-1"
-              min={1}
-            />
-          </div>
-          <div>
-            <Label htmlFor="rotation" className="text-xs">Rotation (°)</Label>
-            <Input
-              id="rotation"
-              name="rotation"
-              type="number"
-              value={selectedShape.rotation ?? 0}
-              onChange={handleInputChange}
-              className="h-8 mt-1"
-            />
-          </div>
+          {/* Common Fabric Properties */}
+          {renderInput('left', 'Left (X)', 'number')}
+          {renderInput('top', 'Top (Y)', 'number')}
+          {renderInput('width', 'Width', 'number')}
+          {renderInput('height', 'Height', 'number')}
+          {renderInput('angle', 'Rotation (°)', 'number')}
+          {renderInput('opacity', 'Opacity', 'number')}
+           {renderInput('fill', 'Fill Color', 'color')}
+           {renderInput('stroke', 'Stroke Color', 'color')}
+           {renderInput('strokeWidth', 'Stroke Width', 'number')}
+
 
           {/* Type-Specific Properties */}
           {selectedShape.type === 'panel' && (
-            <>
-              <div>
-                <Label htmlFor="panel-fill" className="text-xs">Fill Color</Label>
-                <Input
-                  id="panel-fill"
-                  name="fill"
-                  type="text" // Use text for color values (e.g., rgba(r,g,b,a), #hex)
-                  value={selectedShape.props?.fill || ''}
-                  onChange={handleInputChange}
-                  className="h-8 mt-1"
-                  placeholder="e.g., #ffffff, rgba(0,0,0,0.5)"
-                />
-              </div>
-              <div>
-                <Label htmlFor="panel-stroke" className="text-xs">Stroke Color</Label>
-                <Input
-                  id="panel-stroke"
-                  name="stroke"
-                  type="text"
-                  value={selectedShape.props?.stroke || ''}
-                  onChange={handleInputChange}
-                  className="h-8 mt-1"
-                  placeholder="e.g., black, #000000"
-                />
-              </div>
-              <div>
-                <Label htmlFor="panel-strokeWidth" className="text-xs">Stroke Width</Label>
-                <Input
-                  id="panel-strokeWidth"
-                  name="strokeWidth"
-                  type="number"
-                  value={selectedShape.props?.strokeWidth ?? 1}
-                  onChange={handleInputChange}
-                  className="h-8 mt-1"
-                  step={0.5}
-                  min={0}
-                />
-              </div>
-               <div>
-                  <Label htmlFor="panel-cornerRadius" className="text-xs">Corner Radius</Label>
-                  <Input
-                      id="panel-cornerRadius"
-                      name="cornerRadius"
-                      type="number"
-                      value={selectedShape.props?.cornerRadius ?? 0}
-                      onChange={handleInputChange}
-                      className="h-8 mt-1"
-                      min={0}
-                  />
-                </div>
-            </>
-          )}
-
-          {selectedShape.type === 'bubble' && (
-            <>
-              <div>
-                <Label htmlFor="bubble-text" className="text-xs">Text</Label>
-                <Textarea
-                  id="bubble-text"
-                  name="text"
-                  value={selectedShape.props?.text || ''}
-                  onChange={handleInputChange}
-                  className="mt-1"
-                  rows={3}
-                />
-              </div>
-               <div>
-                  <Label htmlFor="bubble-type" className="text-xs">Bubble Type</Label>
-                  <Select
-                     name="bubbleType"
-                     value={selectedShape.props?.bubbleType || 'speech'}
-                     onValueChange={(value) => handleSelectChange(value, 'bubbleType')}
-                  >
-                     <SelectTrigger className="h-8 mt-1">
-                        <SelectValue placeholder="Select type" />
-                     </SelectTrigger>
-                     <SelectContent>
-                        <SelectItem value="speech">Speech</SelectItem>
-                        <SelectItem value="thought">Thought</SelectItem>
-                        <SelectItem value="scream">Scream</SelectItem>
-                        <SelectItem value="narration">Narration</SelectItem>
-                     </SelectContent>
-                  </Select>
-                </div>
-                 {selectedShape.props?.bubbleType !== 'thought' && selectedShape.props?.bubbleType !== 'narration' && (
-                 <div>
-                      <Label htmlFor="bubble-tailDirection" className="text-xs">Tail Direction</Label>
-                      <Select
-                         name="tailDirection"
-                         value={selectedShape.props?.tailDirection || 'bottom'}
-                         onValueChange={(value) => handleSelectChange(value, 'tailDirection')}
-                      >
-                         <SelectTrigger className="h-8 mt-1">
-                            <SelectValue placeholder="Select direction" />
-                         </SelectTrigger>
-                         <SelectContent>
-                            <SelectItem value="top">Top</SelectItem>
-                            <SelectItem value="bottom">Bottom</SelectItem>
-                            <SelectItem value="left">Left</SelectItem>
-                            <SelectItem value="right">Right</SelectItem>
-                         </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                  <div>
-                     <Label htmlFor="bubble-fontSize" className="text-xs">Font Size</Label>
-                     <Input
-                        id="bubble-fontSize"
-                        name="fontSize"
-                        type="number"
-                        value={selectedShape.props?.fontSize ?? 14}
-                        onChange={handleInputChange}
-                        className="h-8 mt-1"
-                        min={6}
-                     />
-                    </div>
-                    {/* Add more bubble props: fill, stroke, etc. */}
-            </>
-          )}
-
-           {selectedShape.type === 'image' && (
-              <>
-                  <div>
-                      <Label htmlFor="image-src" className="text-xs">Image Source (URL or Upload)</Label>
-                       <Input
-                           id="image-src-url"
-                           name="src" // Target the 'src' property directly
-                           type="text"
-                           value={selectedShape.src || ''} // Read 'src' from top level
-                           onChange={handleInputChange}
-                           className="h-8 mt-1 mb-2"
-                           placeholder="Enter image URL..."
-                       />
-                       <Input
-                            id="image-upload"
-                            type="file"
-                            accept="image/*"
-                            onChange={handleFileChange}
-                            className="h-8 text-xs"
-                        />
-                  </div>
-                   {/* Add other image props like opacity, border, etc. if needed */}
-              </>
+             <>
+                 {/* Add panel-specific fields if any, e.g., cornerRadius if implemented */}
+                 {/* renderInput('props.cornerRadius', 'Corner Radius', 'number') */}
+             </>
            )}
 
-            {selectedShape.type === 'text' && (
-                 <>
-                   <div>
-                     <Label htmlFor="text-content" className="text-xs">Text Content</Label>
-                     <Textarea
-                       id="text-content"
-                       name="text" // Update 'text' in props
-                       value={selectedShape.props?.text || ''}
-                       onChange={handleInputChange}
-                       className="mt-1"
-                       rows={2}
-                     />
-                   </div>
-                   <div>
-                     <Label htmlFor="text-fontSize" className="text-xs">Font Size</Label>
-                     <Input
-                       id="text-fontSize"
-                       name="fontSize" // Update 'fontSize' in props
-                       type="number"
-                       value={selectedShape.props?.fontSize ?? 20}
-                       onChange={handleInputChange}
-                       className="h-8 mt-1"
-                       min={6}
-                     />
-                   </div>
-                   <div>
-                     <Label htmlFor="text-fill" className="text-xs">Fill Color</Label>
-                     <Input
-                       id="text-fill"
-                       name="fill" // Update 'fill' in props
-                       type="text"
-                       value={selectedShape.props?.fill || 'black'}
-                       onChange={handleInputChange}
-                       className="h-8 mt-1"
-                       placeholder="e.g., black, #000000"
-                     />
-                   </div>
-                    {/* Add fontFamily, etc. */}
-                 </>
-             )}
+          {selectedShape.type === 'bubble' && (
+             <>
+               {renderInput('props.text', 'Text', 'textarea')}
+               {renderInput('props.bubbleType', 'Bubble Type', 'select', [
+                  { value: 'speech', label: 'Speech' },
+                  { value: 'thought', label: 'Thought' },
+                  { value: 'scream', label: 'Scream' },
+                  { value: 'narration', label: 'Narration' },
+               ])}
+                {/* Only show tail direction for relevant types */}
+               {(selectedShape.props?.bubbleType === 'speech' || selectedShape.props?.bubbleType === 'scream') &&
+                  renderInput('props.tailDirection', 'Tail Direction', 'select', [
+                     { value: 'top', label: 'Top' },
+                     { value: 'bottom', label: 'Bottom' },
+                     { value: 'left', label: 'Left' },
+                     { value: 'right', label: 'Right' },
+                  ])
+               }
+               {renderInput('props.fontSize', 'Font Size', 'number')}
+                {renderInput('props.textColor', 'Text Color', 'color')}
+               {/* Add fontFamily etc. */}
+             </>
+           )}
+
+          {selectedShape.type === 'image' && (
+             <>
+                 {renderInput('src', 'Image Source', 'file')}
+                 {/* Add controls for props like filters if needed */}
+             </>
+           )}
+
+          {selectedShape.type === 'text' && (
+              <>
+                {renderInput('props.text', 'Text Content', 'textarea')}
+                {renderInput('props.fontSize', 'Font Size', 'number')}
+                {renderInput('fill', 'Text Color', 'color')} {/* Text color is fill */}
+                 {renderInput('props.fontWeight', 'Font Weight', 'select', [
+                    { value: 'normal', label: 'Normal' },
+                    { value: 'bold', label: 'Bold' },
+                 ])}
+                 {renderInput('props.textAlign', 'Text Align', 'select', [
+                    { value: 'left', label: 'Left' },
+                    { value: 'center', label: 'Center' },
+                    { value: 'right', label: 'Right' },
+                    { value: 'justify', label: 'Justify' },
+                 ])}
+                 {renderInput('props.fontFamily', 'Font Family', 'text')}
+                 {/* Add line height, background color etc. */}
+              </>
+            )}
 
         </div>
       </ScrollArea>

@@ -1,65 +1,64 @@
 // src/types/editor.d.ts
+import type { fabric } from 'fabric'; // Import fabric types if needed
 
-import Konva from 'konva';
-
-// Base properties common to all shapes
+// Base properties common to all shapes using Fabric.js conventions
 interface BaseShapeConfig {
   id: string;
-  x: number;
-  y: number;
+  type: 'panel' | 'bubble' | 'image' | 'text'; // Add more types as needed
+  left: number; // Fabric uses 'left'
+  top: number;  // Fabric uses 'top'
   width: number;
   height: number;
-  rotation?: number;
-  draggable?: boolean;
-  // Add any other common Konva node properties you might use
-  // e.g., scaleX, scaleY, offsetX, offsetY, fill, stroke, strokeWidth, etc.
-  // These can also be in the 'props' object if preferred
+  angle?: number; // Fabric uses 'angle' for rotation
+  scaleX?: number;
+  scaleY?: number;
+  fill?: string | fabric.Pattern | fabric.Gradient;
+  stroke?: string;
+  strokeWidth?: number;
+  opacity?: number;
+  visible?: boolean;
+  // Add other common fabric.Object properties
+  props?: Record<string, any>; // For custom application-specific data or less common fabric props
 }
 
 // --- Panel Shape ---
 export interface PanelProps {
-    fill?: string;
-    stroke?: string;
-    strokeWidth?: number;
-    cornerRadius?: number;
+    // Fabric handles fill, stroke, strokeWidth at BaseShapeConfig level
+    cornerRadius?: number; // Fabric Rect doesn't have direct cornerRadius, might need custom drawing or use fabric.Path
     // Add other specific panel properties if needed
 }
 export interface PanelShapeConfig extends BaseShapeConfig {
   type: 'panel';
-  props?: PanelProps;
+  props?: PanelProps & fabric.IRectOptions; // Combine specific props with fabric options
 }
 
 // --- Bubble Shape ---
+// Bubbles will be more complex with Fabric, likely using fabric.Group or custom fabric.Path
 export interface BubbleProps {
     text?: string;
     bubbleType?: 'speech' | 'thought' | 'scream' | 'narration';
-    tailDirection?: 'left' | 'right' | 'top' | 'bottom';
+    tailDirection?: 'left' | 'right' | 'top' | 'bottom'; // Logic to draw tail needed
     fontFamily?: string;
     fontSize?: number;
-    fill?: string;
-    stroke?: string;
-    strokeWidth?: number;
+    textColor?: string; // Separate text color
     // Add other bubble styling props
 }
 export interface BubbleShapeConfig extends BaseShapeConfig {
   type: 'bubble';
-  props?: BubbleProps;
+  props?: BubbleProps & fabric.IGroupOptions; // Use Group options if grouping Text and Shape
 }
 
 // --- Image Shape ---
 export interface ImageProps {
-    // src is now a top-level property for easier access
-    stroke?: string; // Optional border
-    strokeWidth?: number;
-    cornerRadius?: number; // If you want rounded image corners
-    opacity?: number;
-    // filter effects etc.
+   // Fabric handles stroke, strokeWidth, opacity at BaseShapeConfig level
+   // src is handled differently, usually loaded into a fabric.Image instance
+   crossOrigin?: string;
+   filters?: fabric.IBaseFilter[]; // For image filters
 }
-
 export interface ImageShapeConfig extends BaseShapeConfig {
   type: 'image';
-  src?: string; // Image source URL (can be data URL)
-  props?: ImageProps; // Optional additional Konva props
+  src?: string; // Store src for reloading/reference
+  props?: ImageProps & fabric.IImageOptions;
 }
 
 // --- Text Shape ---
@@ -67,14 +66,16 @@ export interface TextProps {
     text?: string;
     fontFamily?: string;
     fontSize?: number;
-    fill?: string;
-    align?: 'left' | 'center' | 'right';
-    verticalAlign?: 'top' | 'middle' | 'bottom';
-    // Add stroke, padding etc. if needed
+    fontWeight?: string | number;
+    textAlign?: 'left' | 'center' | 'right' | 'justify';
+    lineHeight?: number;
+    textBackgroundColor?: string;
+    // Fabric Textbox handles wrapping, use it over IText for editable multiline text
 }
 export interface TextShapeConfig extends BaseShapeConfig {
     type: 'text';
-    props?: TextProps;
+    // Use ITextboxOptions for multi-line editable text
+    props?: TextProps & fabric.ITextboxOptions;
 }
 
 // Union type for any shape configuration
@@ -85,9 +86,11 @@ export type ShapeConfig =
   | TextShapeConfig; // Add other shape types here
 
 // Type for the properties panel form values
-// This might vary depending on the selected shape type
-export type ShapePropertiesFormValues = Partial<BaseShapeConfig> & {
+// Adjust based on Fabric properties
+export type ShapePropertiesFormValues = Partial<Omit<BaseShapeConfig, 'type' | 'id' | 'props'>> & {
     props?: Record<string, any>;
-    // Add specific fields that might not be direct Konva props
+    // Add specific fields that might not be direct fabric props
     src?: string; // For image URL input
+    text?: string; // For text/bubble input
+    // Add other form-specific fields like bubbleType, tailDirection etc.
 };

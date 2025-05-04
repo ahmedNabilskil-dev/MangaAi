@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -11,74 +12,102 @@ import { v4 as uuidv4 } from 'uuid'; // For generating unique IDs
 const LibraryPanel: React.FC = () => {
   const addShape = useEditorStore((state) => state.addShape);
 
-  const createShape = (type: ShapeConfig['type'], props?: any) => {
-    const newShape: ShapeConfig = {
-      id: uuidv4(), // Generate unique ID
-      type: type,
-      x: 100 + Math.random() * 100, // Random initial position
-      y: 100 + Math.random() * 100,
-      width: type === 'bubble' || type === 'text' ? 150 : 200,
+  const createShape = (type: ShapeConfig['type']) => {
+    // Base properties for Fabric.js
+    const baseProps: Omit<ShapeConfig, 'id' | 'type' | 'props'> = {
+      left: 50 + Math.random() * 150, // Initial position using left/top
+      top: 50 + Math.random() * 150,
+      width: type === 'bubble' || type === 'text' ? 150 : 200, // Initial dimensions
       height: type === 'bubble' || type === 'text' ? 80 : 150,
-      rotation: 0,
-      draggable: true,
-      props: props || {},
+      angle: 0,
+      scaleX: 1,
+      scaleY: 1,
+      fill: 'transparent', // Default fill
+      stroke: 'black',     // Default stroke
+      strokeWidth: 1,      // Default stroke width
+      opacity: 1,
+      visible: true,
     };
 
-    // Add specific default props based on type
+    let specificProps: ShapeConfig['props'] = {};
+    let specificConfig: Partial<ShapeConfig> = {};
+
+
+    // Add specific default props and config based on type
      switch (type) {
         case 'panel':
-             newShape.props = {
-                fill: 'rgba(220, 220, 220, 0.5)',
-                stroke: 'black',
-                strokeWidth: 1,
-                cornerRadius: 0,
+             specificConfig = {
+                 fill: 'rgba(220, 220, 220, 0.5)',
+                 stroke: 'black',
+                 strokeWidth: 1,
+                 // Fabric Rect doesn't have cornerRadius directly
+             };
+             specificProps = {
+                // cornerRadius: 0, // Store in props if needed for custom rendering later
              } as PanelProps;
              break;
          case 'bubble':
-             newShape.props = {
-                 text: 'New Bubble',
-                 bubbleType: 'speech',
-                 tailDirection: 'bottom',
+             // Bubbles are complex, start with basic props
+              specificConfig = {
                  fill: 'white',
                  stroke: 'black',
                  strokeWidth: 1,
+                 width: 150, // Smaller default for bubbles
+                 height: 80,
+              };
+             specificProps = {
+                 text: 'New Bubble',
+                 bubbleType: 'speech',
+                 tailDirection: 'bottom', // Need custom logic to draw tail
                  fontSize: 14,
+                 textColor: 'black',
              } as BubbleProps;
              break;
          case 'image':
-              newShape.width = 150; // Default image size
-              newShape.height = 100;
-              newShape.props = {
-                 src: 'https://picsum.photos/seed/placeholder/150/100', // Default placeholder
-                 // Add other image-specific props if needed
-              } as Omit<ImageShapeConfig, 'id' | 'type' | 'x' | 'y' | 'width' | 'height' | 'rotation' | 'draggable'>['props'];
+              specificConfig = {
+                 width: 150, // Default image size
+                 height: 100,
+                 strokeWidth: 0, // No border by default
+                 fill: '#f0f0f0', // Placeholder fill
+                 stroke: '#cccccc', // Placeholder border
+              };
+              specificProps = {
+                 // Store src in top-level config, not props
+                 // Add other image-specific props if needed (e.g., filters)
+              } as ImageShapeConfig['props'];
+               // Add src directly to specificConfig for Image type
+              specificConfig.src = 'https://picsum.photos/seed/placeholderimg/150/100'; // Default placeholder
               break;
          case 'text':
-             newShape.width = 120;
-             newShape.height = 40;
-             newShape.props = {
+             specificConfig = {
+                 width: 120, // Initial width for Textbox wrapping
+                 height: 40, // Adjust based on content later
+                 strokeWidth: 0, // No border for text
+                 fill: 'black', // Text color is fill in Fabric
+             };
+             specificProps = {
                  text: 'New Text',
                  fontSize: 20,
-                 fill: 'black',
+                 // Add other Fabric Textbox props like fontFamily, fontWeight, textAlign etc.
              } as TextShapeConfig['props'];
              break;
          default:
              break;
      }
 
+    // Create the final shape configuration object
+    const newShape: ShapeConfig = {
+        id: uuidv4(),
+        type: type,
+        ...baseProps, // Spread base properties
+        ...specificConfig, // Spread type-specific config (like src, fill)
+        props: specificProps, // Assign specific props object
+    };
+
 
     addShape(newShape);
   };
 
-  // --- Drag and Drop (Example - requires react-dnd or similar) ---
-   // const [{ isDragging }, drag] = useDrag(() => ({
-   //     type: 'shape',
-   //     item: { type: 'panel' }, // Pass shape type or config
-   //     collect: (monitor) => ({
-   //         isDragging: !!monitor.isDragging(),
-   //     }),
-   // }));
-   // Attach `ref={drag}` to the draggable buttons
 
   return (
     <aside className="w-64 h-full bg-card border-r border-border flex flex-col p-2">
@@ -90,7 +119,6 @@ const LibraryPanel: React.FC = () => {
             variant="outline"
             className="h-20 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             onClick={() => createShape('panel')}
-            // ref={drag} // Example for drag and drop
           >
             <Square size={24} />
             <span className="text-xs">Panel</span>
@@ -126,7 +154,7 @@ const LibraryPanel: React.FC = () => {
               <span className="text-xs">Text</span>
            </Button>
 
-          {/* Add buttons for Text, uploaded Images, etc. */}
+          {/* Add buttons for uploaded Images, etc. */}
         </div>
       </ScrollArea>
     </aside>
