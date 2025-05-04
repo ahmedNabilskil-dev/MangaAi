@@ -54,11 +54,16 @@ export default function PropertyForm({ nodeType, initialValues = {}, onSubmit }:
         const shape = currentSchema.shape as Record<string, z.ZodTypeAny>;
         for (const fieldName in shape) {
             const fieldSchema = shape[fieldName];
+            // Ensure fieldSchema exists before accessing description
+            if (!fieldSchema) continue;
             const description = fieldSchema.description;
+
              // Handle simple-array / comma-separated string fields
              if (description?.startsWith("Comma-separated")) {
                  if (Array.isArray(values[fieldName])) {
                      values[fieldName] = values[fieldName].join(', ');
+                 } else if (values[fieldName] === null || typeof values[fieldName] === 'undefined') {
+                     values[fieldName] = ''; // Default to empty string if null/undefined
                  }
              }
              // Handle JSON string fields
@@ -75,17 +80,35 @@ export default function PropertyForm({ nodeType, initialValues = {}, onSubmit }:
                  }
              }
         }
+        // Ensure required fields like 'title' or 'name' have at least an empty string if missing
+        // This prevents the ZodError during initialization if initialValues completely lacks a required field.
+        if (nodeType === 'project' || nodeType === 'chapter' || nodeType === 'scene') {
+            values.title = values.title ?? '';
+        }
+        if (nodeType === 'character') {
+            values.name = values.name ?? '';
+        }
+        if (nodeType === 'dialogue') {
+             values.content = values.content ?? '';
+        }
+        // Ensure number fields have a default if missing and required, or if initial value is not a number
+        if (nodeType === 'chapter' && (typeof values.chapterNumber !== 'number' || isNaN(values.chapterNumber))) {
+             values.chapterNumber = 1; // Default or consider making it optional/nullable in schema if appropriate
+        }
+         if ((nodeType === 'scene' || nodeType === 'panel' || nodeType === 'dialogue') && (typeof values.order !== 'number' || isNaN(values.order))) {
+             values.order = 0;
+         }
+
+
         return values;
-    }, [initialValues, currentSchema]);
+    }, [initialValues, currentSchema, nodeType]);
 
 
     const form = useForm<CurrentSchemaType>({
         resolver: zodResolver(currentSchema),
-        // Use processed values, ensuring defaults from schema are applied if not present
-        defaultValues: {
-          ...(currentSchema.parse ? currentSchema.parse({}) : {}), // Get schema defaults
-          ...processedInitialValues // Override with processed initial values
-        },
+        // Use only the processed initial values. react-hook-form handles merging.
+        // The previous attempt `currentSchema.parse({})` caused errors for required fields.
+        defaultValues: processedInitialValues,
     });
 
     // Post-process form data before submitting
@@ -95,6 +118,8 @@ export default function PropertyForm({ nodeType, initialValues = {}, onSubmit }:
 
         for (const fieldName in shape) {
              const fieldSchema = shape[fieldName];
+              // Ensure fieldSchema exists before accessing description
+             if (!fieldSchema) continue;
              const description = fieldSchema.description;
              const value = processedData[fieldName as keyof CurrentSchemaType];
 
@@ -141,7 +166,8 @@ export default function PropertyForm({ nodeType, initialValues = {}, onSubmit }:
                          <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                              <FormControl>
                                 <Checkbox
-                                   checked={field.value}
+                                   // Ensure value is boolean or provide default
+                                   checked={!!field.value}
                                    onCheckedChange={field.onChange}
                                 />
                              </FormControl>
@@ -216,7 +242,7 @@ export default function PropertyForm({ nodeType, initialValues = {}, onSubmit }:
                     <FormItem>
                         <FormLabel>{label}</FormLabel>
                         <FormControl>
-                            {React.cloneElement(control as React.ReactElement, { ...field })}
+                            {React.cloneElement(control as React.ReactElement, { ...field, value: field.value ?? '' })}
                         </FormControl>
                         {description && <p className="text-sm text-muted-foreground">{description}</p>}
                         <FormMessage />
@@ -235,6 +261,8 @@ export default function PropertyForm({ nodeType, initialValues = {}, onSubmit }:
             >
                 {Object.keys(currentSchema.shape).map((fieldName) => {
                      const fieldSchema = (currentSchema.shape as Record<string, z.ZodTypeAny>)[fieldName];
+                     // Ensure fieldSchema is valid before rendering
+                     if (!fieldSchema) return null;
                      return renderFormField(fieldName, fieldSchema);
                  })}
                 {/* The actual submit button is in the parent PropertiesPanel */}
