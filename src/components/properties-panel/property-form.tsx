@@ -14,7 +14,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea';
+import { Textarea } from '@/components/ui/textarea'; // Fixed closing quote
 import { type NodeType } from '@/types/nodes';
 
 // Define base schema - can be extended or chosen based on nodeType
