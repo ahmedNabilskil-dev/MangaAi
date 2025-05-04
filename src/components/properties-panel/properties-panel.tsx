@@ -1,16 +1,9 @@
 
 'use client';
 
-import React, { useEffect } from 'react';
-import {
-    Sheet,
-    SheetContent,
-    SheetHeader,
-    SheetTitle,
-    SheetDescription,
-    SheetFooter,
-    SheetClose,
-} from "@/components/ui/sheet";
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Minus, PanelRightOpen, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
@@ -18,7 +11,6 @@ import PropertyForm from './property-form';
 import { type NodeData, type NodeType } from '@/types/nodes';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useVisualEditorStore } from '@/store/visual-editor-store';
-// Import the in-memory service functions
 import {
     updateProject,
     updateChapter,
@@ -26,9 +18,11 @@ import {
     updatePanel,
     updatePanelDialogue,
     updateCharacter
-} from '@/services/in-memory';
+} from '@/services/in-memory'; // Use in-memory service
 import type { Node } from 'reactflow';
-import type { DeepPartial } from '@/types/utils'; // Assuming you have a DeepPartial utility type
+import type { DeepPartial } from '@/types/utils';
+import { cn } from '@/lib/utils';
+import nodeFormConfig from '@/config/node-form-config'; // Import the new config
 
 interface PropertiesPanelProps {
     isOpen: boolean;
@@ -36,7 +30,6 @@ interface PropertiesPanelProps {
     onClose: () => void;
 }
 
-// Map NodeType to the corresponding in-memory update function
 const updateFunctionMap: Record<NodeType, (id: string, data: any) => Promise<any>> = {
     project: updateProject,
     chapter: updateChapter,
@@ -46,41 +39,54 @@ const updateFunctionMap: Record<NodeType, (id: string, data: any) => Promise<any
     character: updateCharacter,
 };
 
+const panelVariants = {
+    open: {
+        opacity: 1,
+        x: 0,
+        height: 'auto', // Or a specific max height like '600px'
+        width: '384px', // Adjust width as needed (sm:max-w-md is 384px)
+        transition: { type: 'spring', stiffness: 300, damping: 30 }
+    },
+    closed: {
+        opacity: 1,
+        x: 0,
+        height: '52px', // Height when minimized
+        width: '384px',
+        transition: { type: 'spring', stiffness: 300, damping: 30 }
+    }
+};
 
 export default function PropertiesPanel({ isOpen, node, onClose }: PropertiesPanelProps) {
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const refreshFlowData = useVisualEditorStore((state) => state.refreshFlowData);
-    const formRef = React.useRef<{ reset: (values?: any) => void, formState: any, trigger: () => Promise<boolean> }>(null); // Ref for form methods
+    const [isMinimized, setIsMinimized] = useState(false);
 
     const nodeData = node?.data;
-    const nodeId = node?.data?.properties?.id; // ID comes from properties now
+    const nodeId = node?.data?.properties?.id;
     const nodeType = node?.data?.type;
 
     const title = nodeType ? `${nodeType.charAt(0).toUpperCase() + nodeType.slice(1)} Properties` : 'Properties';
-    const description = nodeType ? `Edit the properties for the selected ${nodeType}.` : 'Select an item in the editor to view its properties.';
+    const description = nodeType ? `Edit properties for ${nodeData?.label || 'selected item'}.` : 'Select an item to edit.';
 
-    // --- Mutation Setup ---
-     const mutation = useMutation({
+    const mutation = useMutation({
         mutationFn: ({ nodeType, id, data }: { nodeType: NodeType, id: string, data: DeepPartial<any> }) => {
             const updateFn = updateFunctionMap[nodeType];
             if (!updateFn) {
                 throw new Error(`No update function found for node type: ${nodeType}`);
             }
-             // Data should already be processed by PropertyForm's onSubmit handler
-             // It will be a partial object ready for in-memory update
+            console.log("Submitting update to in-memory store:", { nodeType, id, data });
             return updateFn(id, data);
         },
-        onSuccess: (updatedData, variables) => { // In-memory update might not return data
+        onSuccess: (updatedData, variables) => {
             toast({
                 title: "Success",
                 description: `${variables.nodeType.charAt(0).toUpperCase() + variables.nodeType.slice(1)} properties saved successfully.`,
             });
-            // Invalidate the main flow query to refetch data
-            queryClient.invalidateQueries({ queryKey: ['projectFlowData'] });
-            refreshFlowData(); // Trigger data refresh via Zustand store action
-
-            onClose(); // Close panel after successful save
+            queryClient.invalidateQueries({ queryKey: ['projectFlowData'] }); // Invalidate cache if using React Query elsewhere
+            refreshFlowData();
+            // Keep panel open after save
+            // onClose();
         },
         onError: (error: any, variables) => {
             console.error(`Error updating ${variables.nodeType} (${variables.id}):`, error);
@@ -97,89 +103,100 @@ export default function PropertiesPanel({ isOpen, node, onClose }: PropertiesPan
             toast({ title: "Error", description: "No node selected or node ID/type missing.", variant: "destructive" });
             return;
         }
-
-        // The PropertyForm component's onSubmit wrapper already processes the data
-        // (e.g., parsing JSON strings, converting comma-sep to arrays).
-        // We just need to remove the 'id' field if it exists in the formData
-        // as it shouldn't be part of the update payload itself.
         const updateData = { ...formData };
-        delete updateData.id; // Remove id if present in form values
+        delete updateData.id; // Remove id if present
 
-        console.log("Submitting update to in-memory store for:", nodeType, nodeId, updateData);
-
-        mutation.mutate({
-            nodeType: nodeType,
-            id: nodeId,
-            data: updateData, // Pass the processed data
-        });
+        mutation.mutate({ nodeType, id: nodeId, data: updateData });
     };
 
-    // Trigger form validation and submission from the external button
-    const triggerSubmit = async () => {
-        if (formRef.current) {
-            // Trigger validation
-            const isValid = await formRef.current.trigger();
-            if (isValid) {
-                // Manually call the form's internal submit handler if valid
-                // This assumes PropertyForm uses useForm hook and exposes it via ref
-                // You might need to adjust PropertyForm to correctly forward the ref and methods
-                // formRef.current.handleSubmit(handleFormSubmit)(); // This pattern might not work directly with forwardRef
-                // Alternative: Have a submit function inside PropertyForm triggered by this button
-                // For now, let's rely on the form attribute of the button
-            } else {
-                 toast({
-                    title: "Validation Error",
-                    description: "Please fix the errors in the form before saving.",
-                    variant: "destructive",
-                });
-            }
-        }
-    };
-
+    if (!isOpen) {
+        return null; // Don't render anything if not open
+    }
 
     return (
-        <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <SheetContent className="sm:max-w-md w-[90vw] md:w-full md:max-w-md flex flex-col h-full p-0" side="right">
-                <SheetHeader className="px-6 pt-6 pb-4 border-b">
-                    <SheetTitle>{title}</SheetTitle>
-                    <SheetDescription>{description}</SheetDescription>
-                </SheetHeader>
+        <motion.div
+            layout
+            variants={panelVariants}
+            initial={false}
+            animate={isMinimized ? "closed" : "open"}
+            className={cn(
+                "absolute top-4 right-4 z-10 bg-card border border-border rounded-lg shadow-xl overflow-hidden flex flex-col backdrop-blur-sm bg-opacity-95",
+                isMinimized ? "max-h-[52px]" : "max-h-[calc(100vh-2rem)]" // Limit height when open
+            )}
+        >
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-background/80 shrink-0">
+                <div className="flex items-center gap-2">
+                     {nodeType && React.createElement(nodeFormConfig[nodeType]?.icon || PanelRightOpen, { className: "h-4 w-4 text-muted-foreground"})}
+                    <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
+                </div>
+                <div className="flex items-center gap-1">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => setIsMinimized(!isMinimized)}
+                        aria-label={isMinimized ? "Maximize Panel" : "Minimize Panel"}
+                    >
+                        {isMinimized ? <PanelRightOpen size={16} /> : <Minus size={16} />}
+                    </Button>
+                     <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={onClose} // Use the onClose prop to hide the panel
+                        aria-label="Close Panel"
+                    >
+                        <X size={16} />
+                    </Button>
+                </div>
+            </div>
 
-                <ScrollArea className="flex-grow px-6 py-4">
-                   {nodeData && nodeType && nodeData.properties ? ( // Ensure properties exist
-                       <PropertyForm
-                           key={nodeId || 'no-node'} // Use node ID from properties
-                           nodeType={nodeType}
-                           // Pass the properties object directly
-                           initialValues={nodeData.properties}
-                           onSubmit={handleFormSubmit}
-                           // Pass the ref to potentially trigger submit/validation externally
-                           // Requires PropertyForm to use React.forwardRef
-                           // ref={formRef} // Uncomment and implement forwardRef in PropertyForm if needed
-                       />
-                   ) : (
-                       <div className="flex items-center justify-center h-full text-muted-foreground">
-                           <p>Select an item in the editor to see its properties.</p>
-                       </div>
-                   )}
-                </ScrollArea>
+            {/* Content Area */}
+            <AnimatePresence initial={false}>
+                {!isMinimized && (
+                    <motion.div
+                        key="panel-content"
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="flex flex-col flex-grow min-h-0" // Important for flex layout with scroll
+                    >
+                        <ScrollArea className="flex-grow px-4 py-3">
+                            {nodeData && nodeType && nodeData.properties ? (
+                                <PropertyForm
+                                    key={nodeId} // Re-render form when node changes
+                                    nodeType={nodeType}
+                                    initialValues={nodeData.properties}
+                                    onSubmit={handleFormSubmit}
+                                    isLoading={mutation.isPending}
+                                />
+                            ) : (
+                                <div className="flex items-center justify-center h-full text-sm text-muted-foreground p-4">
+                                    <p>{description}</p>
+                                </div>
+                            )}
+                        </ScrollArea>
 
-                <SheetFooter className="px-6 pb-6 pt-4 border-t mt-auto bg-background">
-                    <SheetClose asChild>
-                        <Button variant="outline" onClick={onClose} disabled={mutation.isPending}>Cancel</Button>
-                    </SheetClose>
-                    {nodeData && (
-                        <Button
-                            type="submit" // This button submits the form
-                            form="property-form" // Link button to the form's ID
-                            disabled={mutation.isPending}
-                            // onClick={triggerSubmit} // Or use onClick to trigger validation first
-                        >
-                            {mutation.isPending ? 'Saving...' : 'Save Changes'}
-                        </Button>
-                    )}
-                </SheetFooter>
-            </SheetContent>
-        </Sheet>
+                        {/* Footer with Buttons (only if a node is selected) */}
+                         {nodeData && (
+                            <div className="px-4 pb-4 pt-3 border-t border-border mt-auto bg-background/80 flex justify-end gap-2 shrink-0">
+                                <Button variant="outline" onClick={onClose} disabled={mutation.isPending}>
+                                    Close
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    form="property-form" // Link button to the form ID
+                                    disabled={mutation.isPending}
+                                >
+                                    {mutation.isPending ? 'Saving...' : 'Save Changes'}
+                                </Button>
+                            </div>
+                         )}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </motion.div>
     );
 }
