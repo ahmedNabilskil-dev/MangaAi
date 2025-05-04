@@ -18,6 +18,7 @@ interface EditorState {
 }
 
 const MAX_HISTORY = 50; // Limit undo history
+const DEFAULT_FONT = 'Arial, sans-serif'; // Define default font
 
 export const useEditorStore = create<EditorState>((set, get) => ({
   shapes: [],
@@ -36,6 +37,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         ...shape,
         left: shape.left ?? 100 + Math.random() * 100, // Default position
         top: shape.top ?? 100 + Math.random() * 100,
+         // Add default font family for text and bubble types
+         props: {
+            ...shape.props,
+            ...(shape.type === 'text' || shape.type === 'bubble' ? { fontFamily: shape.props?.fontFamily ?? DEFAULT_FONT } : {}),
+        },
     };
     state.shapes.push(newShapeWithDefaults);
     // Add to history

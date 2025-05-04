@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -7,9 +6,24 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-// Removed Checkbox import as it wasn't used after refactor
 import { useEditorStore } from '@/store/editor-store';
-import type { ShapeConfig, ShapePropertiesFormValues } from '@/types/editor'; // Import ShapePropertiesFormValues if defined
+import type { ShapeConfig } from '@/types/editor'; // Removed ShapePropertiesFormValues as it's not directly used
+
+// Define available fonts
+const availableFonts = [
+    { value: 'Arial, sans-serif', label: 'Arial' },
+    { value: 'Verdana, sans-serif', label: 'Verdana' },
+    { value: 'Times New Roman, serif', label: 'Times New Roman' },
+    { value: 'Georgia, serif', label: 'Georgia' },
+    { value: 'Courier New, monospace', label: 'Courier New' },
+    { value: 'Comic Sans MS, cursive', label: 'Comic Sans MS' },
+    { value: 'Impact, charcoal, sans-serif', label: 'Impact' },
+    // Add more fonts as needed (consider loading web fonts if using non-standard ones)
+    // Example Google Font (would need loading in layout.tsx or globals.css):
+    // { value: "'Roboto', sans-serif", label: "Roboto" },
+    // { value: "'Noto Sans JP', sans-serif", label: "Noto Sans JP (Japanese)" }
+];
+
 
 const PropertiesPanel: React.FC<{ selectedShape: ShapeConfig | undefined }> = ({ selectedShape }) => {
   const { updateShape } = useEditorStore();
@@ -110,7 +124,9 @@ const PropertiesPanel: React.FC<{ selectedShape: ShapeConfig | undefined }> = ({
         key: string,
         label: string,
         type: 'number' | 'text' | 'color' | 'textarea' | 'select' | 'file',
-        options?: { value: string; label: string }[]
+        options?: { value: string; label: string }[],
+        // Add specific config for font select styling
+        fieldSpecificConfig?: { isFontSelect?: boolean }
     ) => {
         const path = key.split('.');
         const value = path.length === 1
@@ -145,7 +161,12 @@ const PropertiesPanel: React.FC<{ selectedShape: ShapeConfig | undefined }> = ({
                         </SelectTrigger>
                         <SelectContent>
                             {options.map(opt => (
-                                <SelectItem key={opt.value} value={opt.value}>
+                                <SelectItem
+                                    key={opt.value}
+                                    value={opt.value}
+                                     // Apply font style for preview if it's the font select
+                                    style={fieldSpecificConfig?.isFontSelect ? { fontFamily: opt.value } : {}}
+                                >
                                     {opt.label}
                                 </SelectItem>
                             ))}
@@ -245,8 +266,8 @@ const PropertiesPanel: React.FC<{ selectedShape: ShapeConfig | undefined }> = ({
                   ])
                }
                {renderInput('props.fontSize', 'Font Size', 'number')}
-                {renderInput('props.textColor', 'Text Color', 'color')}
-               {/* Add fontFamily etc. */}
+               {renderInput('props.fontFamily', 'Font Family', 'select', availableFonts, { isFontSelect: true })}
+               {renderInput('props.textColor', 'Text Color', 'color')}
              </>
            )}
 
@@ -261,10 +282,21 @@ const PropertiesPanel: React.FC<{ selectedShape: ShapeConfig | undefined }> = ({
               <>
                 {renderInput('props.text', 'Text Content', 'textarea')}
                 {renderInput('props.fontSize', 'Font Size', 'number')}
+                 {/* Pass font options and flag for styling */}
+                 {renderInput('props.fontFamily', 'Font Family', 'select', availableFonts, { isFontSelect: true })}
                 {renderInput('fill', 'Text Color', 'color')} {/* Text color is fill */}
                  {renderInput('props.fontWeight', 'Font Weight', 'select', [
                     { value: 'normal', label: 'Normal' },
                     { value: 'bold', label: 'Bold' },
+                    { value: '100', label: '100' },
+                    { value: '200', label: '200' },
+                    { value: '300', label: '300' },
+                    { value: '400', label: '400 (Normal)' },
+                    { value: '500', label: '500 (Medium)' },
+                    { value: '600', label: '600 (Semi-Bold)' },
+                    { value: '700', label: '700 (Bold)' },
+                    { value: '800', label: '800 (Extra-Bold)' },
+                    { value: '900', label: '900 (Black)' },
                  ])}
                  {renderInput('props.textAlign', 'Text Align', 'select', [
                     { value: 'left', label: 'Left' },
@@ -272,7 +304,6 @@ const PropertiesPanel: React.FC<{ selectedShape: ShapeConfig | undefined }> = ({
                     { value: 'right', label: 'Right' },
                     { value: 'justify', label: 'Justify' },
                  ])}
-                 {renderInput('props.fontFamily', 'Font Family', 'text')}
                  {/* Add line height, background color etc. */}
               </>
             )}

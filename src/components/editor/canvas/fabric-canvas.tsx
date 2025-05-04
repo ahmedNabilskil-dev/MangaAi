@@ -174,9 +174,10 @@ const FabricCanvas: React.FC = () => {
                       const textObj = new fabric.Textbox(shape.props?.text || 'New Text', { // Use Textbox for wrapping
                           ...commonProps,
                           fontSize: shape.props?.fontSize || 20,
-                          fontFamily: shape.props?.fontFamily || 'Arial',
+                          fontFamily: shape.props?.fontFamily || 'Arial, sans-serif', // Apply font family
                           fill: shape.fill || 'black', // Text color is fill in Fabric
                           textAlign: shape.props?.textAlign || 'left',
+                          fontWeight: shape.props?.fontWeight || 'normal',
                           // Important: width needs to be set for textbox wrapping
                            width: shape.width,
                           ...(shape.props as fabric.ITextboxOptions), // Spread other Textbox options
@@ -224,17 +225,45 @@ const FabricCanvas: React.FC = () => {
 
                 // TODO: Implement 'bubble' creation (likely fabric.Group of path/ellipse + text)
                  case 'bubble':
-                      // Simplified: Create a rect as placeholder for now
-                      const bubblePlaceholder = new fabric.Rect({
-                          ...commonProps,
+                      // Simplified: Create a rect with text inside (Placeholder)
+                      // Proper implementation needs custom shape or group
+                      const textInBubble = new fabric.Textbox(shape.props?.text || 'Bubble', {
+                          left: commonProps.left + 5, // Padding
+                          top: commonProps.top + 5,
+                          width: commonProps.width - 10,
+                          // height: commonProps.height - 10, // Textbox height adjusts
+                          fontSize: shape.props?.fontSize || 14,
+                          fontFamily: shape.props?.fontFamily || 'Arial, sans-serif',
+                          fill: shape.props?.textColor || 'black',
+                          originX: 'left',
+                          originY: 'top',
+                          textAlign: 'center', // Center text in bubble
+                      });
+
+                      const bubbleRect = new fabric.Rect({
+                           ...commonProps,
                            fill: shape.fill ?? 'white',
                            stroke: shape.stroke ?? 'black',
                            strokeWidth: shape.strokeWidth ?? 1.5,
                            rx: shape.props?.bubbleType === 'speech' ? 10 : shape.width / 2, // Basic corner radius
                            ry: shape.props?.bubbleType === 'speech' ? 10 : shape.height / 2,
                       });
-                       (bubblePlaceholder as any).id = shape.id;
-                      resolve(bubblePlaceholder);
+
+                     const group = new fabric.Group([bubbleRect, textInBubble], {
+                          id: shape.id,
+                          left: commonProps.left,
+                          top: commonProps.top,
+                          angle: commonProps.angle,
+                          scaleX: commonProps.scaleX,
+                          scaleY: commonProps.scaleY,
+                          opacity: commonProps.opacity,
+                          visible: commonProps.visible,
+                          originX: 'left',
+                          originY: 'top',
+                          // Sub-targets might need disabling for simpler group interaction
+                          // subTargetCheck: true,
+                      });
+                      resolve(group);
                       break;
 
                 default:
@@ -264,28 +293,69 @@ const FabricCanvas: React.FC = () => {
        const promises = shapes.map(shape => {
            const existingObj = canvas.getObjects().find(obj => (obj as any).id === shape.id);
            if (existingObj) {
-               // Update existing object properties (basic example)
+               // --- Update existing object properties ---
                existingObj.set({
                    left: shape.left,
                    top: shape.top,
-                   width: shape.width, // Note: Fabric handles width/height differently based on object type & scaling
-                   height: shape.height,
                    angle: shape.angle,
-                   scaleX: shape.scaleX,
-                   scaleY: shape.scaleY,
                    fill: shape.fill,
                    stroke: shape.stroke,
                    strokeWidth: shape.strokeWidth,
                    opacity: shape.opacity,
                    visible: shape.visible,
-                   // Update type-specific props if needed
+                   // Note: width/height/scale update needs care based on type
                });
-               // Handle Textbox update specifically
-               if (shape.type === 'text' && existingObj.type === 'textbox') {
-                    (existingObj as fabric.Textbox).set('text', shape.props?.text || '');
-                    (existingObj as fabric.Textbox).set('fontSize', shape.props?.fontSize);
-                    // Potentially more text properties
-               }
+
+                // Adjust width/height/scale - This differs between objects
+                if (existingObj.type === 'rect' || existingObj.type === 'textbox' || existingObj.type === 'group') {
+                    existingObj.set({
+                        width: shape.width / (existingObj.scaleX ?? 1), // Adjust base width by current scale
+                        height: shape.height / (existingObj.scaleY ?? 1), // Adjust base height by current scale
+                        scaleX: existingObj.scaleX ?? 1,
+                        scaleY: existingObj.scaleY ?? 1,
+                    });
+                } else if (existingObj.type === 'image') {
+                    // For images, scale affects rendered size, width/height are original image dims
+                    existingObj.set({
+                        scaleX: shape.width / (existingObj.width ?? 1),
+                        scaleY: shape.height / (existingObj.height ?? 1),
+                    });
+                }
+
+                // Handle Textbox specific updates
+                if (shape.type === 'text' && existingObj.type === 'textbox') {
+                    const textbox = existingObj as fabric.Textbox;
+                    textbox.set('text', shape.props?.text || '');
+                    textbox.set('fontSize', shape.props?.fontSize);
+                    textbox.set('fontFamily', shape.props?.fontFamily); // Update font family
+                    textbox.set('fontWeight', shape.props?.fontWeight);
+                    textbox.set('textAlign', shape.props?.textAlign);
+                    // Trigger recalculation if width changed, crucial for wrapping
+                    if (existingObj.width !== shape.width / (existingObj.scaleX ?? 1)) {
+                         textbox.set('width', shape.width / (existingObj.scaleX ?? 1));
+                    }
+                }
+                 // Handle Bubble (Group) specific updates - update text inside
+                 if (shape.type === 'bubble' && existingObj.type === 'group') {
+                    const group = existingObj as fabric.Group;
+                    const textObj = group.getObjects('textbox')[0] as fabric.Textbox;
+                    if (textObj) {
+                        textObj.set('text', shape.props?.text || '');
+                        textObj.set('fontSize', shape.props?.fontSize);
+                        textObj.set('fontFamily', shape.props?.fontFamily);
+                        textObj.set('fill', shape.props?.textColor || 'black');
+                        // Potentially update bubble shape/rect too based on props.bubbleType etc.
+                    }
+                    // Update group dimensions/scale if needed
+                    group.set({
+                         // Group scale is different, width/height are based on contents
+                         // Direct width/height setting might not work as expected
+                         // Use scaleX/scaleY on the group instead if resizing is needed
+                         scaleX: shape.width / group.getScaledWidth() * group.scaleX,
+                         scaleY: shape.height / group.getScaledHeight() * group.scaleY,
+                    });
+                 }
+
                // Handle image src update (more complex, might require replacing object)
                if (shape.type === 'image' && shape.src && (existingObj as fabric.Image).getSrc() !== shape.src) {
                     // Need to remove old and add new image object

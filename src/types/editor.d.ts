@@ -38,7 +38,7 @@ export interface BubbleProps {
     text?: string;
     bubbleType?: 'speech' | 'thought' | 'scream' | 'narration';
     tailDirection?: 'left' | 'right' | 'top' | 'bottom'; // Logic to draw tail needed
-    fontFamily?: string;
+    fontFamily?: string; // Added fontFamily
     fontSize?: number;
     textColor?: string; // Separate text color
     // Add other bubble styling props
@@ -64,7 +64,7 @@ export interface ImageShapeConfig extends BaseShapeConfig {
 // --- Text Shape ---
 export interface TextProps {
     text?: string;
-    fontFamily?: string;
+    fontFamily?: string; // Ensure fontFamily is here
     fontSize?: number;
     fontWeight?: string | number;
     textAlign?: 'left' | 'center' | 'right' | 'justify';
@@ -85,12 +85,9 @@ export type ShapeConfig =
   | ImageShapeConfig
   | TextShapeConfig; // Add other shape types here
 
-// Type for the properties panel form values
-// Adjust based on Fabric properties
-export type ShapePropertiesFormValues = Partial<Omit<BaseShapeConfig, 'type' | 'id' | 'props'>> & {
-    props?: Record<string, any>;
-    // Add specific fields that might not be direct fabric props
-    src?: string; // For image URL input
-    text?: string; // For text/bubble input
-    // Add other form-specific fields like bubbleType, tailDirection etc.
-};
+// Type for the properties panel form values (Not directly used for rendering inputs now)
+// export type ShapePropertiesFormValues = Partial<Omit<BaseShapeConfig, 'type' | 'id' | 'props'>> & {
+//     props?: Record<string, any>;
+//     src?: string;
+//     text?: string;
+// };
