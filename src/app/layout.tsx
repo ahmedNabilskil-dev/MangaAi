@@ -1,8 +1,10 @@
+
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { ReactQueryProvider } from '@/components/providers/react-query-provider'; // Create this provider
+import { ThemeProvider } from '@/components/providers/theme-provider'; // Import the ThemeProvider
 
 
 const inter = Inter({ subsets: ['latin'] });
@@ -18,12 +20,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning> {/* suppressHydrationWarning is recommended by next-themes */}
       <body className={`${inter.className} antialiased`}>
-        <ReactQueryProvider>
-            {children}
-            <Toaster />
-        </ReactQueryProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <ReactQueryProvider>
+              {children}
+              <Toaster />
+          </ReactQueryProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

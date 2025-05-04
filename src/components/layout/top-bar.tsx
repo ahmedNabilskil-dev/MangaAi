@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator'; // Import Separator
+import { ThemeToggle } from './theme-toggle'; // Import the ThemeToggle component
 
 interface TopBarProps {
   projectTitle: string;
@@ -35,7 +36,7 @@ export default function TopBar({ projectTitle }: TopBarProps) {
     <header className="h-14 px-4 flex items-center justify-between border-b border-border bg-card shrink-0 z-20">
       {/* Left Side */}
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={handleBack} aria-label="Go back">
+        <Button variant="ghost" size="icon" onClick={handleBack} aria-label="Go back" className="h-9 w-9">
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <Separator orientation="vertical" className="h-6 mx-1" /> {/* Add Separator */}
@@ -46,8 +47,8 @@ export default function TopBar({ projectTitle }: TopBarProps) {
 
       {/* Right Side */}
       <div className="flex items-center gap-3">
-         {/* Add other potential icons/buttons here if needed */}
-         {/* <Button variant="outline" size="sm">Share</Button> */}
+         {/* Add Theme Toggle Button */}
+         <ThemeToggle />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
