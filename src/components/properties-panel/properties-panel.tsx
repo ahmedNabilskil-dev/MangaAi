@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Minus, PanelRightOpen, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,16 @@ import type { Node } from 'reactflow';
 import type { DeepPartial } from '@/types/utils';
 import { cn } from '@/lib/utils';
 import nodeFormConfig from '@/config/node-form-config'; // Import the new config
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
+import { Label } from '@/components/ui/label'; // Ensure Label is imported
 
 interface PropertiesPanelProps {
     isOpen: boolean;
@@ -61,6 +71,7 @@ export default function PropertiesPanel({ isOpen, node, onClose }: PropertiesPan
     const queryClient = useQueryClient();
     const refreshFlowData = useVisualEditorStore((state) => state.refreshFlowData);
     const [isMinimized, setIsMinimized] = useState(false);
+    const formRef = useRef<HTMLFormElement>(null); // Ref for the form
 
     const nodeData = node?.data;
     const nodeId = node?.data?.properties?.id;
@@ -84,7 +95,7 @@ export default function PropertiesPanel({ isOpen, node, onClose }: PropertiesPan
                 description: `${variables.nodeType.charAt(0).toUpperCase() + variables.nodeType.slice(1)} properties saved successfully.`,
             });
             queryClient.invalidateQueries({ queryKey: ['projectFlowData'] }); // Invalidate cache if using React Query elsewhere
-            refreshFlowData();
+            refreshFlowData(); // Refresh the visual editor data
             // Keep panel open after save
             // onClose();
         },
@@ -104,10 +115,20 @@ export default function PropertiesPanel({ isOpen, node, onClose }: PropertiesPan
             return;
         }
         const updateData = { ...formData };
-        delete updateData.id; // Remove id if present
+        // Remove fields that shouldn't be directly updated if necessary
+        // delete updateData.id;
 
-        mutation.mutate({ nodeType, id: nodeId, data: updateData });
+        mutation.mutate({
+            nodeType: nodeType,
+            id: nodeId,
+            data: updateData, // Pass the processed data
+        });
     };
+
+    // Trigger form validation and submission from the external button
+    // const triggerSubmit = () => {
+    //     formRef.current?.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+    // };
 
     if (!isOpen) {
         return null; // Don't render anything if not open
@@ -120,14 +141,15 @@ export default function PropertiesPanel({ isOpen, node, onClose }: PropertiesPan
             initial={false}
             animate={isMinimized ? "closed" : "open"}
             className={cn(
-                "absolute top-4 right-4 z-10 bg-card border border-border rounded-lg shadow-xl overflow-hidden flex flex-col backdrop-blur-sm bg-opacity-95",
-                isMinimized ? "max-h-[52px]" : "max-h-[calc(100vh-2rem)]" // Limit height when open
+                // Added mt-16 to push it below a potential 4rem (h-16) top bar
+                 "absolute top-4 right-4 mt-14 z-10 bg-card border border-border rounded-lg shadow-xl overflow-hidden flex flex-col backdrop-blur-sm bg-opacity-95",
+                 isMinimized ? "max-h-[52px]" : "max-h-[calc(100vh-2rem-3.5rem)]" // Adjust max height considering top bar (h-14) and margins
             )}
         >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-background/80 shrink-0">
                 <div className="flex items-center gap-2">
-                     {nodeType && React.createElement(nodeFormConfig[nodeType]?.icon || PanelRightOpen, { className: "h-4 w-4 text-muted-foreground"})}
+                     {nodeType && nodeFormConfig[nodeType]?.icon && React.createElement(nodeFormConfig[nodeType].icon, { className: "h-4 w-4 text-muted-foreground"})}
                     <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
                 </div>
                 <div className="flex items-center gap-1">
@@ -166,11 +188,14 @@ export default function PropertiesPanel({ isOpen, node, onClose }: PropertiesPan
                         <ScrollArea className="flex-grow px-4 py-3">
                             {nodeData && nodeType && nodeData.properties ? (
                                 <PropertyForm
-                                    key={nodeId} // Re-render form when node changes
+                                    key={nodeId || 'no-node'} // Re-render form when node changes
                                     nodeType={nodeType}
                                     initialValues={nodeData.properties}
                                     onSubmit={handleFormSubmit}
                                     isLoading={mutation.isPending}
+                                    // Pass the ref to potentially trigger submit/validation externally
+                                    // Requires PropertyForm to use React.forwardRef
+                                    // ref={formRef} // Uncomment and implement forwardRef in PropertyForm if needed
                                 />
                             ) : (
                                 <div className="flex items-center justify-center h-full text-sm text-muted-foreground p-4">

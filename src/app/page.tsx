@@ -2,11 +2,13 @@
 'use client';
 
 import React from 'react';
-// Removed ReactFlowProvider import as it's handled in VisualEditor
 import VisualEditor from '@/components/visual-editor/visual-editor';
 import Chatbox from '@/components/chatbox/chatbox';
 import PropertiesPanel from '@/components/properties-panel/properties-panel';
 import { useVisualEditorStore } from '@/store/visual-editor-store'; // Import the store
+import TopBar from '@/components/layout/top-bar'; // Import the new TopBar
+import { DEFAULT_PROJECT_ID } from '@/config/constants'; // Import default project ID (for fetching title, though hardcoded for now)
+
 
 export default function Home() {
   // Get state and actions from the store
@@ -20,32 +22,34 @@ export default function Home() {
     setSelectedNode(null); // Clear selection in the store
   };
 
-  // No default node selection logic needed here anymore
+  // Placeholder for project title - replace with actual data fetching if needed
+  const projectTitle = "Adventures in CodeLand"; // Sample title
 
   return (
-    // No need to wrap VisualEditor in ReactFlowProvider here, it's handled internally
-    <div className="relative h-screen w-screen flex flex-col overflow-hidden">
-      {/* Visual Editor */}
-      <div className="flex-grow relative">
-        {/* VisualEditor now gets selection state from the store */}
-        <VisualEditor />
-      </div>
+    <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
+      {/* Top Bar */}
+      <TopBar projectTitle={projectTitle} />
 
-      {/* Chatbox - adjusted positioning */}
-      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10 w-full max-w-xl px-4"> {/* Adjusted max-width and positioning if needed */}
-        {/* Chatbox also gets selection state from the store */}
-        <Chatbox />
-      </div>
+      {/* Main Content Area */}
+      <div className="flex-grow relative overflow-hidden"> {/* Ensure this container handles overflow */}
+        {/* Visual Editor takes remaining space */}
+        <div className="h-full w-full">
+          <VisualEditor />
+        </div>
 
-      {/* Properties Panel */}
-      <PropertiesPanel
-        isOpen={isPanelOpen}
-        // Pass the selected node *object* directly from the store
-        node={selectedNode}
-        onClose={handlePanelClose}
-      />
+        {/* Chatbox - adjusted positioning */}
+        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10 w-full max-w-xl px-4">
+          <Chatbox />
+        </div>
+
+        {/* Properties Panel - Positioned relative to the main content area */}
+        {/* Its `top-4 right-4` positioning is relative to this container */}
+        <PropertiesPanel
+          isOpen={isPanelOpen}
+          node={selectedNode}
+          onClose={handlePanelClose}
+        />
+      </div>
     </div>
   );
 }
-
-    
