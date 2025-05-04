@@ -20,7 +20,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning> {/* suppressHydrationWarning is recommended by next-themes */}
+    <html lang="en" suppressHydrationWarning>{/* suppressHydrationWarning is recommended by next-themes */}
       <body className={`${inter.className} antialiased`}>
         <ThemeProvider
           attribute="class"

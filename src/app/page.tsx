@@ -16,7 +16,7 @@ export default function Home() {
   const setSelectedNode = useVisualEditorStore((state) => state.setSelectedNode);
 
   // Panel state is derived directly from whether a node is selected in the store
-  const isPanelOpen = !!selectedNode;
+  const isPanelOpen = !!selectedNode; // This is the correct variable
 
   const handlePanelClose = () => {
     setSelectedNode(null); // Clear selection in the store
@@ -53,8 +53,8 @@ export default function Home() {
 
         {/* Properties Panel - Wrapped in Draggable */}
         {/* Initial position set via style, draggable will manage from there */}
-        {/* Render only when isOpen */}
-        {isOpen && (
+        {/* Render only when isPanelOpen is true */}
+        {isPanelOpen && ( // Corrected: Use isPanelOpen instead of isOpen
             <Draggable nodeRef={propertiesPanelNodeRef} handle=".properties-panel-drag-handle">
                 <div
                     ref={propertiesPanelNodeRef}
@@ -62,7 +62,7 @@ export default function Home() {
                     style={{ cursor: 'move' }}
                  >
                     <PropertiesPanel
-                        isOpen={isPanelOpen} // Pass isOpen to conditionally render internally if needed
+                        isOpen={isPanelOpen} // Pass isPanelOpen to conditionally render internally if needed
                         node={selectedNode}
                         onClose={handlePanelClose}
                     />
@@ -73,3 +73,4 @@ export default function Home() {
     </div>
   );
 }
+
