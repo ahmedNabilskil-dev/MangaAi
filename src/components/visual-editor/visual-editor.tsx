@@ -19,17 +19,15 @@ import ReactFlow, {
   MarkerType,
   useReactFlow,
   ReactFlowProvider,
+  useStoreApi, // Import useStoreApi
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { type NodeData, NodeType } from '@/types/nodes';
-// Removed useQuery import
 import { useVisualEditorStore } from '@/store/visual-editor-store';
-// Removed in-memory service import
 import { layoutElements } from '@/lib/layout-utils';
 import CustomNode from './custom-node'; // Import the new custom node
 import type { MangaProject, Character, Chapter, Scene, Panel, PanelDialogue } from '@/types/entities'; // Import entity types
 import { MangaStatus } from '@/types/enums'; // Import enum
-
 
 // Use the new CustomNode for all types
 const nodeTypes: NodeTypes = {
@@ -131,7 +129,7 @@ function generateSampleProjectData(): { nodes: Node<NodeData>[], edges: Edge[] }
     const samplePanel1: Panel = {
         id: panel1Id,
         order: 0,
-        panelContext: { action: 'Alex stands nervously before the Compiler gate', lighting: 'Bright, sterile' },
+        panelContext: { action: 'Alex stands nervously before the Compiler gate', lighting: 'Bright, sterile', effects: [], dramaticPurpose: 'Introduce main character', narrativePosition: 'Beginning' },
         sceneId: scene1Id,
         characterIds: [char1Id],
         isAiGenerated: false,
@@ -167,7 +165,7 @@ function generateSampleProjectData(): { nodes: Node<NodeData>[], edges: Edge[] }
      const samplePanel2: Panel = {
          id: panel2Id,
          order: 0,
-         panelContext: { action: 'Bugsy appears, laughing', lighting: 'Dim, glitchy' },
+         panelContext: { action: 'Bugsy appears, laughing', lighting: 'Dim, glitchy', effects: ['glitch'], dramaticPurpose: 'Introduce antagonist', narrativePosition: 'Middle' },
          sceneId: scene2Id,
          characterIds: [char1Id, char2Id],
          isAiGenerated: false,
@@ -194,7 +192,7 @@ function generateSampleProjectData(): { nodes: Node<NodeData>[], edges: Edge[] }
     nodes.push({
         id: sampleProject.id,
         type: 'project',
-        position: { x: 0, y: 0 },
+        position: { x: 0, y: 0 }, // Initial position, layout will overwrite
         data: {
             label: sampleProject.title,
             type: 'project',
@@ -202,16 +200,17 @@ function generateSampleProjectData(): { nodes: Node<NodeData>[], edges: Edge[] }
         }
     });
 
-    // Character Nodes & Edges to Project
+    // Character Nodes (no edges needed for layout)
     [sampleChar1, sampleChar2].forEach(character => {
          nodes.push({
              id: character.id,
              type: 'character',
-             position: { x: 0, y: 0 },
+             position: { x: 0, y: 0 }, // Initial position
              data: { label: character.name, type: 'character', properties: character }
          });
+         // Edge to project (for display only, not layout)
          edges.push({
-             id: `e-${projectId}-char-${character.id}`, source: projectId, target: character.id, type: 'step', style: { stroke: 'hsl(var(--muted-foreground) / 0.5)', strokeDasharray: '4 4', strokeWidth: 1 }
+             id: `e-${projectId}-char-${character.id}`, source: projectId, target: character.id, type: 'step', style: { stroke: 'hsl(var(--muted-foreground) / 0.3)', strokeDasharray: '4 4', strokeWidth: 1 }, data: { noLayout: true } // Mark edge to ignore in layout
          });
      });
 
@@ -251,9 +250,9 @@ function generateSampleProjectData(): { nodes: Node<NodeData>[], edges: Edge[] }
     });
     edges.push({ id: `e-${panel1Id}-${dialogue1Id}`, source: panel1Id, target: dialogue1Id });
 
-     // Edge from Character 1 to Panel 1
+     // Edge from Character 1 to Panel 1 (for display only)
      edges.push({
-         id: `e-char-${char1Id}-panel-${panel1Id}`, source: char1Id, target: panel1Id, type: 'step', style: { stroke: 'hsl(var(--muted-foreground) / 0.5)', strokeDasharray: '4 4', strokeWidth: 1 }, animated: false, markerEnd: undefined,
+         id: `e-char-${char1Id}-panel-${panel1Id}`, source: char1Id, target: panel1Id, type: 'step', style: { stroke: 'hsl(var(--muted-foreground) / 0.3)', strokeDasharray: '4 4', strokeWidth: 1 }, animated: false, markerEnd: undefined, data: { noLayout: true }
      });
 
 
@@ -284,17 +283,18 @@ function generateSampleProjectData(): { nodes: Node<NodeData>[], edges: Edge[] }
     });
     edges.push({ id: `e-${panel2Id}-${dialogue2Id}`, source: panel2Id, target: dialogue2Id });
 
-     // Edges from Characters to Panel 2
+     // Edges from Characters to Panel 2 (for display only)
      edges.push({
-        id: `e-char-${char1Id}-panel-${panel2Id}`, source: char1Id, target: panel2Id, type: 'step', style: { stroke: 'hsl(var(--muted-foreground) / 0.5)', strokeDasharray: '4 4', strokeWidth: 1 }, animated: false, markerEnd: undefined,
+        id: `e-char-${char1Id}-panel-${panel2Id}`, source: char1Id, target: panel2Id, type: 'step', style: { stroke: 'hsl(var(--muted-foreground) / 0.3)', strokeDasharray: '4 4', strokeWidth: 1 }, animated: false, markerEnd: undefined, data: { noLayout: true }
      });
      edges.push({
-        id: `e-char-${char2Id}-panel-${panel2Id}`, source: char2Id, target: panel2Id, type: 'step', style: { stroke: 'hsl(var(--muted-foreground) / 0.5)', strokeDasharray: '4 4', strokeWidth: 1 }, animated: false, markerEnd: undefined,
+        id: `e-char-${char2Id}-panel-${panel2Id}`, source: char2Id, target: panel2Id, type: 'step', style: { stroke: 'hsl(var(--muted-foreground) / 0.3)', strokeDasharray: '4 4', strokeWidth: 1 }, animated: false, markerEnd: undefined, data: { noLayout: true }
      });
 
 
     console.log("Sample data generated:", { nodes: nodes.length, edges: edges.length });
-    return layoutElements(nodes, edges); // Apply layout
+    // Return raw data, layout will be applied in the component
+    return { nodes, edges };
 }
 
 
@@ -307,56 +307,67 @@ function VisualEditorInternal() {
     setNodes,
     setEdges,
     setSelectedNode,
-    refreshCounter, // Still use counter for potential future refresh logic
+    refreshCounter, // Use counter to trigger layout refresh
     setViewportInitialized,
     viewportInitialized
   } = useVisualEditorStore();
 
   const { fitView } = useReactFlow();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  // Use state for local sample data
-  const [localNodes, setLocalNodes] = useState<Node<NodeData>[]>([]);
-  const [localEdges, setLocalEdges] = useState<Edge[]>([]);
+  const isInitialMount = useRef(true); // Track initial mount
 
   // Generate sample data on mount and update store
   useEffect(() => {
-    console.log("Generating and setting sample data on mount...");
-    const { nodes: sampleNodes, edges: sampleEdges } = generateSampleProjectData();
-    setLocalNodes(sampleNodes); // Use local state first
-    setLocalEdges(sampleEdges);
-    setNodes(sampleNodes); // Update Zustand store as well
-    setEdges(sampleEdges);
-
-    // Fit view after data is likely rendered
-    if (!viewportInitialized && sampleNodes.length > 0) {
-        const timer = setTimeout(() => {
-            console.log("Fitting view for sample data...");
-            fitView({ padding: 0.2, duration: 600 });
-            setViewportInitialized(true);
-        }, 150); // Delay to allow initial render
-        return () => clearTimeout(timer);
+    // Only generate sample data if nodes are currently empty (prevents overwriting)
+    if (isInitialMount.current && nodes.length === 0) {
+        console.log("Generating and setting sample data on mount...");
+        const { nodes: sampleNodes, edges: sampleEdges } = generateSampleProjectData();
+        // Apply layout immediately
+        const { nodes: layoutedNodes, edges: layoutedEdges } = layoutElements(sampleNodes, sampleEdges);
+        setNodes(layoutedNodes);
+        setEdges(layoutedEdges);
+        isInitialMount.current = false; // Mark initial mount as done
     }
-  // Run only once on mount: empty dependency array
-  // Adding other dependencies like setNodes/setEdges causes re-runs
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fitView, setViewportInitialized, viewportInitialized]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only once on mount
+
+   // Apply layout whenever nodes or edges change significantly (triggered by refreshCounter)
+    useEffect(() => {
+        // Skip initial mount layout if sample data generation handled it
+        if (isInitialMount.current) return;
+
+        if (nodes.length > 0) {
+            console.log("Applying layout due to data change (refreshCounter)...");
+            const { nodes: layoutedNodes, edges: layoutedEdges } = layoutElements(nodes, edges);
+            setNodes(layoutedNodes);
+            setEdges(layoutedEdges);
+
+             // Optionally fit view after layout, maybe with a delay
+            // if (!viewportInitialized) {
+            //     const timer = setTimeout(() => {
+            //         console.log("Fitting view after layout update...");
+            //         fitView({ padding: 0.2, duration: 600 });
+            //         setViewportInitialized(true);
+            //     }, 150);
+            //     return () => clearTimeout(timer);
+            // }
+        }
+    // Only re-run layout when refreshCounter changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [refreshCounter]);
 
 
   // --- Handlers remain mostly the same, using Zustand store ---
   const onNodesChange: OnNodesChange = useCallback(
     (changes) => {
-        const updatedNodes = applyNodeChanges(changes, nodes);
-        setNodes(updatedNodes); // Update store
-        setLocalNodes(updatedNodes); // Update local state if needed for direct render
+        setNodes(applyNodeChanges(changes, nodes));
     },
     [setNodes, nodes]
   );
 
   const onEdgesChange: OnEdgesChange = useCallback(
     (changes) => {
-        const updatedEdges = applyEdgeChanges(changes, edges);
-        setEdges(updatedEdges); // Update store
-        setLocalEdges(updatedEdges); // Update local state
+       setEdges(applyEdgeChanges(changes, edges));
     },
     [setEdges, edges]
   );
@@ -364,9 +375,8 @@ function VisualEditorInternal() {
   const onConnect: OnConnect = useCallback(
     (connection) => {
         const newEdge = { ...connection, type: 'smoothstep' }; // Ensure edge type
-        const updatedEdges = addEdge(newEdge, edges);
-        setEdges(updatedEdges);
-        setLocalEdges(updatedEdges);
+        // Don't apply layout on simple connect, wait for refresh trigger if needed
+        setEdges(addEdge(newEdge, edges));
     },
     [setEdges, edges]
   );
@@ -381,11 +391,21 @@ function VisualEditorInternal() {
       setSelectedNode(null);
   }, [setSelectedNode]);
 
+  // Fit view on initial load after nodes are set
+  useEffect(() => {
+      if (!viewportInitialized && nodes.length > 0 && reactFlowWrapper.current) {
+          const timer = setTimeout(() => {
+              console.log("Fitting view on initial load...");
+              fitView({ padding: 0.2, duration: 600 });
+              setViewportInitialized(true);
+          }, 100); // Short delay for initial render
+          return () => clearTimeout(timer);
+      }
+  }, [nodes, viewportInitialized, fitView, setViewportInitialized]);
+
 
   return (
     <div ref={reactFlowWrapper} style={{ height: '100%', width: '100%', position: 'relative' }}>
-        {/* Removed loading/error states related to data fetching */}
-        {/* Removed refreshing indicator */}
       <ReactFlow
         nodes={nodes} // Use nodes from Zustand store for rendering
         edges={edges} // Use edges from Zustand store
@@ -396,18 +416,22 @@ function VisualEditorInternal() {
         defaultEdgeOptions={defaultEdgeOptions}
         fitView={false} // Fit view is handled by useEffect
         fitViewOptions={{ padding: 0.2 }}
-        className="bg-gradient-to-br from-background to-blue-50" // Example gradient background
+        className="bg-gradient-to-br from-background to-blue-50/30" // Softer gradient
         onNodeClick={handleNodeClick}
         onPaneClick={handlePaneClick}
         selectNodesOnDrag={false}
         // Improve performance slightly
-        nodesDraggable={true}
+        nodesDraggable={true} // Allow dragging for manual adjustments
         nodesConnectable={true}
         elementsSelectable={true}
         zoomOnScroll={true}
         panOnScroll={false}
         zoomOnDoubleClick={false}
         panOnDrag={true}
+        // Ensure nodes aren't positioned off-screen initially by layout
+        minZoom={0.1}
+        maxZoom={2}
+        translateExtent={[[-Infinity, -Infinity], [Infinity, Infinity]]} // Allow panning anywhere initially
       >
         <Controls showInteractive={false} position="bottom-right" />
         <MiniMap nodeStrokeWidth={3} zoomable pannable position="bottom-left" nodeColor={(node) => {
