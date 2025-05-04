@@ -21,7 +21,10 @@ import {
     createCharacter as createCharacterService,
     assignCharacterToPanel as assignCharacterToPanelService,
     getCharacter, // Needed to potentially resolve speaker names to IDs
-    getAllCharacters // Needed to find characters by name
+    getAllCharacters, // Needed to find characters by name
+    getChapter, // To get projectId from chapter
+    getScene, // To get chapterId from scene
+    getPanel // To get sceneId from panel
 } from '@/services/firebase'; // Import from firebase service
 import type { Scene, Panel, PanelDialogue, Character } from '@/types/entities'; // Import types for context
 
@@ -46,6 +49,33 @@ const CreateChapterFromPromptOutputSchema = z.object({
 });
 
 export type CreateChapterFromPromptOutput = z.infer<typeof CreateChapterFromPromptOutputSchema>;
+
+// Helper to get projectId, potentially needed for character lookup
+async function getProjectIdForTool(context: { chapterId?: string, sceneId?: string, panelId?: string }): Promise<string | undefined> {
+    if (context.chapterId) {
+        const chapter = await getChapter(context.chapterId);
+        return chapter?.mangaProjectId;
+    }
+    if (context.sceneId) {
+        const scene = await getScene(context.sceneId);
+        if (scene?.chapterId) {
+            const chapter = await getChapter(scene.chapterId);
+            return chapter?.mangaProjectId;
+        }
+    }
+    if (context.panelId) {
+        const panel = await getPanel(context.panelId);
+        if (panel?.sceneId) {
+            const scene = await getScene(panel.sceneId);
+            if (scene?.chapterId) {
+                const chapter = await getChapter(scene.chapterId);
+                return chapter?.mangaProjectId;
+            }
+        }
+    }
+    return process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID; // Fallback to env var if needed
+}
+
 
 // --- Exposed Function ---
 
@@ -143,19 +173,15 @@ const createPanelTool = ai.defineTool({
 }, async (input) => {
     // Resolve character names to IDs if possible *before* creating the panel
     let characterIds: string[] = [];
-    if (input.characterNames && input.characterNames.length > 0) {
-        // Need project context to find characters by name. Assume we can get it.
-        // This might require fetching the scene->chapter->project chain, or having projectId passed down.
-        // Let's assume projectId is available somehow (e.g., from flow context - needs adjustment)
-        const projectId = 'YOUR_PROJECT_ID_HERE'; // Placeholder: THIS NEEDS TO BE DYNAMIC
-        if (projectId && projectId !== 'YOUR_PROJECT_ID_HERE') {
-            const charactersInProject = await getAllCharacters(projectId);
-            characterIds = input.characterNames
-                .map(name => charactersInProject.find(c => c.name.toLowerCase() === name.toLowerCase())?.id)
-                .filter((id): id is string => !!id); // Filter out undefined/null IDs
-        } else {
-            console.warn("Cannot resolve character names to IDs without project context in createPanelTool.");
-        }
+    const projectId = await getProjectIdForTool({ sceneId: input.sceneId });
+
+    if (input.characterNames && input.characterNames.length > 0 && projectId) {
+        const charactersInProject = await getAllCharacters(projectId);
+        characterIds = input.characterNames
+            .map(name => charactersInProject.find(c => c.name.toLowerCase() === name.toLowerCase())?.id)
+            .filter((id): id is string => !!id); // Filter out undefined/null IDs
+    } else if (input.characterNames && input.characterNames.length > 0 && !projectId) {
+        console.warn("Cannot resolve character names to IDs without project context in createPanelTool.");
     }
 
     const panel = await createPanelService({
@@ -187,20 +213,17 @@ const createPanelDialogueTool = ai.defineTool({
     outputSchema: z.string().describe('The Document ID of the created dialogue entry.'),
 }, async (input) => {
     let speakerId: string | undefined | null = null;
-    if (input.speakerName) {
-         // Need project context to find characters by name
-         // Placeholder: THIS NEEDS TO BE DYNAMIC
-        const projectId = 'YOUR_PROJECT_ID_HERE';
-        if (projectId && projectId !== 'YOUR_PROJECT_ID_HERE') {
-             const characters = await getAllCharacters(projectId);
-             const found = characters.find(c => c.name.toLowerCase() === input.speakerName?.toLowerCase());
-             speakerId = found?.id;
-             if (!speakerId) {
-                 console.warn(`Could not find character ID for speaker: ${input.speakerName}`);
-             }
-        } else {
-             console.warn("Cannot resolve speaker name to ID without project context in createPanelDialogueTool.");
-        }
+    const projectId = await getProjectIdForTool({ panelId: input.panelId });
+
+    if (input.speakerName && projectId) {
+         const characters = await getAllCharacters(projectId);
+         const found = characters.find(c => c.name.toLowerCase() === input.speakerName?.toLowerCase());
+         speakerId = found?.id;
+         if (!speakerId) {
+             console.warn(`Could not find character ID for speaker: ${input.speakerName} in project ${projectId}`);
+         }
+    } else if (input.speakerName && !projectId) {
+         console.warn("Cannot resolve speaker name to ID without project context in createPanelDialogueTool.");
     }
 
     const dialogue = await createPanelDialogueService({

@@ -92,17 +92,16 @@ function VisualEditorInternal() {
   // Query Key depends on the refresh counter
   const queryKey = ['projectFlowData', refreshCounter];
 
-  // TODO: Get the current project ID dynamically - using placeholder
-  const currentProjectId = 'YOUR_PROJECT_ID_HERE'; // <<<<< IMPORTANT: Replace with actual logic to get project ID
+  // Get the current project ID from environment variables
+  const currentProjectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
   const { data: projectData, isLoading, error, isFetching } = useQuery({
     queryKey: queryKey,
     queryFn: async () => {
-      if (!currentProjectId || currentProjectId === 'YOUR_PROJECT_ID_HERE') {
-          console.warn("No valid project ID provided for fetching.");
+      if (!currentProjectId) {
+          console.warn("Firebase Project ID is not configured in environment variables (NEXT_PUBLIC_FIREBASE_PROJECT_ID).");
           // Return empty state or throw error depending on desired behavior
-          return { nodes: [], edges: [] };
-          // Or throw new Error("Project ID is missing.");
+          throw new Error("Firebase Project ID is not configured. Please set NEXT_PUBLIC_FIREBASE_PROJECT_ID in your environment variables.");
       }
       console.log("Fetching flow data for project:", currentProjectId);
       // Use Firebase service to get project data (which includes nested fetching)
@@ -115,7 +114,7 @@ function VisualEditorInternal() {
       console.log("Converted flow elements:", { fetchedNodes, fetchedEdges });
       return layoutElements(fetchedNodes, fetchedEdges); // Apply layout
     },
-    enabled: !!currentProjectId && currentProjectId !== 'YOUR_PROJECT_ID_HERE', // Only run query if projectId is valid
+    enabled: !!currentProjectId, // Only run query if projectId is valid
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
@@ -164,8 +163,8 @@ function VisualEditorInternal() {
   }, [setSelectedNode]);
 
    // Display loading or error states
-   if (!currentProjectId || currentProjectId === 'YOUR_PROJECT_ID_HERE') {
-       return <div className="flex items-center justify-center h-full w-full bg-background text-muted-foreground p-4">Please configure your Firebase Project ID in `visual-editor.tsx` (around line 80).</div>;
+   if (!currentProjectId) {
+       return <div className="flex items-center justify-center h-full w-full bg-background text-destructive-foreground p-4 text-center">Error: NEXT_PUBLIC_FIREBASE_PROJECT_ID environment variable is not set. Please configure it in your environment.</div>;
    }
 
    if (isLoading && refreshCounter === 0) {
@@ -240,9 +239,35 @@ function convertFirebaseProjectToFlowElements(project: MangaProject): { nodes: N
         data: {
             label: project.title || 'Project',
             type: 'project',
-            properties: project, // Pass the full project data (dates might be Timestamps)
+            // Pass the full project data, excluding potentially large/recursive nested arrays initially
+            properties: { ...project, chapters: undefined, characters: undefined },
         }
     });
+
+    // 7. Characters linked to Project (Character Nodes) - Add these near the project
+     project.characters?.forEach((character) => {
+         if (!character || !character.id) return;
+         const charId = character.id;
+         nodes.push({
+             id: charId,
+             type: 'character',
+             position: { x: 0, y: 0 }, // Layout will position
+             data: {
+                 label: character.name || 'Character',
+                 type: 'character',
+                 properties: character, // Pass full character data
+             }
+         });
+         // Link character to project
+         edges.push({
+             id: `e-${project.id}-char-${charId}`,
+             source: project.id,
+             target: charId,
+             type: 'step',
+             style: { stroke: 'hsl(var(--muted-foreground) / 0.5)', strokeDasharray: '4 4', strokeWidth: 1 }
+         });
+     });
+
 
     // 2. Chapters and connect to Project
     project.chapters?.forEach((chapter) => {
@@ -255,7 +280,7 @@ function convertFirebaseProjectToFlowElements(project: MangaProject): { nodes: N
             data: {
                 label: `Ch. ${chapter.chapterNumber}: ${chapter.title}` || `Chapter ${chapter.chapterNumber}`,
                 type: 'chapter',
-                properties: chapter,
+                properties: { ...chapter, scenes: undefined }, // Pass chapter data without scenes
             }
         });
         edges.push({
@@ -275,7 +300,7 @@ function convertFirebaseProjectToFlowElements(project: MangaProject): { nodes: N
                  data: {
                      label: scene.title || `Scene ${scene.order + 1}`,
                      type: 'scene',
-                     properties: scene,
+                     properties: { ...scene, panels: undefined }, // Pass scene data without panels
                  }
              });
              edges.push({
@@ -295,7 +320,7 @@ function convertFirebaseProjectToFlowElements(project: MangaProject): { nodes: N
                      data: {
                          label: panel.panelContext?.action || `Panel ${panel.order + 1}`,
                          type: 'panel',
-                         properties: panel,
+                         properties: { ...panel, dialogues: undefined, characters: undefined }, // Pass panel data without dialogues/chars
                      }
                  });
                  edges.push({
@@ -315,7 +340,7 @@ function convertFirebaseProjectToFlowElements(project: MangaProject): { nodes: N
                          data: {
                              label: dialogue.content ? `"${dialogue.content.substring(0, 20)}..."` : `Dialogue ${dialogue.order + 1}`,
                              type: 'dialogue',
-                             properties: dialogue,
+                             properties: { ...dialogue, speaker: undefined }, // Pass dialogue data without speaker object
                          }
                      });
                      edges.push({
@@ -326,51 +351,23 @@ function convertFirebaseProjectToFlowElements(project: MangaProject): { nodes: N
                  });
 
                  // 6. Characters linked to Panels (Edges from Character to Panel)
-                 // Requires character nodes to be added first (see step 7)
                  panel.characterIds?.forEach(charId => {
                      // Check if character node exists before adding edge
-                     if (project.characters?.some(c => c.id === charId)) {
+                     if (nodes.some(n => n.id === charId && n.type === 'character')) {
                          edges.push({
                              id: `e-char-${charId}-panel-${panelId}`,
                              source: charId, // Character node ID
                              target: panelId,
                              type: 'step', // Optional styling
-                             style: { stroke: 'hsl(var(--secondary))', strokeDasharray: '3 3', strokeWidth: 1 },
+                             style: { stroke: 'hsl(var(--muted-foreground) / 0.5)', strokeDasharray: '4 4', strokeWidth: 1 },
                              animated: false,
+                             markerEnd: undefined, // No arrow for character links
                          });
                      }
                  });
              });
         });
     });
-
-     // 7. Characters linked to Project (Character Nodes)
-     project.characters?.forEach((character) => {
-         if (!character || !character.id) return;
-         const charId = character.id;
-         // Ensure character node is only added once
-         if (!nodes.some(n => n.id === charId)) {
-             nodes.push({
-                 id: charId,
-                 type: 'character',
-                 position: { x: 0, y: 0 }, // Layout will position
-                 data: {
-                     label: character.name || 'Character',
-                     type: 'character',
-                     properties: character,
-                 }
-             });
-             // Link character to project
-             edges.push({
-                 id: `e-${project.id}-char-${charId}`,
-                 source: project.id,
-                 target: charId,
-                 type: 'step',
-                 style: { stroke: 'hsl(var(--secondary))', strokeDasharray: '3 3', strokeWidth: 1 }
-             });
-         }
-     });
-
 
     return { nodes, edges };
 }

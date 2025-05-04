@@ -47,8 +47,7 @@ export default function Chatbox() {
     const refreshFlowData = useVisualEditorStore((state) => state.refreshFlowData);
 
     // ---- Firebase Project Context ----
-    // TODO: Replace with actual project ID from state/props/store/auth
-    const currentProjectId = 'YOUR_PROJECT_ID_HERE'; // <<<<< IMPORTANT: Replace with actual project ID
+    const currentProjectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
     const currentProjectTitle = 'My Awesome Manga'; // Replace if dynamic title is needed
     // ---- End Context ----
 
@@ -69,10 +68,10 @@ export default function Chatbox() {
     }, [messages]);
 
     const processUserInput = async (userInput: string) => {
-        if (!currentProjectId || currentProjectId === 'YOUR_PROJECT_ID_HERE') {
+        if (!currentProjectId) {
              toast({
                 title: "Project ID Missing",
-                description: "Cannot process command. Please configure the project ID.",
+                description: "Firebase Project ID is not configured. Please set NEXT_PUBLIC_FIREBASE_PROJECT_ID in your environment variables.",
                 variant: "destructive",
             });
             setInput(userInput); // Put input back if failed pre-check
@@ -279,7 +278,6 @@ export default function Chatbox() {
                 </div>
             )}
 
-            )}
 
             {/* Input Area */}
             <form onSubmit={handleSend} className="p-3 border-t border-border bg-background/80 flex items-center gap-2">
@@ -288,18 +286,18 @@ export default function Chatbox() {
                     onChange={(e) => setInput(e.target.value)}
                     placeholder={placeholderText}
                     className="flex-grow bg-input focus-visible:ring-primary text-sm"
-                    disabled={isLoading || (!currentProjectId || currentProjectId === 'YOUR_PROJECT_ID_HERE')} // Disable if no project ID
+                    disabled={isLoading || !currentProjectId} // Disable if no project ID
                     aria-label="Chat input"
                 />
-                <Button type="submit" size="icon" disabled={isLoading || !input.trim() || (!currentProjectId || currentProjectId === 'YOUR_PROJECT_ID_HERE')} className="bg-primary hover:bg-primary/90 shrink-0">
+                <Button type="submit" size="icon" disabled={isLoading || !input.trim() || !currentProjectId} className="bg-primary hover:bg-primary/90 shrink-0">
                     {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizonal className="h-4 w-4" />}
                     <span className="sr-only">Send</span>
                 </Button>
             </form>
             {/* Warning if Project ID is missing */}
-             {(!currentProjectId || currentProjectId === 'YOUR_PROJECT_ID_HERE') && (
+             {!currentProjectId && (
                 <div className="p-2 bg-destructive/10 text-destructive text-xs text-center border-t border-destructive/20">
-                    Warning: Project ID not configured. Please set it in the Chatbox component.
+                    Warning: Firebase Project ID not configured. Please set NEXT_PUBLIC_FIREBASE_PROJECT_ID in your environment variables.
                 </div>
             )}
         </motion.div>

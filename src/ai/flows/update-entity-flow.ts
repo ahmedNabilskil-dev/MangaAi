@@ -108,17 +108,20 @@ export async function updateEntity(input: UpdateEntityInput): Promise<UpdateEnti
     }
 
      // Find projectId if not provided and needed for context (e.g., character lookups)
-     let projectId = input.projectId;
+     let projectId = input.projectId || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID; // Use env var as fallback
      if (!projectId && input.entityType !== 'project' && currentData) {
         // Try to infer projectId from the fetched data's hierarchy
         if (currentData.mangaProjectId) projectId = currentData.mangaProjectId;
-        else if (currentData.chapterId) {
-            const scene = await getScene(currentData.panelId);
+        else if (currentData.chapterId) { // Scene
+            const chapter = await getChapter(currentData.chapterId);
+            if (chapter?.mangaProjectId) projectId = chapter.mangaProjectId;
+        } else if (currentData.sceneId) { // Panel
+            const scene = await getScene(currentData.sceneId);
             if(scene?.chapterId) {
                 const chapter = await getChapter(scene.chapterId);
                 if (chapter?.mangaProjectId) projectId = chapter.mangaProjectId;
             }
-        } else if (currentData.panelId) {
+        } else if (currentData.panelId) { // Dialogue
             const panel = await getPanel(currentData.panelId);
             if(panel?.sceneId) {
                  const scene = await getScene(panel.sceneId);
@@ -244,18 +247,19 @@ const findCharacterByNameTool = ai.defineTool({
     // Return ID or null explicitly
     outputSchema: z.string().nullable().describe("The Document ID of the found character, or null if not found or projectId is missing."),
 }, async ({ characterName, projectId }) => {
-    if (!projectId) {
+    const finalProjectId = projectId || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    if (!finalProjectId) {
          console.warn("findCharacterByNameTool requires projectId for context.");
          return null; // Cannot search without project context
     }
     try {
-        console.log(`Finding character "${characterName}" in project ${projectId}`);
-        const characters = await getAllCharacters(projectId);
+        console.log(`Finding character "${characterName}" in project ${finalProjectId}`);
+        const characters = await getAllCharacters(finalProjectId);
         const found = characters.find(c => c.name.toLowerCase() === characterName.toLowerCase());
         console.log(`Found character: ${found?.id ?? 'null'}`);
         return found?.id ?? null;
     } catch (error) {
-        console.error(`Error finding character "${characterName}" in project ${projectId}:`, error);
+        console.error(`Error finding character "${characterName}" in project ${finalProjectId}:`, error);
         return null;
     }
 });
@@ -322,7 +326,7 @@ const prompt = ai.definePrompt({
         confirmation: z.string().describe("Confirmation message indicating if the update was attempted based on the prompt and which tools were used.")
     }),
   },
-  prompt: `You are an AI assistant helping update elements of a manga project stored in Firebase Firestore. The user wants to modify a specific {{entityType}} with Document ID: {{entityId}}. The project context ID is {{projectId}}.
+  prompt: `You are an AI assistant helping update elements of a manga project stored in Firebase Firestore. The user wants to modify a specific {{entityType}} with Document ID: {{entityId}}. The project context ID is {{#if projectId}}{{projectId}}{{else}}UNKNOWN{{/if}}.
 
 User Prompt:
 "{{prompt}}"
@@ -336,19 +340,20 @@ Based *only* on the user's prompt and the current data:
 1.  Determine the specific changes requested.
 2.  Identify the correct tool(s) to apply these changes (e.g., \`updateScene\`, \`assignCharacterToPanel\`).
 3.  If the prompt involves adding or removing a character from a panel BY NAME:
-    a. FIRST use \`findCharacterByName\` to get their Document ID, providing the \`projectId\` ({{projectId}}) for context.
+    a. FIRST use \`findCharacterByName\` to get their Document ID, providing the \`projectId\` ({{projectId}}) for context. **CRITICAL: If projectId is UNKNOWN or not provided, you CANNOT find the character by name. Inform the user.**
     b. If the character ID is found, use \`assignCharacterToPanel\` or \`removeCharacterFromPanel\` with the panel ID and the found character ID.
-    c. If the character ID is NOT found, inform the user in the confirmation message and DO NOT attempt to assign/remove.
+    c. If the character ID is NOT found (or projectId was missing), inform the user in the confirmation message and DO NOT attempt to assign/remove.
 4.  If the prompt involves updating fields of an entity (e.g., changing title, description, context):
     a. Construct the \`data\` object for the appropriate update tool (e.g., \`updateScene\`, \`updatePanelDialogue\`). Include ONLY the fields to be changed with their NEW values.
     b. For \`updatePanel\`, DO NOT include \`characterIds\` in the \`data\` object; use the assignment/removal tools instead.
     c. Call the appropriate update tool with the entity ID (\`{{entityId}}\`) and the update \`data\`.
-5.  Handle speaker changes in dialogue: If the prompt requests changing the speaker by name, use \`findCharacterByName\` to get the ID, then call \`updatePanelDialogue\` with the new \`speakerId\`. If the name is not found, report it.
+5.  Handle speaker changes in dialogue: If the prompt requests changing the speaker by name, use \`findCharacterByName\` to get the ID (requires \`projectId\`), then call \`updatePanelDialogue\` with the new \`speakerId\`. If the name is not found (or projectId is missing), report it.
 
 **CRITICAL RULES:**
 *   **Targeted Updates:** Only update the fields or relationships explicitly requested or strongly implied by the user's prompt. Do not change unrelated data.
 *   **Correct Tool:** Use the tool corresponding to the \`entityType\` (e.g., use \`updateSceneTool\` for a scene). Use assignment/removal tools for panel character list changes.
 *   **Use IDs:** Provide the correct \`entityId\` (\`{{entityId}}\`) to the tools. Use character IDs found via \`findCharacterByName\` when required by other tools. Provide the \`projectId\` ({{projectId}}) to \`findCharacterByName\`.
+*   **Project ID:** If \`projectId\` is UNKNOWN or missing, any operation requiring it (like \`findCharacterByName\`) will fail. Inform the user.
 *   **Character IDs:** Only use \`assignCharacterToPanel\` or \`removeCharacterFromPanel\` if you have the character's Document ID.
 *   **Confirmation:** After attempting the updates, respond ONLY with a confirmation message summarizing the actions taken (or why they couldn't be taken, e.g., character not found, missing projectId). Do not include full data structures in the response.
 `,
@@ -371,8 +376,9 @@ const updateEntityFlow = ai.defineFlow<
     // Ensure projectId is available if needed for character lookup
     if (!input.projectId && (input.prompt.toLowerCase().includes('character') || input.prompt.toLowerCase().includes('speaker'))) {
          console.warn("Update prompt mentions character/speaker but projectId is missing. Character lookup might fail.");
-         // Consider throwing an error or adding a specific message if projectId is crucial
-         // return { success: false, message: "Project ID context is missing for character-related updates.", updatedEntityId: input.entityId };
+         // Add note to prompt context as well
+         // input.prompt += "\n\n(System Note: Project ID is missing, character lookups by name will fail)";
+         // We pass projectId to the prompt itself, so the LLM knows if it's missing.
     }
 
 
@@ -415,3 +421,4 @@ const updateEntityFlow = ai.defineFlow<
      };
   }
 );
+
