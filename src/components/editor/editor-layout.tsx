@@ -9,6 +9,7 @@ import TopBar from '@/components/layout/top-bar'; // Reuse existing TopBar if su
 import { Separator } from '@/components/ui/separator';
 import { useEditorStore } from '@/store/editor-store'; // Import the new store
 import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton for loading state
+import { TooltipProvider } from "@/components/ui/tooltip"; // Import TooltipProvider
 
 // Dynamically import FabricCanvas with ssr: false
 const FabricCanvas = dynamic(() => import('./canvas/fabric-canvas'), {
@@ -31,27 +32,30 @@ export default function EditorLayout() {
   const projectTitle = "Manga Page Editor (Fabric.js)";
 
   return (
-    <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
-      {/* Top Bar - Potentially reuse or create a specific editor top bar */}
-      <TopBar projectTitle={projectTitle} />
+    <TooltipProvider> {/* Wrap layout in TooltipProvider */}
+      <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
+        {/* Top Bar - Potentially reuse or create a specific editor top bar */}
+        <TopBar projectTitle={projectTitle} />
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Left Sidebar: Element Library */}
-        <LibraryPanel />
+        <div className="flex flex-1 overflow-hidden">
+          {/* Left Sidebar: Element Library */}
+          <LibraryPanel />
 
-        <Separator orientation="vertical" className="h-full" />
+          {/* Separator is handled within LibraryPanel structure now */}
+          {/* <Separator orientation="vertical" className="h-full" /> */}
 
-        {/* Center Area: Canvas */}
-        <main className="flex-1 relative bg-muted/30 overflow-auto">
-          {/* Render the dynamically loaded FabricCanvas */}
-          <FabricCanvas />
-        </main>
+          {/* Center Area: Canvas */}
+          <main className="flex-1 relative bg-muted/30 overflow-auto">
+            {/* Render the dynamically loaded FabricCanvas */}
+            <FabricCanvas />
+          </main>
 
-        <Separator orientation="vertical" className="h-full" />
+          <Separator orientation="vertical" className="h-full" />
 
-        {/* Right Sidebar: Properties Panel */}
-        <PropertiesPanel selectedShape={selectedShape} />
+          {/* Right Sidebar: Properties Panel */}
+          <PropertiesPanel selectedShape={selectedShape} />
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 }
