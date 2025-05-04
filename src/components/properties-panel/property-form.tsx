@@ -51,10 +51,17 @@ export default function PropertyForm({ nodeType, initialValues = {}, onSubmit, i
     // Pre-process initialValues based on field type
     const processedInitialValues = React.useMemo(() => {
         const values = { ...initialValues };
+        let schemaDefaults = {};
         // Attempt to create default object from schema BEFORE merging initial values
-        const schemaDefaults = currentSchema.safeParse({}).success
-          ? currentSchema.parse({}) // Use parsed defaults if safeParse succeeds
-          : {}; // Fallback to empty object if schema is complex and parse({}) fails
+        // Use safeParse to avoid errors with complex schemas that might not allow empty objects
+        const parseResult = currentSchema.safeParse({});
+        if (parseResult.success) {
+          schemaDefaults = parseResult.data; // Use parsed defaults if safeParse succeeds
+        } else {
+            console.warn(`Could not generate defaults for schema ${nodeType}, parsing empty object failed.`);
+            // Handle potential error or fallback - for now, empty object
+            schemaDefaults = {};
+        }
 
         // Merge defaults with initial values provided
         const mergedValues = { ...schemaDefaults, ...initialValues };
@@ -76,7 +83,7 @@ export default function PropertyForm({ nodeType, initialValues = {}, onSubmit, i
              }
         });
         return mergedValues;
-    }, [initialValues, config.fields, currentSchema]);
+    }, [initialValues, config.fields, currentSchema, nodeType]);
 
 
     const form = useForm<CurrentSchemaType>({
@@ -156,77 +163,78 @@ export default function PropertyForm({ nodeType, initialValues = {}, onSubmit, i
                             </div>
                          ) : (
                             <FormControl>
-                                <>
-                                {type === 'text' && (
-                                    <Input placeholder={placeholder} {...field} value={field.value ?? ''} disabled={isLoading} className="h-8" />
-                                )}
-                                {type === 'textarea' && (
-                                    <Textarea placeholder={placeholder} {...field} value={field.value ?? ''} rows={3} disabled={isLoading}/>
-                                )}
-                                {type === 'number' && (
-                                    <Input
-                                        type="number"
-                                        placeholder={placeholder}
-                                        step={numberConfig?.step ?? 'any'}
-                                        min={numberConfig?.min}
-                                        max={numberConfig?.max}
-                                        {...field}
-                                        value={field.value ?? ''}
-                                        onChange={(e) => {
-                                             const val = e.target.value;
-                                             // Allow empty input, otherwise parse as float
-                                             field.onChange(val === '' ? undefined : parseFloat(val));
-                                         }}
-                                        disabled={isLoading}
-                                        className="h-8"
-                                    />
-                                )}
-                                {type === 'select' && options && (
-                                    <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value ?? ''} disabled={isLoading}>
-                                        <SelectTrigger className="h-8">
-                                            <SelectValue placeholder={placeholder || `Select ${label.toLowerCase()}`} />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {options.map((option) => (
-                                                <SelectItem key={option.value} value={option.value}>
-                                                    {option.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                )}
-                                {type === 'combobox' && options && (
-                                    <Combobox
-                                        options={options}
-                                        value={field.value}
-                                        onChange={field.onChange}
-                                        placeholder={placeholder}
-                                        searchPlaceholder={comboboxConfig?.searchPlaceholder}
-                                        emptyText={comboboxConfig?.emptyText}
-                                        allowCustomValue={comboboxConfig?.allowCustomValue}
-                                        disabled={isLoading}
-                                        className="h-8"
-                                    />
-                                )}
-                                {type === 'multi-select' && options && (
-                                    <MultiSelect
-                                        options={options}
-                                        selected={field.value || []}
-                                        onChange={field.onChange}
-                                        placeholder={placeholder}
-                                        disabled={isLoading}
-                                        // className="h-auto min-h-8" // Let MultiSelect control its height
-                                    />
-                                )}
-                                {type === 'file' && (
-                                    <FileUpload
-                                        onFileChange={(file) => field.onChange(file)}
-                                        accept={fileConfig?.accept}
-                                        disabled={isLoading}
-                                        currentFile={field.value} // Pass current value for display
-                                    />
-                                )}
-                                </>
+                                {/* Replace React.Fragment with a div */}
+                                <div>
+                                    {type === 'text' && (
+                                        <Input placeholder={placeholder} {...field} value={field.value ?? ''} disabled={isLoading} className="h-8" />
+                                    )}
+                                    {type === 'textarea' && (
+                                        <Textarea placeholder={placeholder} {...field} value={field.value ?? ''} rows={3} disabled={isLoading}/>
+                                    )}
+                                    {type === 'number' && (
+                                        <Input
+                                            type="number"
+                                            placeholder={placeholder}
+                                            step={numberConfig?.step ?? 'any'}
+                                            min={numberConfig?.min}
+                                            max={numberConfig?.max}
+                                            {...field}
+                                            value={field.value ?? ''}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                // Allow empty input, otherwise parse as float
+                                                field.onChange(val === '' ? undefined : parseFloat(val));
+                                            }}
+                                            disabled={isLoading}
+                                            className="h-8"
+                                        />
+                                    )}
+                                    {type === 'select' && options && (
+                                        <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value ?? ''} disabled={isLoading}>
+                                            <SelectTrigger className="h-8">
+                                                <SelectValue placeholder={placeholder || `Select ${label.toLowerCase()}`} />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {options.map((option) => (
+                                                    <SelectItem key={option.value} value={option.value}>
+                                                        {option.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    )}
+                                    {type === 'combobox' && options && (
+                                        <Combobox
+                                            options={options}
+                                            value={field.value}
+                                            onChange={field.onChange}
+                                            placeholder={placeholder}
+                                            searchPlaceholder={comboboxConfig?.searchPlaceholder}
+                                            emptyText={comboboxConfig?.emptyText}
+                                            allowCustomValue={comboboxConfig?.allowCustomValue}
+                                            disabled={isLoading}
+                                            className="h-8"
+                                        />
+                                    )}
+                                    {type === 'multi-select' && options && (
+                                        <MultiSelect
+                                            options={options}
+                                            selected={field.value || []}
+                                            onChange={field.onChange}
+                                            placeholder={placeholder}
+                                            disabled={isLoading}
+                                            // className="h-auto min-h-8" // Let MultiSelect control its height
+                                        />
+                                    )}
+                                    {type === 'file' && (
+                                        <FileUpload
+                                            onFileChange={(file) => field.onChange(file)}
+                                            accept={fileConfig?.accept}
+                                            disabled={isLoading}
+                                            currentFile={field.value} // Pass current value for display
+                                        />
+                                    )}
+                                </div>
                             </FormControl>
                         )}
                         {description && <FormDescription id={`${field.name}-description`} className="text-xs">{description}</FormDescription>}
