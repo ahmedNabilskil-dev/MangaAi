@@ -10,20 +10,13 @@ import { useToast } from '@/hooks/use-toast';
 import PropertyForm from './property-form';
 import { type NodeData, type NodeType } from '@/types/nodes';
 import { useVisualEditorStore } from '@/store/visual-editor-store';
-// Removed Dexie imports - updates now handled by Zustand/PropertyForm
 import type { Node } from 'reactflow';
-import type { DeepPartial } from '@/types/utils';
 import { cn } from '@/lib/utils';
 import nodeFormConfig from '@/config/node-form-config';
-import { Label } from '@/components/ui/label';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { useEditorStore } from '@/store/editor-store'; // Import editor store
-
+import { updateProject, updateChapter, updateScene, updatePanel, updatePanelDialogue, updateCharacter } from '@/services/data-service'; // Import specific update functions
+import type { DeepPartial } from '@/types/utils';
+import type { MangaProject, Chapter, Scene, Panel, PanelDialogue, Character } from '@/types/entities';
 
 interface PropertiesPanelProps {
     node: Node<NodeData> | null;
@@ -47,57 +40,122 @@ const panelVariants = {
 
 export default function PropertiesPanel({ node, onClose }: PropertiesPanelProps) {
     const { toast } = useToast();
-    const refreshFlowData = useVisualEditorStore((state) => state.refreshFlowData); // Keep for potential manual refresh trigger
+    const refreshFlowData = useVisualEditorStore((state) => state.refreshFlowData); // Keep for manual refresh trigger
     const [isMinimized, setIsMinimized] = useState(false);
+    const [isSaving, setIsSaving] = useState(false); // Track saving state
     const formId = "property-form"; // Define form ID
 
-     // Get the updateShape function from the editor store
-     const updateShape = useEditorStore((state) => state.updateShape);
-     // Get the selected shape ID from the editor store to pass to PropertyForm
-     const selectedShapeId = useEditorStore((state) => state.selectedShapeId);
+    // Get the updateShape function from the editor store for Fabric canvas elements
+    const updateFabricShape = useEditorStore((state) => state.updateShape);
+    // Get the selected shape ID from the editor store to pass to PropertyForm
+    const selectedFabricShapeId = useEditorStore((state) => state.selectedShapeId);
 
-    // Extract data from the selected React Flow node
-    const nodeData = node?.data;
-    const nodeType = node?.data?.type;
-    // Get the properties from the React Flow node's data, which should match ShapeConfig structure
-    const initialProperties = node?.data?.properties;
+    // Extract data from the selected React Flow node (for flow elements)
+    const flowNodeData = node?.data;
+    const flowNodeType = node?.data?.type;
+    const flowNodeId = node?.id; // React Flow node ID
+    const initialFlowProperties = node?.data?.properties; // Properties from Flow node
 
+    // Determine which item is selected (Flow node or Fabric shape)
+    const isFlowNodeSelected = !!flowNodeId;
+    const isFabricShapeSelected = !!selectedFabricShapeId && !isFlowNodeSelected; // Prioritize Flow node if both somehow selected
 
-    const title = nodeType ? `${nodeType.charAt(0).toUpperCase() + nodeType.slice(1)} Properties` : 'Properties';
-    const description = nodeType ? `Edit properties for ${nodeData?.label || 'selected item'}.` : 'Select an item to edit.';
+    const selectedItemId = isFlowNodeSelected ? flowNodeId : selectedFabricShapeId;
+    const selectedItemType = isFlowNodeSelected ? flowNodeType : useEditorStore.getState().pages.flatMap(p => p.shapes).find(s => s.id === selectedFabricShapeId)?.type;
+    const initialProperties = isFlowNodeSelected ? initialFlowProperties : useEditorStore.getState().pages.flatMap(p => p.shapes).find(s => s.id === selectedFabricShapeId);
+
+    const title = selectedItemType ? `${selectedItemType.charAt(0).toUpperCase() + selectedItemType.slice(1)} Properties` : 'Properties';
+    const description = selectedItemType ? `Edit properties for selected ${selectedItemType}.` : 'Select an item to edit.';
 
 
     // Handle explicit form submission (e.g., clicking Save)
-    const handleFinalSubmit = (formData: any) => {
-         if (!selectedShapeId) {
-            toast({ title: "Error", description: "No shape selected.", variant: "destructive" });
+    const handleFinalSubmit = async (formData: any) => {
+         if (!selectedItemId || !selectedItemType) {
+            toast({ title: "Error", description: "No item selected.", variant: "destructive" });
             return;
          }
-        console.log("Final save triggered for:", selectedShapeId, "Data:", formData);
-        try {
-            // Update shape using the zustand store function
-            // PropertyForm now handles debounced updates, so this might just be for confirmation/final processing
-            // updateShape(selectedShapeId, formData); // Update with the final, validated data
 
-            toast({
-                title: "Success",
-                description: `${nodeType?.charAt(0).toUpperCase() + nodeType!.slice(1)} properties saved.`,
-            });
-            // Optionally close the panel after saving
-            // onClose();
-        } catch (error: any) {
-            console.error(`Error saving ${nodeType}:`, error);
+         setIsSaving(true);
+         console.log(`Final save triggered for ${selectedItemType}:`, selectedItemId, "Data:", formData);
+
+         try {
+            let updatePromise: Promise<void>;
+
+             // Use appropriate update function based on type
+             switch (selectedItemType) {
+                 case 'project':
+                     updatePromise = updateProject(selectedItemId, formData as DeepPartial<MangaProject>);
+                     break;
+                 case 'chapter':
+                     updatePromise = updateChapter(selectedItemId, formData as DeepPartial<Chapter>);
+                     break;
+                 case 'scene':
+                     updatePromise = updateScene(selectedItemId, formData as DeepPartial<Scene>);
+                     break;
+                 case 'panel':
+                     // Update both backend/flow node data and Fabric shape if applicable
+                     updatePromise = updatePanel(selectedItemId, formData as DeepPartial<Panel>);
+                     // If it's also a Fabric shape, update it too
+                     if (useEditorStore.getState().pages.flatMap(p => p.shapes).some(s => s.id === selectedItemId && s.type === 'panel')) {
+                        updateFabricShape(selectedItemId, formData);
+                     }
+                     break;
+                 case 'dialogue':
+                     updatePromise = updatePanelDialogue(selectedItemId, formData as DeepPartial<PanelDialogue>);
+                      // If it's also a Fabric shape (e.g., bubble), update it too
+                      if (useEditorStore.getState().pages.flatMap(p => p.shapes).some(s => s.id === selectedItemId && s.type === 'bubble')) {
+                         updateFabricShape(selectedItemId, formData);
+                      }
+                     break;
+                 case 'character':
+                     updatePromise = updateCharacter(selectedItemId, formData as DeepPartial<Character>);
+                       // If it's also a Fabric shape (e.g., image), update it too
+                       if (useEditorStore.getState().pages.flatMap(p => p.shapes).some(s => s.id === selectedItemId && s.type === 'image')) {
+                         updateFabricShape(selectedItemId, formData);
+                       }
+                     break;
+                // Add cases for Fabric-only shapes if needed
+                 case 'image': // Assume this updates the Fabric shape directly
+                 case 'text':
+                 case 'bubble':
+                     updateFabricShape(selectedItemId, formData);
+                     updatePromise = Promise.resolve(); // No backend update for pure Fabric shapes yet
+                     break;
+                 default:
+                     console.warn(`No specific update handler for type: ${selectedItemType}`);
+                     updatePromise = Promise.resolve();
+                     break;
+             }
+
+             await updatePromise;
+
+             toast({
+                 title: "Success",
+                 description: `${selectedItemType.charAt(0).toUpperCase() + selectedItemType.slice(1)} properties saved.`,
+             });
+
+             // Refresh Flow data if a flow node was updated
+             if (isFlowNodeSelected) {
+                 refreshFlowData();
+             }
+            // Fabric updates happen via Zustand store changes triggering re-renders
+
+         } catch (error: any) {
+            console.error(`Error saving ${selectedItemType}:`, error);
             toast({
                 title: "Error saving properties",
-                description: `Failed to save ${nodeType}: ${error.message || 'Unknown error'}`,
+                description: `Failed to save ${selectedItemType}: ${error.message || 'Unknown error'}`,
                 variant: "destructive",
             });
-        }
+         } finally {
+             setIsSaving(false);
+         }
     };
 
-     // Conditional rendering based on node selection is handled by the parent Draggable wrapper
-     if (!node) {
-        return null; // Don't render if no node is selected
+     // Conditional rendering based on item selection
+     if (!selectedItemId) {
+        // Optionally render a placeholder when nothing is selected, or let the Draggable wrapper hide it
+        return null;
      }
 
 
@@ -119,7 +177,8 @@ export default function PropertiesPanel({ node, onClose }: PropertiesPanelProps)
             >
                 <div className="flex items-center gap-2 text-muted-foreground">
                     <GripVertical size={14} />
-                     {nodeType && nodeFormConfig[nodeType]?.icon && React.createElement(nodeFormConfig[nodeType].icon, { className: "h-4 w-4 shrink-0"})}
+                     {/* Use selectedItemType to get icon */}
+                     {selectedItemType && nodeFormConfig[selectedItemType as NodeType]?.icon && React.createElement(nodeFormConfig[selectedItemType as NodeType].icon, { className: "h-4 w-4 shrink-0"})}
                     <h3 className="text-sm font-medium truncate">{title}</h3>
                 </div>
                 <div className="flex items-center gap-1">
@@ -136,7 +195,7 @@ export default function PropertiesPanel({ node, onClose }: PropertiesPanelProps)
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6"
-                        onClick={onClose}
+                        onClick={onClose} // Use onClose prop passed from parent
                         aria-label="Close Panel"
                     >
                         <X size={16} />
@@ -155,15 +214,16 @@ export default function PropertiesPanel({ node, onClose }: PropertiesPanelProps)
                         className="flex flex-col flex-grow min-h-0 overflow-hidden"
                     >
                         <ScrollArea className="flex-grow px-4 py-3">
-                            {nodeType && initialProperties ? (
+                            {selectedItemType && initialProperties ? (
                                 <PropertyForm
-                                    key={selectedShapeId || 'no-selection'} // Use selectedShapeId for key
-                                    nodeType={nodeType}
-                                    initialValues={initialProperties} // Pass node properties
+                                    key={selectedItemId} // Use the ID of the selected item
+                                    // Use appropriate type cast if needed, ensure config exists
+                                    nodeType={selectedItemType as NodeType}
+                                    initialValues={initialProperties} // Pass properties
                                     onSubmit={handleFinalSubmit} // Pass the explicit save handler
-                                    // isLoading={mutation.isPending} // isLoading state removed, handled internally or not needed
                                     formId={formId} // Pass the form ID
-                                    selectedShapeId={selectedShapeId} // Pass the shape ID for real-time updates
+                                    // Pass fabric shape ID for real-time updates if it's a fabric shape
+                                    selectedShapeId={isFabricShapeSelected ? selectedItemId : null}
                                 />
                             ) : (
                                 <div className="flex items-center justify-center h-full text-sm text-muted-foreground p-4">
@@ -173,18 +233,19 @@ export default function PropertiesPanel({ node, onClose }: PropertiesPanelProps)
                         </ScrollArea>
 
                          <div className="px-4 pb-4 pt-3 border-t border-border mt-auto bg-background/80 flex justify-end gap-2 shrink-0">
-                            <Button variant="outline" onClick={onClose} >
+                            <Button variant="outline" onClick={onClose} disabled={isSaving}>
                                 Close
                             </Button>
                             {/* The 'Save Changes' button triggers the form submission via its form attribute */}
-                            <Button
-                                type="submit"
-                                form={formId} // Link button to the form ID
-                                // disabled={mutation.isPending} // Disable based on form state if needed
-                            >
-                                {/* {mutation.isPending ? 'Saving...' : 'Save Changes'} */}
-                                Save Changes {/* Keep label simple for now */}
-                            </Button>
+                            {selectedItemId && ( // Only show Save if an item is selected
+                                <Button
+                                    type="submit"
+                                    form={formId} // Link button to the form ID
+                                    disabled={isSaving} // Disable while saving
+                                >
+                                    {isSaving ? 'Saving...' : 'Save Changes'}
+                                </Button>
+                            )}
                         </div>
                     </motion.div>
                 )}

@@ -1,9 +1,9 @@
 
 'use server';
 /**
- * @fileOverview Defines a Genkit flow for updating various manga entities (Project, Chapter, Scene, Panel, Dialogue, Character) in the Dexie database based on user prompts.
+ * @fileOverview Defines a Genkit flow for updating various manga entities (Project, Chapter, Scene, Panel, Dialogue, Character) in the database based on user prompts.
  *
- * This flow uses specific tools to interact with the backend service (Dexie via db.ts) for updates.
+ * This flow uses specific tools to interact with the backend service (abstracted via data-service.ts) for updates.
  * - updateEntity - A function that takes an entity type, ID, and prompt, then orchestrates the update using tools.
  * - UpdateEntityInput - The input type for the updateEntity function.
  * - UpdateEntityOutput - The return type for the updateEntity function.
@@ -12,7 +12,7 @@
 import ai from '@/ai/ai-instance'; // Import the initialized ai instance
 import { getDefaultModelId } from '@/ai/ai-config'; // Import helper from config
 import { z } from 'genkit';
-// Import Dexie service functions
+// Import data service functions
 import {
     updateProject,
     updateChapter,
@@ -29,7 +29,7 @@ import {
     getPanelDialogueForContext,
     getCharacterForContext,
     getAllCharacters,
-} from '@/services/db'; // Import from Dexie service (db.ts)
+} from '@/services/data-service'; // Import from the abstract data service
 import type { NodeType } from '@/types/nodes';
 import type { MangaProject, Chapter, Scene, Panel, PanelDialogue, Character } from '@/types/entities';
 import type { DeepPartial } from '@/types/utils';
@@ -277,7 +277,7 @@ const findCharacterByNameTool = ai.defineTool({
 });
 
 
-// Use Dexie assignment tools
+// Use data service assignment tools
 const assignCharacterToPanelTool = ai.defineTool({
     name: 'assignCharacterToPanel',
     description: 'Assigns an *existing* character to a specific panel. Use findCharacterByName first if you only have the name.',
@@ -288,7 +288,7 @@ const assignCharacterToPanelTool = ai.defineTool({
     outputSchema: z.boolean().describe("True if assignment was successful."),
 }, async (input) => {
     try {
-        await assignCharacterToPanel(input.panelId, input.characterId); // Dexie service
+        await assignCharacterToPanel(input.panelId, input.characterId); // Data service
         return true;
     } catch (error: any) {
         console.error(`Failed to assign character ${input.characterId} to panel ${input.panelId}:`, error.message);
@@ -306,7 +306,7 @@ const removeCharacterFromPanelTool = ai.defineTool({
     outputSchema: z.boolean().describe("True if removal was successful."),
 }, async (input) => {
     try {
-        await removeCharacterFromPanel(input.panelId, input.characterId); // Dexie service
+        await removeCharacterFromPanel(input.panelId, input.characterId); // Data service
         return true;
     } catch (error: any) {
         console.error(`Failed to remove character ${input.characterId} from panel ${input.panelId}:`, error.message);
@@ -339,7 +339,7 @@ const prompt = ai.definePrompt({
         confirmation: z.string().describe("Confirmation message indicating if the update was attempted based on the prompt and which tools were used.")
     }),
   },
-  prompt: `You are an AI assistant helping update elements of a manga project stored in a Dexie (IndexedDB) database. The user wants to modify a specific {{entityType}} with ID: {{entityId}}. {{#if projectId}}The project context ID is {{projectId}}.{{else}}Project context ID is unknown.{{/if}}
+  prompt: `You are an AI assistant helping update elements of a manga project stored in a database (abstracted via tools). The user wants to modify a specific {{entityType}} with ID: {{entityId}}. {{#if projectId}}The project context ID is {{projectId}}.{{else}}Project context ID is unknown.{{/if}}
 
 User Prompt:
 "{{prompt}}"

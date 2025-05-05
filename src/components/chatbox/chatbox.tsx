@@ -17,7 +17,7 @@ import { createChapterFromPrompt } from '@/ai/flows/create-chapter-from-prompt';
 import { brainstormCharacterIdeas } from '@/ai/flows/brainstorm-character-ideas';
 import { updateEntity } from '@/ai/flows/update-entity-flow';
 import type { NodeType } from '@/types/nodes';
-import { db, getDefaultProject } from '@/services/db'; // Import Dexie DB service
+import { getDefaultProject } from '@/services/data-service'; // Import from the abstract data service
 import { askGeneralAssistant } from '@/ai/assistant'; // Import the abstract assistant function
 
 
@@ -67,7 +67,7 @@ export default function Chatbox() {
         const fetchProject = async () => {
             setProjectLoading(true);
             try {
-                const project = await getDefaultProject();
+                const project = await getDefaultProject(); // Use abstract data service
                 if (project) {
                     setCurrentProjectId(project.id);
                     setCurrentProjectTitle(project.title);
@@ -173,7 +173,7 @@ export default function Chatbox() {
              // 2. Update Command (*Requires* a selected node)
              } else if (selectedNode && selectedNode.data?.properties?.id && selectedNode.data.type) {
                   actionTaken = true;
-                  const entityId = selectedNode.data.properties.id; // Dexie ID
+                  const entityId = selectedNode.data.properties.id; // Entity ID from properties
                   const entityType = selectedNode.data.type as NodeType;
 
                   // Check if the input seems like an update command

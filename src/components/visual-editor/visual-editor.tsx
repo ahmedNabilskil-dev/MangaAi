@@ -27,8 +27,8 @@ import { useVisualEditorStore } from '@/store/visual-editor-store';
 import { layoutElements } from '@/lib/layout-utils';
 import CustomNode from './custom-node'; // Import the new custom node
 import type { MangaProject, Character, Chapter, Scene, Panel, PanelDialogue } from '@/types/entities'; // Import entity types
-import { useLiveQuery } from 'dexie-react-hooks'; // Import Dexie hook
-import { db, getDefaultProject } from '@/services/db'; // Import Dexie db instance and project fetcher
+// Import from the abstract data service
+import { getDefaultProject } from '@/services/data-service';
 
 // Use the new CustomNode for all types
 const nodeTypes: NodeTypes = {
@@ -82,6 +82,8 @@ function transformProjectToFlow(project: MangaProject | null): { nodes: Node<Nod
             data: { label: character.name, type: 'character', properties: character }
         });
          // Edge to project (for display only, mark for layout ignore)
+        // Removing this edge to prevent characters from being linked in the main layout
+        /*
         edges.push({
              id: `e-${project.id}-char-${character.id}`,
              source: project.id,
@@ -92,6 +94,7 @@ function transformProjectToFlow(project: MangaProject | null): { nodes: Node<Nod
              markerEnd: undefined,
              data: { noLayout: true } // Mark edge to ignore in layout
         });
+        */
     });
 
     // Chapters, Scenes, Panels, Dialogues
@@ -123,6 +126,8 @@ function transformProjectToFlow(project: MangaProject | null): { nodes: Node<Nod
                 edges.push({ id: `e-${scene.id}-${panel.id}`, source: scene.id, target: panel.id });
 
                 // Edges from panel characters to the panel node (noLayout)
+                // Removing these visual links as well to keep characters separate
+                /*
                 (panel.characterIds ?? []).forEach(charId => {
                      edges.push({
                          id: `e-char-${charId}-panel-${panel.id}`,
@@ -135,6 +140,7 @@ function transformProjectToFlow(project: MangaProject | null): { nodes: Node<Nod
                          data: { noLayout: true }
                      });
                 });
+                */
 
 
                 (panel.dialogues ?? []).forEach(dialogue => {
@@ -147,6 +153,8 @@ function transformProjectToFlow(project: MangaProject | null): { nodes: Node<Nod
                     edges.push({ id: `e-${panel.id}-${dialogue.id}`, source: panel.id, target: dialogue.id });
 
                     // Optional: Edge from speaker to dialogue (noLayout)
+                    // Removing these visual links
+                    /*
                     if (dialogue.speakerId) {
                          edges.push({
                              id: `e-speaker-${dialogue.speakerId}-dialogue-${dialogue.id}`,
@@ -159,6 +167,7 @@ function transformProjectToFlow(project: MangaProject | null): { nodes: Node<Nod
                              data: { noLayout: true }
                          });
                      }
+                    */
                 });
             });
         });
@@ -180,80 +189,95 @@ function VisualEditorInternal() {
     setSelectedNode,
     refreshCounter, // Use counter to trigger data refresh
     setViewportInitialized,
-    viewportInitialized
+    viewportInitialized,
+    refreshFlowData // Get the refresh trigger
   } = useVisualEditorStore();
 
   const { fitView } = useReactFlow();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [projectData, setProjectData] = useState<MangaProject | null>(null);
   const isInitialLayoutDone = useRef(false); // Track if initial layout applied
 
-  // Fetch project data using Dexie live query
-  const projectData = useLiveQuery(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-        const project = await getDefaultProject(); // Fetch the default project with all relations
-        if (!project) {
-             setError("No project found in the database.");
-             return null;
-        }
-        return project;
-    } catch (err: any) {
-        console.error("Error loading project data:", err);
-        setError(`Error loading project data: ${err.message || 'Failed to fetch'}`);
-        return null;
-    } finally {
-         setIsLoading(false);
-    }
-  }, []); // Re-run query only on mount initially
-
-
-   // Effect to transform data and update store when projectData changes
+  // --- Fetch Project Data Effect ---
    useEffect(() => {
-       if (projectData) {
-           console.log("Project data received, transforming to flow elements...");
+       const fetchData = async () => {
+           console.log("Fetching project data (triggered by refreshCounter:", refreshCounter, ")");
+           setIsLoading(true);
+           setError(null);
+            isInitialLayoutDone.current = false; // Reset layout flag on each refresh
+           try {
+               const project = await getDefaultProject(); // Fetch using abstract service
+               if (!project) {
+                   setError("No project found.");
+                   setProjectData(null);
+               } else {
+                   setProjectData(project);
+               }
+           } catch (err: any) {
+               console.error("Error loading project data:", err);
+               setError(`Error loading project data: ${err.message || 'Failed to fetch'}`);
+               setProjectData(null);
+           } finally {
+               setIsLoading(false);
+           }
+       };
+
+       fetchData();
+   }, [refreshCounter]); // Re-run fetch when refreshCounter changes
+
+
+   // --- Transform Data and Layout Effect ---
+   useEffect(() => {
+       if (projectData && !isLoading) { // Only process if projectData exists and not loading
+           console.log("Project data loaded, transforming to flow elements...");
            const { nodes: initialNodes, edges: initialEdges } = transformProjectToFlow(projectData);
-            // Only apply layout if it hasn't been done yet for this data load
-           if (!isInitialLayoutDone.current) {
+
+           // Apply layout only if nodes exist and initial layout isn't done
+           if (initialNodes.length > 0 && !isInitialLayoutDone.current) {
                 console.log("Applying initial layout...");
-                const layoutEdges = initialEdges.filter(edge => !edge.data?.noLayout);
-                const { nodes: layoutedNodes, edges: finalEdges } = layoutElements(initialNodes, layoutEdges);
+                const layoutEdges = initialEdges.filter(edge => !edge.data?.noLayout); // Exclude noLayout edges from layouting
+                const { nodes: layoutedNodes, edges: _ } = layoutElements(initialNodes, layoutEdges); // Use layout utility
                 setNodes(layoutedNodes);
-                setEdges(initialEdges); // Keep original edges (including noLayout ones)
+                setEdges(initialEdges); // Keep original edges (including noLayout ones) for rendering
                 isInitialLayoutDone.current = true; // Mark initial layout as done
+
                 // Fit view after initial layout
-                const timer = setTimeout(() => {
-                     if (!viewportInitialized) {
-                        console.log("Fitting view after initial layout...");
-                        fitView({ padding: 0.2, duration: 600 });
-                        setViewportInitialized(true);
+                 const timer = setTimeout(() => {
+                    if (!viewportInitialized) {
+                       console.log("Fitting view after initial layout...");
+                       fitView({ padding: 0.2, duration: 600 });
+                       setViewportInitialized(true);
                     }
-                 }, 150);
+                 }, 200); // Increased delay slightly
                  return () => clearTimeout(timer);
-           } else {
-                // If layout already done, just update store (e.g., after minor data change)
-                console.log("Updating store without re-layouting...");
+
+           } else if (isInitialLayoutDone.current) {
+                // If layout already done, just update store nodes/edges if project data changed
+                // This avoids re-running layout unnecessarily after minor updates triggered by refresh
+                console.log("Updating store without re-layouting (layout already done)...");
                 setNodes(initialNodes);
                 setEdges(initialEdges);
+           } else if (initialNodes.length === 0) {
+                // Handle case where transformation results in no nodes
+                setNodes([]);
+                setEdges([]);
            }
 
-       } else if (!isLoading && !error) {
-            // Handle case where projectData is null after loading (e.g., empty DB)
+       } else if (!isLoading && !error && !projectData) {
+            // Handle case where data fetching finished but resulted in null project
             setNodes([]);
             setEdges([]);
-            isInitialLayoutDone.current = false; // Reset layout flag if data becomes null
+            isInitialLayoutDone.current = false; // Reset layout flag
        }
    // eslint-disable-next-line react-hooks/exhaustive-deps
-   }, [projectData, isLoading, error, setNodes, setEdges, fitView, setViewportInitialized]); // Dependencies on fetched data
+   }, [projectData, isLoading, error, setNodes, setEdges, fitView, setViewportInitialized]);
 
 
    // --- Handlers remain mostly the same, using Zustand store ---
    const onNodesChange: OnNodesChange = useCallback(
      (changes) => {
-         // Prevent applying position changes from React Flow if layout is handling it?
-         // For now, allow direct manipulation, layout useEffect handles re-layouting if needed.
          setNodes(applyNodeChanges(changes, storeNodes));
      },
      [setNodes, storeNodes]
@@ -269,13 +293,13 @@ function VisualEditorInternal() {
    const onConnect: OnConnect = useCallback(
      (connection) => {
          const newEdge = { ...connection, type: 'smoothstep' }; // Ensure edge type
-         // TODO: Persist this new edge connection to Dexie
+         // TODO: Persist this new edge connection
          // For now, just update the store visually
          setEdges(addEdge(newEdge, storeEdges));
-         // Trigger a layout refresh? Maybe not necessary for simple connections.
+         // Trigger layout refresh after connection?
          // refreshFlowData(); // Uncomment if layout needs update after connection
      },
-     [setEdges, storeEdges]
+     [setEdges, storeEdges, refreshFlowData] // Add refreshFlowData if needed
    );
 
   const handleNodeClick = useCallback((event: React.MouseEvent, node: Node<NodeData>) => {
@@ -330,12 +354,12 @@ function VisualEditorInternal() {
         <MiniMap nodeStrokeWidth={3} zoomable pannable position="bottom-left" nodeColor={(node) => {
                 // Match MiniMap colors to the actual node background colors (using HSL from globals.css)
                  switch (node.type) {
-                    case 'project': return 'hsl(var(--purple-100))'; // Use HSL variable if defined, else fallback
-                    case 'chapter': return 'hsl(var(--blue-100))';
-                    case 'scene': return 'hsl(var(--green-100))';
-                    case 'panel': return 'hsl(var(--yellow-100))';
-                    case 'dialogue': return 'hsl(var(--pink-100))';
-                    case 'character': return 'hsl(var(--indigo-100))';
+                    case 'project': return 'hsl(270 50% 90%)'; // Approx purple-100
+                    case 'chapter': return 'hsl(210 50% 90%)'; // Approx blue-100
+                    case 'scene': return 'hsl(140 40% 90%)'; // Approx green-100
+                    case 'panel': return 'hsl(45 70% 90%)'; // Approx yellow-100
+                    case 'dialogue': return 'hsl(330 50% 90%)'; // Approx pink-100
+                    case 'character': return 'hsl(230 50% 90%)'; // Approx indigo-100
                     default: return 'hsl(var(--muted))';
                 }
         }}/>
