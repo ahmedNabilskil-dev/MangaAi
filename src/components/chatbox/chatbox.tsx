@@ -12,28 +12,13 @@ import { useToast } from '@/hooks/use-toast';
 import { useVisualEditorStore } from '@/store/visual-editor-store';
 import { cn } from '@/lib/utils';
 
-// Import Genkit flow functions (assuming these are updated/compatible)
+// Import Genkit flow functions
 import { createChapterFromPrompt } from '@/ai/flows/create-chapter-from-prompt';
 import { brainstormCharacterIdeas } from '@/ai/flows/brainstorm-character-ideas';
 import { updateEntity } from '@/ai/flows/update-entity-flow';
 import type { NodeType } from '@/types/nodes';
 import { db, getDefaultProject } from '@/services/db'; // Import Dexie DB service
-
-// Placeholder for the general assistant
-async function askGeneralAssistant(message: string): Promise<string> {
-    console.log('Sending to General AI:', message);
-    await new Promise(resolve => setTimeout(resolve, 800));
-    if (message.toLowerCase().includes('hello') || message.toLowerCase().includes('hi')) {
-        return "Hello there! How can I help you create or edit your manga today using the local database (Dexie)?";
-    } else if (message.toLowerCase().includes('help')) {
-        return "I can help create chapters, scenes, panels, characters, dialogues, or brainstorm ideas. Try 'create chapter 1 titled...' or 'brainstorm characters...'. To edit a specific item (like changing a scene's setting), please select it first in the editor.";
-    }
-    // Provide clearer guidance if an update-like command is used without selection
-    if (['change', 'update', 'edit', 'set', 'add', 'remove'].some(keyword => message.toLowerCase().startsWith(keyword))) {
-         return "To modify a specific item (e.g., change a description, add a character to a panel), please select it in the visual editor first. Otherwise, tell me what you'd like to create or brainstorm.";
-    }
-    return `I received: "${message}". I can assist with manga creation tasks like generating chapters, scenes, characters, etc., interacting with the local database (Dexie). Use commands like 'create ...' or 'brainstorm ...'. Select an item if you want to edit it.`;
-}
+import { askGeneralAssistant } from '@/ai/assistant'; // Import the abstract assistant function
 
 
 interface Message {
@@ -47,11 +32,13 @@ const chatboxVariants = {
     open: {
         opacity: 1,
         y: 0,
+        height: 'auto', // Let content define height when open
         transition: { type: 'spring', stiffness: 300, damping: 30 }
     },
     closed: {
         opacity: 1,
         y: 0,
+        height: '52px', // Fixed height when minimized
         transition: { type: 'spring', stiffness: 300, damping: 30 }
     }
 };
@@ -106,7 +93,7 @@ export default function Chatbox() {
             if (viewport) {
                 viewport.scrollTop = viewport.scrollHeight;
             }
-        }, 50);
+        }, 50); // Short delay to ensure DOM update
     }, []);
 
 
@@ -126,6 +113,7 @@ export default function Chatbox() {
         setIsLoading(true);
         const thinkingId = Date.now().toString() + '-think';
         setMessages((prev) => [...prev, { id: thinkingId, text: 'Thinking...', sender: 'ai', isThinking: true }]);
+        scrollToBottom(); // Scroll down when thinking message appears
 
         let aiResponse: Message | null = null;
         let actionTaken = false;
@@ -219,7 +207,7 @@ export default function Chatbox() {
 
              // If no specific action was taken, use the general assistant
              if (!actionTaken) {
-                 const generalResponseText = await askGeneralAssistant(userInput);
+                 const generalResponseText = await askGeneralAssistant(userInput, currentProjectId); // Pass project ID
                  aiResponse = { id: Date.now().toString(), text: generalResponseText, sender: 'ai' };
              }
 
@@ -239,6 +227,7 @@ export default function Chatbox() {
             });
 
             setIsLoading(false);
+            scrollToBottom(); // Scroll down after response is added
         }
     };
 
@@ -249,7 +238,7 @@ export default function Chatbox() {
 
         if (isMinimized) {
             setIsMinimized(false);
-             await new Promise(resolve => setTimeout(resolve, 50));
+             await new Promise(resolve => setTimeout(resolve, 50)); // Wait for animation
         }
 
         const userMessageText = input;
@@ -257,6 +246,7 @@ export default function Chatbox() {
 
         setMessages((prev) => [...prev, userMessage]);
         setInput('');
+        scrollToBottom(); // Scroll down after user message is added
 
         await processUserInput(userMessageText);
     };
@@ -267,8 +257,6 @@ export default function Chatbox() {
         ? `Editing ${selectedNode.data.type} "${selectedNode.data.label}"...`
         : "Ask AI: 'create chapter 1 titled...' or 'brainstorm characters...'";
 
-    // Handle resizing state (kept from previous implementation)
-    const [chatSize, setChatSize] = useState({ width: 500, height: 450 });
 
     return (
         <motion.div
@@ -278,14 +266,16 @@ export default function Chatbox() {
             initial={false}
             className={cn(
                 "bg-card border border-border rounded-lg shadow-xl overflow-hidden flex flex-col backdrop-blur-sm bg-opacity-95 dark:bg-opacity-80",
-                "resizable-chat",
-                isMinimized ? `h-[${HEADER_HEIGHT}] max-h-[${HEADER_HEIGHT}]` : "max-h-[80vh]"
+                "resizable-chat", // Keep resizable class if needed for styling handles
+                // Remove explicit height settings, let variants control it
+                 "max-h-[80vh]" // Keep max-height constraint
             )}
              style={{
-                 width: isMinimized ? undefined : `${chatSize.width}px`,
-                 position: 'absolute',
-                 resize: 'both',
-                 overflow: 'auto',
+                 // Width can still be managed by resizable-chat class/JS if implemented
+                 width: '500px', // Default width, can be overridden by resize handles
+                 position: 'absolute', // Required for Draggable
+                 resize: 'both', // Enable browser's native resize
+                 overflow: 'auto', // Important for resize to work
              }}
         >
             {/* Header */}
@@ -314,10 +304,11 @@ export default function Chatbox() {
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="flex flex-col flex-grow min-h-0 overflow-hidden"
+                        className="flex flex-col flex-grow min-h-0 overflow-hidden" // Important for flex layout with scroll
                     >
                         {/* Message Area */}
                         <ScrollArea className="flex-grow p-4" ref={scrollAreaRef}>
+                            {/* Viewport needs ref for scrolling */}
                             <ScrollAreaViewport ref={viewportRef} className="h-full w-full">
                                 <AnimatePresence initial={false}>
                                     {messages.map((message) => (
@@ -331,7 +322,7 @@ export default function Chatbox() {
                                             className={`flex gap-3 my-3 ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                                         >
                                             {message.sender === 'ai' && (
-                                                <Avatar className="h-8 w-8 border border-primary/20">
+                                                <Avatar className="h-8 w-8 border border-primary/20 shrink-0"> {/* Added shrink-0 */}
                                                     <AvatarFallback className="bg-primary/10 text-primary">
                                                         <Bot size={18} />
                                                     </AvatarFallback>
@@ -353,7 +344,7 @@ export default function Chatbox() {
                                                 )}
                                             </div>
                                             {message.sender === 'user' && (
-                                                <Avatar className="h-8 w-8">
+                                                <Avatar className="h-8 w-8 shrink-0"> {/* Added shrink-0 */}
                                                     <AvatarFallback>
                                                         <User size={18} />
                                                     </AvatarFallback>

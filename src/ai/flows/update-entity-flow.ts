@@ -9,7 +9,7 @@
  * - UpdateEntityOutput - The return type for the updateEntity function.
  */
 
-import { ai } from '@/ai/ai-instance';
+import { ai, getDefaultModelId } from '@/ai/ai-instance'; // Import helper
 import { z } from 'genkit';
 // Import Dexie service functions
 import {
@@ -318,6 +318,7 @@ const removeCharacterFromPanelTool = ai.defineTool({
 
 const prompt = ai.definePrompt({
   name: 'updateEntityPrompt',
+  model: getDefaultModelId(), // Use the configured default model
   tools: [
       updateProjectTool,
       updateChapterTool,
