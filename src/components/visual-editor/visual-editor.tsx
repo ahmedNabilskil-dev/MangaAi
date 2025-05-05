@@ -27,7 +27,8 @@ import { useVisualEditorStore } from '@/store/visual-editor-store';
 import { layoutElements } from '@/lib/layout-utils';
 import CustomNode from './custom-node'; // Import the new custom node
 import type { MangaProject, Character, Chapter, Scene, Panel, PanelDialogue } from '@/types/entities'; // Import entity types
-import { MangaStatus } from '@/types/enums'; // Import enum
+import { useLiveQuery } from 'dexie-react-hooks'; // Import Dexie hook
+import { db, getDefaultProject } from '@/services/db'; // Import Dexie db instance and project fetcher
 
 // Use the new CustomNode for all types
 const nodeTypes: NodeTypes = {
@@ -54,251 +55,116 @@ const defaultEdgeOptions: DefaultEdgeOptions = {
     type: 'smoothstep', // Use smoothstep for potentially better routing visually
 };
 
-// --- Sample Data Generation ---
-function generateSampleProjectData(): { nodes: Node<NodeData>[], edges: Edge[] } {
-    console.log("Generating sample project data...");
+// --- Function to transform Project data into Flow elements ---
+function transformProjectToFlow(project: MangaProject | null): { nodes: Node<NodeData>[], edges: Edge[] } {
+    if (!project) {
+        console.warn("transformProjectToFlow called with null project.");
+        return { nodes: [], edges: [] };
+    }
+    console.log("Transforming project data to flow elements:", project.id);
     const nodes: Node<NodeData>[] = [];
     const edges: Edge[] = [];
 
-    // --- Create Sample Entities ---
-    const projectId = 'proj-sample-1';
-    const sampleProject: MangaProject = {
-        id: projectId,
-        title: 'Adventures in CodeLand',
-        description: 'A journey through a world made of code. This project follows the brave Alex and the mischievous Bugsy.',
-        status: MangaStatus.DRAFT,
-        genre: 'Fantasy Comedy',
-        creatorId: 'user-sample',
-        viewCount: 10,
-        likeCount: 2,
-        published: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-    };
-
-    const char1Id = 'char-sample-1';
-    const sampleChar1: Character = {
-        id: char1Id,
-        name: 'Alex the Algorithm',
-        role: 'protagonist',
-        briefDescription: 'A brave sorting algorithm, always trying to optimize.',
-        mangaProjectId: projectId,
-        imgUrl: 'https://picsum.photos/seed/alex/200/300', // Placeholder image
-        isAiGenerated: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-    };
-
-    const char2Id = 'char-sample-2';
-    const sampleChar2: Character = {
-        id: char2Id,
-        name: 'Bugsy the Error',
-        role: 'antagonist',
-        briefDescription: 'A mischievous runtime error, loves causing chaos.',
-        mangaProjectId: projectId,
-        imgUrl: 'https://picsum.photos/seed/bugsy/200/300', // Placeholder image
-        isAiGenerated: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-    };
-
-    const chapter1Id = 'chap-sample-1';
-    const sampleChapter1: Chapter = {
-        id: chapter1Id,
-        chapterNumber: 1,
-        title: 'The First Compile',
-        mangaProjectId: projectId,
-        summary: 'Alex begins their journey, encountering the Compiler and the first signs of trouble.',
-        isAiGenerated: false,
-        isPublished: false,
-        viewCount: 0,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-    };
-
-    const scene1Id = 'scene-sample-1';
-    const sampleScene1: Scene = {
-        id: scene1Id,
-        order: 0,
-        title: 'Meeting the Compiler',
-        sceneContext: { setting: 'Initialization Vector', mood: 'Anticipation', presentCharacters: [sampleChar1.name] },
-        chapterId: chapter1Id,
-        isAiGenerated: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-    };
-
-    const panel1Id = 'panel-sample-1';
-    const samplePanel1: Panel = {
-        id: panel1Id,
-        order: 0,
-        panelContext: { action: 'Alex stands nervously before the intimidating Compiler gate, circuits humming.', lighting: 'Bright, sterile', effects: [], dramaticPurpose: 'Introduce main character and setting', narrativePosition: 'Beginning' },
-        sceneId: scene1Id,
-        characterIds: [char1Id],
-        imageUrl: 'https://picsum.photos/seed/panel1/400/200', // Placeholder image
-        isAiGenerated: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-    };
-
-     const dialogue1Id = 'dlg-sample-1';
-     const sampleDialogue1: PanelDialogue = {
-         id: dialogue1Id,
-         content: "Here goes nothing... Hope I pass validation.",
-         order: 0,
-         panelId: panel1Id,
-         speakerId: char1Id,
-         isAiGenerated: false,
-         createdAt: new Date(),
-         updatedAt: new Date(),
-     };
-
-    const scene2Id = 'scene-sample-2';
-    const sampleScene2: Scene = {
-        id: scene2Id,
-        order: 1,
-        title: 'The First Bug',
-        sceneContext: { setting: 'Memory Heap', mood: 'Confusing', presentCharacters: [sampleChar1.name, sampleChar2.name] },
-        chapterId: chapter1Id,
-        isAiGenerated: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-    };
-
-     const panel2Id = 'panel-sample-2';
-     const samplePanel2: Panel = {
-         id: panel2Id,
-         order: 0,
-         panelContext: { action: 'Bugsy appears with a glitchy shimmer, laughing mischievously at Alex.', lighting: 'Dim, flickering', effects: ['glitch', 'distortion'], dramaticPurpose: 'Introduce antagonist', narrativePosition: 'Middle' },
-         sceneId: scene2Id,
-         characterIds: [char1Id, char2Id],
-         imageUrl: 'https://picsum.photos/seed/panel2/400/200', // Placeholder image
-         isAiGenerated: false,
-         createdAt: new Date(),
-         updatedAt: new Date(),
-     };
-
-     const dialogue2Id = 'dlg-sample-2';
-     const sampleDialogue2: PanelDialogue = {
-         id: dialogue2Id,
-         content: "Hehehe! Tripped you up! Can't catch me!",
-         order: 0,
-         panelId: panel2Id,
-         speakerId: char2Id,
-         isAiGenerated: false,
-         createdAt: new Date(),
-         updatedAt: new Date(),
-     };
-
-
-    // --- Convert to Flow Elements ---
-
     // Project Node
     nodes.push({
-        id: sampleProject.id,
+        id: project.id,
         type: 'project',
-        position: { x: 0, y: 0 }, // Initial position, layout will overwrite
-        data: {
-            label: sampleProject.title,
-            type: 'project',
-            properties: sampleProject, // Pass full data
-        }
+        position: { x: 0, y: 0 }, // Layout will handle final position
+        data: { label: project.title, type: 'project', properties: project }
     });
 
-    // Character Nodes (no layout edges needed)
-    [sampleChar1, sampleChar2].forEach(character => {
-         nodes.push({
-             id: character.id,
-             type: 'character',
-             position: { x: 0, y: 0 }, // Initial position
-             data: { label: character.name, type: 'character', properties: character }
-         });
+    // Character Nodes
+    (project.characters ?? []).forEach(character => {
+        nodes.push({
+            id: character.id,
+            type: 'character',
+            position: { x: 0, y: 0 },
+            data: { label: character.name, type: 'character', properties: character }
+        });
          // Edge to project (for display only, mark for layout ignore)
-         edges.push({
-             id: `e-${projectId}-char-${character.id}`, source: projectId, target: character.id, type: 'step', style: { stroke: 'hsl(var(--muted-foreground) / 0.3)', strokeDasharray: '4 4', strokeWidth: 1 }, data: { noLayout: true } // Mark edge to ignore in layout
-         });
-     });
-
-    // Chapter Node & Edge to Project
-    nodes.push({
-        id: sampleChapter1.id,
-        type: 'chapter',
-        position: { x: 0, y: 0 },
-        data: { label: `Ch. ${sampleChapter1.chapterNumber}: ${sampleChapter1.title}`, type: 'chapter', properties: sampleChapter1 }
+        edges.push({
+             id: `e-${project.id}-char-${character.id}`,
+             source: project.id,
+             target: character.id,
+             type: 'step', // Simple edge type
+             style: { stroke: 'hsl(var(--muted-foreground) / 0.3)', strokeDasharray: '4 4', strokeWidth: 1 },
+             animated: false,
+             markerEnd: undefined,
+             data: { noLayout: true } // Mark edge to ignore in layout
+        });
     });
-    edges.push({ id: `e-${projectId}-${chapter1Id}`, source: projectId, target: chapter1Id });
 
-    // Scene 1 Node & Edge to Chapter 1
-    nodes.push({
-        id: sampleScene1.id,
-        type: 'scene',
-        position: { x: 0, y: 0 },
-        data: { label: sampleScene1.title, type: 'scene', properties: sampleScene1 }
+    // Chapters, Scenes, Panels, Dialogues
+    (project.chapters ?? []).forEach(chapter => {
+        nodes.push({
+            id: chapter.id,
+            type: 'chapter',
+            position: { x: 0, y: 0 },
+            data: { label: `Ch. ${chapter.chapterNumber}: ${chapter.title}`, type: 'chapter', properties: chapter }
+        });
+        edges.push({ id: `e-${project.id}-${chapter.id}`, source: project.id, target: chapter.id });
+
+        (chapter.scenes ?? []).forEach(scene => {
+            nodes.push({
+                id: scene.id,
+                type: 'scene',
+                position: { x: 0, y: 0 },
+                data: { label: scene.title, type: 'scene', properties: scene }
+            });
+            edges.push({ id: `e-${chapter.id}-${scene.id}`, source: chapter.id, target: scene.id });
+
+            (scene.panels ?? []).forEach(panel => {
+                nodes.push({
+                    id: panel.id,
+                    type: 'panel',
+                    position: { x: 0, y: 0 },
+                    data: { label: `Panel ${panel.order + 1}`, type: 'panel', properties: panel }
+                });
+                edges.push({ id: `e-${scene.id}-${panel.id}`, source: scene.id, target: panel.id });
+
+                // Edges from panel characters to the panel node (noLayout)
+                (panel.characterIds ?? []).forEach(charId => {
+                     edges.push({
+                         id: `e-char-${charId}-panel-${panel.id}`,
+                         source: charId, // Character node ID
+                         target: panel.id, // Panel node ID
+                         type: 'step',
+                         style: { stroke: 'hsl(var(--muted-foreground) / 0.3)', strokeDasharray: '4 4', strokeWidth: 1 },
+                         animated: false,
+                         markerEnd: undefined,
+                         data: { noLayout: true }
+                     });
+                });
+
+
+                (panel.dialogues ?? []).forEach(dialogue => {
+                    nodes.push({
+                        id: dialogue.id,
+                        type: 'dialogue',
+                        position: { x: 0, y: 0 },
+                        data: { label: `Dialogue ${dialogue.order + 1}`, type: 'dialogue', properties: dialogue }
+                    });
+                    edges.push({ id: `e-${panel.id}-${dialogue.id}`, source: panel.id, target: dialogue.id });
+
+                    // Optional: Edge from speaker to dialogue (noLayout)
+                    if (dialogue.speakerId) {
+                         edges.push({
+                             id: `e-speaker-${dialogue.speakerId}-dialogue-${dialogue.id}`,
+                             source: dialogue.speakerId, // Character node ID
+                             target: dialogue.id, // Dialogue node ID
+                             type: 'step',
+                             style: { stroke: 'hsl(var(--muted-foreground) / 0.2)', strokeDasharray: '2 2', strokeWidth: 1 },
+                             animated: false,
+                             markerEnd: undefined,
+                             data: { noLayout: true }
+                         });
+                     }
+                });
+            });
+        });
     });
-    edges.push({ id: `e-${chapter1Id}-${scene1Id}`, source: chapter1Id, target: scene1Id });
 
-    // Panel 1 Node & Edge to Scene 1
-    nodes.push({
-        id: samplePanel1.id,
-        type: 'panel',
-        position: { x: 0, y: 0 },
-        data: { label: `Panel ${samplePanel1.order + 1}`, type: 'panel', properties: samplePanel1 } // Use order for label
-    });
-    edges.push({ id: `e-${scene1Id}-${panel1Id}`, source: scene1Id, target: panel1Id });
-
-    // Dialogue 1 Node & Edge to Panel 1
-     nodes.push({
-        id: sampleDialogue1.id,
-        type: 'dialogue',
-        position: { x: 0, y: 0 },
-        data: { label: `Dialogue ${sampleDialogue1.order + 1}`, type: 'dialogue', properties: sampleDialogue1 } // Use order for label
-    });
-    edges.push({ id: `e-${panel1Id}-${dialogue1Id}`, source: panel1Id, target: dialogue1Id });
-
-     // Edge from Character 1 to Panel 1 (for display only, mark noLayout)
-     edges.push({
-         id: `e-char-${char1Id}-panel-${panel1Id}`, source: char1Id, target: panel1Id, type: 'step', style: { stroke: 'hsl(var(--muted-foreground) / 0.3)', strokeDasharray: '4 4', strokeWidth: 1 }, animated: false, markerEnd: undefined, data: { noLayout: true }
-     });
-
-
-    // Scene 2 Node & Edge to Chapter 1
-     nodes.push({
-        id: sampleScene2.id,
-        type: 'scene',
-        position: { x: 0, y: 0 },
-        data: { label: sampleScene2.title, type: 'scene', properties: sampleScene2 }
-    });
-    edges.push({ id: `e-${chapter1Id}-${scene2Id}`, source: chapter1Id, target: scene2Id });
-
-    // Panel 2 Node & Edge to Scene 2
-    nodes.push({
-        id: samplePanel2.id,
-        type: 'panel',
-        position: { x: 0, y: 0 },
-        data: { label: `Panel ${samplePanel2.order + 1}`, type: 'panel', properties: samplePanel2 } // Use order for label
-    });
-    edges.push({ id: `e-${scene2Id}-${panel2Id}`, source: scene2Id, target: panel2Id });
-
-    // Dialogue 2 Node & Edge to Panel 2
-     nodes.push({
-        id: sampleDialogue2.id,
-        type: 'dialogue',
-        position: { x: 0, y: 0 },
-        data: { label: `Dialogue ${sampleDialogue2.order + 1}`, type: 'dialogue', properties: sampleDialogue2 } // Use order for label
-    });
-    edges.push({ id: `e-${panel2Id}-${dialogue2Id}`, source: panel2Id, target: dialogue2Id });
-
-     // Edges from Characters to Panel 2 (for display only, mark noLayout)
-     edges.push({
-        id: `e-char-${char1Id}-panel-${panel2Id}`, source: char1Id, target: panel2Id, type: 'step', style: { stroke: 'hsl(var(--muted-foreground) / 0.3)', strokeDasharray: '4 4', strokeWidth: 1 }, animated: false, markerEnd: undefined, data: { noLayout: true }
-     });
-     edges.push({
-        id: `e-char-${char2Id}-panel-${panel2Id}`, source: char2Id, target: panel2Id, type: 'step', style: { stroke: 'hsl(var(--muted-foreground) / 0.3)', strokeDasharray: '4 4', strokeWidth: 1 }, animated: false, markerEnd: undefined, data: { noLayout: true }
-     });
-
-
-    console.log("Sample data generated:", { nodes: nodes.length, edges: edges.length });
-    // Return raw data, layout will be applied in the component
+    console.log("Transformation complete:", { nodes: nodes.length, edges: edges.length });
     return { nodes, edges };
 }
 
@@ -306,88 +172,111 @@ function generateSampleProjectData(): { nodes: Node<NodeData>[], edges: Edge[] }
 // --- Main Component ---
 function VisualEditorInternal() {
   const {
-    nodes,
-    edges,
+    nodes: storeNodes, // Rename store state to avoid conflict
+    edges: storeEdges,
     selectedNode,
     setNodes,
     setEdges,
     setSelectedNode,
-    refreshCounter, // Use counter to trigger layout refresh
+    refreshCounter, // Use counter to trigger data refresh
     setViewportInitialized,
     viewportInitialized
   } = useVisualEditorStore();
 
   const { fitView } = useReactFlow();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const isInitialMount = useRef(true); // Track initial mount
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const isInitialLayoutDone = useRef(false); // Track if initial layout applied
 
-  // Generate sample data on mount and update store
-  useEffect(() => {
-    // Only generate sample data if nodes are currently empty (prevents overwriting)
-    if (isInitialMount.current && nodes.length === 0) {
-        console.log("Generating and setting sample data on mount...");
-        const { nodes: sampleNodes, edges: sampleEdges } = generateSampleProjectData();
-        // Apply layout immediately
-        const { nodes: layoutedNodes, edges: layoutedEdges } = layoutElements(sampleNodes, sampleEdges);
-        setNodes(layoutedNodes);
-        setEdges(layoutedEdges);
-        isInitialMount.current = false; // Mark initial mount as done
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run only once on mount
-
-   // Apply layout whenever nodes or edges change significantly (triggered by refreshCounter)
-    useEffect(() => {
-        // Skip initial mount layout if sample data generation handled it
-        if (isInitialMount.current) return;
-
-        if (nodes.length > 0) {
-            console.log("Applying layout due to data change (refreshCounter)...");
-            // Pass only edges relevant for layout (filter out noLayout edges)
-            const layoutEdges = edges.filter(edge => !edge.data?.noLayout);
-            const { nodes: layoutedNodes, edges: finalEdges } = layoutElements(nodes, layoutEdges);
-            setNodes(layoutedNodes);
-            // Set the original edges back, as layout function doesn't modify them
-            setEdges(edges);
-
-             // Optionally fit view after layout, maybe with a delay
-            // if (!viewportInitialized) {
-            //     const timer = setTimeout(() => {
-            //         console.log("Fitting view after layout update...");
-            //         fitView({ padding: 0.2, duration: 600 });
-            //         setViewportInitialized(true);
-            //     }, 150);
-            //     return () => clearTimeout(timer);
-            // }
+  // Fetch project data using Dexie live query
+  const projectData = useLiveQuery(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+        const project = await getDefaultProject(); // Fetch the default project with all relations
+        if (!project) {
+             setError("No project found in the database.");
+             return null;
         }
-    // Only re-run layout when refreshCounter changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [refreshCounter]);
+        return project;
+    } catch (err: any) {
+        console.error("Error loading project data:", err);
+        setError(`Error loading project data: ${err.message || 'Failed to fetch'}`);
+        return null;
+    } finally {
+         setIsLoading(false);
+    }
+  }, []); // Re-run query only on mount initially
 
 
-  // --- Handlers remain mostly the same, using Zustand store ---
-  const onNodesChange: OnNodesChange = useCallback(
-    (changes) => {
-        setNodes(applyNodeChanges(changes, nodes));
-    },
-    [setNodes, nodes]
-  );
+   // Effect to transform data and update store when projectData changes
+   useEffect(() => {
+       if (projectData) {
+           console.log("Project data received, transforming to flow elements...");
+           const { nodes: initialNodes, edges: initialEdges } = transformProjectToFlow(projectData);
+            // Only apply layout if it hasn't been done yet for this data load
+           if (!isInitialLayoutDone.current) {
+                console.log("Applying initial layout...");
+                const layoutEdges = initialEdges.filter(edge => !edge.data?.noLayout);
+                const { nodes: layoutedNodes, edges: finalEdges } = layoutElements(initialNodes, layoutEdges);
+                setNodes(layoutedNodes);
+                setEdges(initialEdges); // Keep original edges (including noLayout ones)
+                isInitialLayoutDone.current = true; // Mark initial layout as done
+                // Fit view after initial layout
+                const timer = setTimeout(() => {
+                     if (!viewportInitialized) {
+                        console.log("Fitting view after initial layout...");
+                        fitView({ padding: 0.2, duration: 600 });
+                        setViewportInitialized(true);
+                    }
+                 }, 150);
+                 return () => clearTimeout(timer);
+           } else {
+                // If layout already done, just update store (e.g., after minor data change)
+                console.log("Updating store without re-layouting...");
+                setNodes(initialNodes);
+                setEdges(initialEdges);
+           }
 
-  const onEdgesChange: OnEdgesChange = useCallback(
-    (changes) => {
-       setEdges(applyEdgeChanges(changes, edges));
-    },
-    [setEdges, edges]
-  );
+       } else if (!isLoading && !error) {
+            // Handle case where projectData is null after loading (e.g., empty DB)
+            setNodes([]);
+            setEdges([]);
+            isInitialLayoutDone.current = false; // Reset layout flag if data becomes null
+       }
+   // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, [projectData, isLoading, error, setNodes, setEdges, fitView, setViewportInitialized]); // Dependencies on fetched data
 
-  const onConnect: OnConnect = useCallback(
-    (connection) => {
-        const newEdge = { ...connection, type: 'smoothstep' }; // Ensure edge type
-        // Don't apply layout on simple connect, wait for refresh trigger if needed
-        setEdges(addEdge(newEdge, edges));
-    },
-    [setEdges, edges]
-  );
+
+   // --- Handlers remain mostly the same, using Zustand store ---
+   const onNodesChange: OnNodesChange = useCallback(
+     (changes) => {
+         // Prevent applying position changes from React Flow if layout is handling it?
+         // For now, allow direct manipulation, layout useEffect handles re-layouting if needed.
+         setNodes(applyNodeChanges(changes, storeNodes));
+     },
+     [setNodes, storeNodes]
+   );
+
+   const onEdgesChange: OnEdgesChange = useCallback(
+     (changes) => {
+        setEdges(applyEdgeChanges(changes, storeEdges));
+     },
+     [setEdges, storeEdges]
+   );
+
+   const onConnect: OnConnect = useCallback(
+     (connection) => {
+         const newEdge = { ...connection, type: 'smoothstep' }; // Ensure edge type
+         // TODO: Persist this new edge connection to Dexie
+         // For now, just update the store visually
+         setEdges(addEdge(newEdge, storeEdges));
+         // Trigger a layout refresh? Maybe not necessary for simple connections.
+         // refreshFlowData(); // Uncomment if layout needs update after connection
+     },
+     [setEdges, storeEdges]
+   );
 
   const handleNodeClick = useCallback((event: React.MouseEvent, node: Node<NodeData>) => {
     console.log("Node clicked, updating store:", node.id, node.data.type);
@@ -399,24 +288,20 @@ function VisualEditorInternal() {
       setSelectedNode(null);
   }, [setSelectedNode]);
 
-  // Fit view on initial load after nodes are set
-  useEffect(() => {
-      if (!viewportInitialized && nodes.length > 0 && reactFlowWrapper.current) {
-          const timer = setTimeout(() => {
-              console.log("Fitting view on initial load...");
-              fitView({ padding: 0.2, duration: 600 });
-              setViewportInitialized(true);
-          }, 100); // Short delay for initial render
-          return () => clearTimeout(timer);
-      }
-  }, [nodes, viewportInitialized, fitView, setViewportInitialized]);
 
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-full">Loading Flow Data...</div>;
+  }
+
+  if (error) {
+    return <div className="flex items-center justify-center h-full text-destructive">{error}</div>;
+  }
 
   return (
     <div ref={reactFlowWrapper} style={{ height: '100%', width: '100%', position: 'relative' }}>
       <ReactFlow
-        nodes={nodes} // Use nodes from Zustand store for rendering
-        edges={edges} // Use edges from Zustand store
+        nodes={storeNodes} // Use nodes from Zustand store for rendering
+        edges={storeEdges} // Use edges from Zustand store
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
@@ -424,7 +309,7 @@ function VisualEditorInternal() {
         defaultEdgeOptions={defaultEdgeOptions}
         fitView={false} // Fit view is handled by useEffect
         fitViewOptions={{ padding: 0.2 }}
-        className="bg-gradient-to-br from-background to-blue-50/30" // Softer gradient
+        className="bg-gradient-to-br from-background to-blue-50/30 dark:to-blue-950/30" // Adjusted gradient for dark mode
         onNodeClick={handleNodeClick}
         onPaneClick={handlePaneClick}
         selectNodesOnDrag={false}
@@ -443,15 +328,15 @@ function VisualEditorInternal() {
       >
         <Controls showInteractive={false} position="bottom-right" />
         <MiniMap nodeStrokeWidth={3} zoomable pannable position="bottom-left" nodeColor={(node) => {
-                // Match MiniMap colors to the actual node background colors
-                switch (node.type) {
-                    case 'project': return 'rgb(233 213 255)'; // purple-100
-                    case 'chapter': return 'rgb(219 234 254)'; // blue-100
-                    case 'scene': return 'rgb(220 252 231)'; // green-100
-                    case 'panel': return 'rgb(254 249 195)'; // yellow-100
-                    case 'dialogue': return 'rgb(253 231 239)'; // pink-100
-                    case 'character': return 'rgb(224 231 255)'; // indigo-100
-                    default: return '#e2e8f0'; // Default gray
+                // Match MiniMap colors to the actual node background colors (using HSL from globals.css)
+                 switch (node.type) {
+                    case 'project': return 'hsl(var(--purple-100))'; // Use HSL variable if defined, else fallback
+                    case 'chapter': return 'hsl(var(--blue-100))';
+                    case 'scene': return 'hsl(var(--green-100))';
+                    case 'panel': return 'hsl(var(--yellow-100))';
+                    case 'dialogue': return 'hsl(var(--pink-100))';
+                    case 'character': return 'hsl(var(--indigo-100))';
+                    default: return 'hsl(var(--muted))';
                 }
         }}/>
         <Background color="hsl(var(--border) / 0.3)" gap={24} size={1} />

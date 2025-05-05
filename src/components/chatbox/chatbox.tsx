@@ -3,29 +3,28 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { SendHorizonal, Bot, User, Loader2, Wand2, Pencil, X, ChevronDown, ChevronUp, Minus, GripVertical } from 'lucide-react'; // Added GripVertical
+import { SendHorizonal, Bot, User, Loader2, Wand2, Pencil, X, ChevronDown, ChevronUp, Minus, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ScrollArea, ScrollAreaViewport } from '@/components/ui/scroll-area'; // Import ScrollAreaViewport
+import { ScrollArea, ScrollAreaViewport } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { useVisualEditorStore } from '@/store/visual-editor-store'; // Import store
-import { cn } from '@/lib/utils'; // Import cn utility
+import { useVisualEditorStore } from '@/store/visual-editor-store';
+import { cn } from '@/lib/utils';
 
-// Import Genkit flow functions
+// Import Genkit flow functions (assuming these are updated/compatible)
 import { createChapterFromPrompt } from '@/ai/flows/create-chapter-from-prompt';
 import { brainstormCharacterIdeas } from '@/ai/flows/brainstorm-character-ideas';
 import { updateEntity } from '@/ai/flows/update-entity-flow';
 import type { NodeType } from '@/types/nodes';
-// Import the default project ID from the constants file
-import { DEFAULT_PROJECT_ID } from '@/config/constants';
+import { db, getDefaultProject } from '@/services/db'; // Import Dexie DB service
 
 // Placeholder for the general assistant
 async function askGeneralAssistant(message: string): Promise<string> {
     console.log('Sending to General AI:', message);
     await new Promise(resolve => setTimeout(resolve, 800));
     if (message.toLowerCase().includes('hello') || message.toLowerCase().includes('hi')) {
-        return "Hello there! How can I help you create or edit your manga today using the in-memory store?";
+        return "Hello there! How can I help you create or edit your manga today using the local database (Dexie)?";
     } else if (message.toLowerCase().includes('help')) {
         return "I can help create chapters, scenes, panels, characters, dialogues, or brainstorm ideas. Try 'create chapter 1 titled...' or 'brainstorm characters...'. To edit a specific item (like changing a scene's setting), please select it first in the editor.";
     }
@@ -33,7 +32,7 @@ async function askGeneralAssistant(message: string): Promise<string> {
     if (['change', 'update', 'edit', 'set', 'add', 'remove'].some(keyword => message.toLowerCase().startsWith(keyword))) {
          return "To modify a specific item (e.g., change a description, add a character to a panel), please select it in the visual editor first. Otherwise, tell me what you'd like to create or brainstorm.";
     }
-    return `I received: "${message}". I can assist with manga creation tasks like generating chapters, scenes, characters, etc., interacting with the in-memory store. Use commands like 'create ...' or 'brainstorm ...'. Select an item if you want to edit it.`;
+    return `I received: "${message}". I can assist with manga creation tasks like generating chapters, scenes, characters, etc., interacting with the local database (Dexie). Use commands like 'create ...' or 'brainstorm ...'. Select an item if you want to edit it.`;
 }
 
 
@@ -48,72 +47,85 @@ const chatboxVariants = {
     open: {
         opacity: 1,
         y: 0,
-        // height: '450px', // Let content and resize handle height when open
         transition: { type: 'spring', stiffness: 300, damping: 30 }
     },
     closed: {
         opacity: 1,
         y: 0,
-        // height: '60px', // Height is controlled by max-h class and content visibility
         transition: { type: 'spring', stiffness: 300, damping: 30 }
     }
 };
 
-// Define the height of the header (adjust if padding/border changes)
 const HEADER_HEIGHT = '52px'; // Approx height of header + border
 
 export default function Chatbox() {
     const [input, setInput] = useState('');
     const [messages, setMessages] = useState<Message[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [isMinimized, setIsMinimized] = useState(false); // State for minimize/maximize
+    const [isMinimized, setIsMinimized] = useState(false);
     const { toast } = useToast();
     const scrollAreaRef = useRef<HTMLDivElement>(null);
-    const viewportRef = useRef<HTMLDivElement>(null); // Ref for the viewport element
+    const viewportRef = useRef<HTMLDivElement>(null);
     const selectedNode = useVisualEditorStore((state) => state.selectedNode);
     const setSelectedNode = useVisualEditorStore((state) => state.setSelectedNode);
-    const refreshFlowData = useVisualEditorStore((state) => state.refreshFlowData);
+    const refreshFlowData = useVisualEditorStore((state) => state.refreshFlowData); // Trigger refresh
 
     // ---- Project Context ----
-    const currentProjectId = DEFAULT_PROJECT_ID; // Use the default ID from constants
-    const currentProjectTitle = 'My First Manga Project'; // Hardcoded for now, could fetch if needed
+    // Fetch the default project ID and title dynamically
+    const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+    const [currentProjectTitle, setCurrentProjectTitle] = useState<string | null>(null);
+    const [projectLoading, setProjectLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchProject = async () => {
+            setProjectLoading(true);
+            try {
+                const project = await getDefaultProject();
+                if (project) {
+                    setCurrentProjectId(project.id);
+                    setCurrentProjectTitle(project.title);
+                } else {
+                    console.error("Could not load default project for chat context.");
+                     toast({ title: "Error", description: "Could not load project context for AI.", variant: "destructive" });
+                }
+            } catch (error) {
+                console.error("Error fetching project context:", error);
+                 toast({ title: "Error", description: "Failed to fetch project context.", variant: "destructive" });
+            } finally {
+                setProjectLoading(false);
+            }
+        };
+        fetchProject();
+    }, [toast]);
     // ---- End Context ----
 
+
     const scrollToBottom = useCallback(() => {
-        // Ensure this runs after the DOM has updated
         setTimeout(() => {
             const viewport = viewportRef.current;
             if (viewport) {
                 viewport.scrollTop = viewport.scrollHeight;
-            } else {
-                // Fallback if viewportRef isn't set yet (less likely but possible)
-                const scrollArea = scrollAreaRef.current;
-                if (scrollArea) {
-                    // Try to query the viewport element inside ScrollArea
-                     const viewportEl = scrollArea.querySelector('[data-radix-scroll-area-viewport]');
-                     if (viewportEl) {
-                         viewportEl.scrollTop = viewportEl.scrollHeight;
-                     }
-                }
             }
-        }, 50); // Small delay to ensure DOM update
+        }, 50);
     }, []);
 
 
     useEffect(() => {
-        // Scroll to bottom whenever messages change and chatbox is not minimized
         if (!isMinimized && messages.length > 0) {
             scrollToBottom();
         }
     }, [messages, isMinimized, scrollToBottom]);
 
     const processUserInput = async (userInput: string) => {
-        // No need to check project ID existence for in-memory
+        if (!currentProjectId) {
+             toast({ title: "Error", description: "Project context not loaded. Cannot process command.", variant: "destructive" });
+             setIsLoading(false);
+             return; // Need project context for most operations
+        }
 
         setIsLoading(true);
         const thinkingId = Date.now().toString() + '-think';
         setMessages((prev) => [...prev, { id: thinkingId, text: 'Thinking...', sender: 'ai', isThinking: true }]);
-        // scrollToBottom(); // Scroll is handled by useEffect
 
         let aiResponse: Message | null = null;
         let actionTaken = false;
@@ -129,14 +141,14 @@ export default function Chatbox() {
                     const [, chapterNum, title, prompt] = match;
                     toast({ title: "AI Action", description: `Creating Chapter ${chapterNum}: ${title}...` });
                     const result = await createChapterFromPrompt({
-                        projectId: currentProjectId, // Use default project ID
+                        projectId: currentProjectId, // Use fetched project ID
                         chapterNumber: parseInt(chapterNum, 10),
                         chapterTitle: title.trim(),
                         prompt: prompt.trim() || `Create content for ${title}`,
                     });
                      aiResponse = { id: Date.now().toString(), sender: 'ai', text: (
                          <div>
-                             <p>✅ Chapter "{title}" (ID: {result.chapterId?.substring(0, 6)}...) created!</p>
+                             <p>✅ Chapter "{title}" (ID: {result.chapterId?.substring(0, 8)}...) created!</p>
                              <p>   - Scenes created: {result.sceneIds.length}</p>
                              {result.panelIds && result.panelIds.length > 0 && <p>   - Panels created: {result.panelIds.length}</p>}
                              {result.dialogueIds && result.dialogueIds.length > 0 && <p>   - Dialogues created: {result.dialogueIds.length}</p>}
@@ -155,7 +167,7 @@ export default function Chatbox() {
                  toast({ title: "AI Action", description: "Brainstorming character ideas..." });
                  const result = await brainstormCharacterIdeas({
                      projectId: currentProjectId, // Provide project context
-                     projectTitle: currentProjectTitle, // Optional title context
+                     projectTitle: currentProjectTitle ?? undefined, // Optional title context
                      prompt: `Brainstorm characters for: ${prompt}`,
                  });
                  aiResponse = { id: Date.now().toString(), sender: 'ai', text: (
@@ -173,7 +185,7 @@ export default function Chatbox() {
              // 2. Update Command (*Requires* a selected node)
              } else if (selectedNode && selectedNode.data?.properties?.id && selectedNode.data.type) {
                   actionTaken = true;
-                  const entityId = selectedNode.data.properties.id; // In-memory ID
+                  const entityId = selectedNode.data.properties.id; // Dexie ID
                   const entityType = selectedNode.data.type as NodeType;
 
                   // Check if the input seems like an update command
@@ -184,12 +196,12 @@ export default function Chatbox() {
                           entityType: entityType,
                           entityId: entityId,
                           prompt: userInput,
-                          projectId: currentProjectId, // Pass default project context
+                          projectId: currentProjectId, // Pass project context
                       });
 
                       aiResponse = { id: Date.now().toString(), sender: 'ai', text: (
                           <div>
-                              <p>{result.success ? '✅' : '⚠️'} Update for {entityType} (ID: {result.updatedEntityId?.substring(0, 6)}...) processed.</p>
+                              <p>{result.success ? '✅' : '⚠️'} Update for {entityType} (ID: {result.updatedEntityId?.substring(0, 8)}...) processed.</p>
                               <p className="text-xs italic">{result.message}</p>
                           </div>
                       )};
@@ -198,16 +210,14 @@ export default function Chatbox() {
                           setSelectedNode(null); // Clear selection after update
                       }
                   } else {
-                       // Input was given while a node was selected, but it wasn't an obvious update command
-                       // Treat as general query, but maybe add context? Or just let general assistant handle it.
-                       actionTaken = false; // Fall through to general assistant
+                       actionTaken = false;
                        console.log("Input given while node selected, but not an update command. Passing to general assistant.");
                   }
 
-             // 3. General Assistant Fallback (No selection or not an update command)
+             // 3. General Assistant Fallback
              }
 
-             // If no specific action was taken above, use the general assistant
+             // If no specific action was taken, use the general assistant
              if (!actionTaken) {
                  const generalResponseText = await askGeneralAssistant(userInput);
                  aiResponse = { id: Date.now().toString(), text: generalResponseText, sender: 'ai' };
@@ -229,19 +239,17 @@ export default function Chatbox() {
             });
 
             setIsLoading(false);
-            // scrollToBottom(); // Scroll is handled by useEffect
         }
     };
 
 
     const handleSend = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!input.trim() || isLoading) return;
+        if (!input.trim() || isLoading || projectLoading) return;
 
-        // If minimized, maximize first
         if (isMinimized) {
             setIsMinimized(false);
-             await new Promise(resolve => setTimeout(resolve, 50)); // Short delay for animation
+             await new Promise(resolve => setTimeout(resolve, 50));
         }
 
         const userMessageText = input;
@@ -253,39 +261,34 @@ export default function Chatbox() {
         await processUserInput(userMessageText);
     };
 
-     // Updated placeholder text
-     const placeholderText = selectedNode
+     const placeholderText = projectLoading
+        ? "Loading project context..."
+        : selectedNode
         ? `Editing ${selectedNode.data.type} "${selectedNode.data.label}"...`
         : "Ask AI: 'create chapter 1 titled...' or 'brainstorm characters...'";
 
-    // Handle resizing state
-    const [chatSize, setChatSize] = useState({ width: 500, height: 450 }); // Initial size
+    // Handle resizing state (kept from previous implementation)
+    const [chatSize, setChatSize] = useState({ width: 500, height: 450 });
 
     return (
-        // Use motion.div for layout animation
         <motion.div
-            layout // Animate layout changes (like height)
+            layout
             animate={isMinimized ? "closed" : "open"}
-            variants={chatboxVariants} // Still use variants for opacity/y transitions
+            variants={chatboxVariants}
             initial={false}
             className={cn(
-                "bg-card border border-border rounded-lg shadow-xl overflow-hidden flex flex-col backdrop-blur-sm bg-opacity-90",
-                "resizable-chat", // Add class for potential resizing styles/JS targeting
-                // Set height based on minimized state: Header height or auto
+                "bg-card border border-border rounded-lg shadow-xl overflow-hidden flex flex-col backdrop-blur-sm bg-opacity-95 dark:bg-opacity-80",
+                "resizable-chat",
                 isMinimized ? `h-[${HEADER_HEIGHT}] max-h-[${HEADER_HEIGHT}]` : "max-h-[80vh]"
             )}
              style={{
-                 width: isMinimized ? undefined : `${chatSize.width}px`, // Control width via state when not minimized
-                 // Let className/content control height when not minimized
-                 // height: isMinimized ? undefined : `${chatSize.height}px`,
-                 position: 'absolute', // Required for react-draggable positioning
-                 // Default positioning handled by parent Draggable in page.tsx
-                 resize: 'both', // Allow resizing
-                 overflow: 'auto', // Needed for resize handles
+                 width: isMinimized ? undefined : `${chatSize.width}px`,
+                 position: 'absolute',
+                 resize: 'both',
+                 overflow: 'auto',
              }}
         >
-            {/* Header with Minimize/Maximize Button & Drag Handle */}
-            {/* Added 'chatbox-drag-handle' class */}
+            {/* Header */}
             <div className="chatbox-drag-handle flex items-center justify-between px-3 py-1.5 border-b border-border bg-background/80 shrink-0 cursor-grab active:cursor-grabbing" style={{ height: HEADER_HEIGHT }}>
                  <div className="flex items-center gap-1 text-muted-foreground">
                     <GripVertical size={14} />
@@ -302,26 +305,25 @@ export default function Chatbox() {
                 </Button>
             </div>
 
-            {/* AnimatePresence for smooth showing/hiding of content */}
+            {/* Content Area */}
             <AnimatePresence initial={false}>
                 {!isMinimized && (
                     <motion.div
                         key="chat-content"
-                        initial={{ opacity: 0, height: 0 }} // Start hidden when maximizing
-                        animate={{ opacity: 1, height: 'auto' }} // Animate to auto height
-                        exit={{ opacity: 0, height: 0 }} // Animate to hidden when minimizing
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="flex flex-col flex-grow min-h-0 overflow-hidden" // Important for flex layout and hiding content when minimized
+                        className="flex flex-col flex-grow min-h-0 overflow-hidden"
                     >
                         {/* Message Area */}
                         <ScrollArea className="flex-grow p-4" ref={scrollAreaRef}>
-                           {/* Pass viewportRef to the ScrollAreaViewport */}
                             <ScrollAreaViewport ref={viewportRef} className="h-full w-full">
                                 <AnimatePresence initial={false}>
                                     {messages.map((message) => (
                                         <motion.div
                                             key={message.id}
-                                            layout // Animate message position changes
+                                            layout
                                             initial={{ opacity: 0, y: 10 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             exit={{ opacity: 0, x: message.sender === 'ai' ? -10 : 10 }}
@@ -375,7 +377,6 @@ export default function Chatbox() {
                             </div>
                         )}
 
-
                         {/* Input Area */}
                         <form onSubmit={handleSend} className="p-3 border-t border-border bg-background/80 flex items-center gap-2 shrink-0">
                             <Input
@@ -383,11 +384,11 @@ export default function Chatbox() {
                                 onChange={(e) => setInput(e.target.value)}
                                 placeholder={placeholderText}
                                 className="flex-grow bg-input focus-visible:ring-primary text-sm"
-                                disabled={isLoading}
+                                disabled={isLoading || projectLoading}
                                 aria-label="Chat input"
                             />
-                            <Button type="submit" size="icon" disabled={isLoading || !input.trim()} className="bg-primary hover:bg-primary/90 shrink-0">
-                                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizonal className="h-4 w-4" />}
+                            <Button type="submit" size="icon" disabled={isLoading || projectLoading || !input.trim()} className="bg-primary hover:bg-primary/90 shrink-0">
+                                {isLoading || projectLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizonal className="h-4 w-4" />}
                                 <span className="sr-only">Send</span>
                             </Button>
                         </form>

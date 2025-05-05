@@ -3,7 +3,7 @@
 
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Minus, PanelRightOpen, X, GripVertical } from 'lucide-react'; // Added GripVertical
+import { Minus, PanelRightOpen, X, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
@@ -18,26 +18,27 @@ import {
     updatePanel,
     updatePanelDialogue,
     updateCharacter
-} from '@/services/in-memory'; // Use in-memory service
+} from '@/services/db'; // Use Dexie service (db.ts)
 import type { Node } from 'reactflow';
 import type { DeepPartial } from '@/types/utils';
 import { cn } from '@/lib/utils';
-import nodeFormConfig from '@/config/node-form-config'; // Import the new config
-import { Label } from '@/components/ui/label'; // Ensure Label is imported
+import nodeFormConfig from '@/config/node-form-config';
+import { Label } from '@/components/ui/label';
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@/components/ui/accordion"; // Import Accordion components
+} from "@/components/ui/accordion";
 
 
 interface PropertiesPanelProps {
-    isOpen: boolean;
+    // isOpen prop removed as visibility is controlled by parent now
     node: Node<NodeData> | null;
-    onClose: () => void;
+    onClose: () => void; // Keep onClose to allow panel to signal closure
 }
 
+// Ensure the update map uses the correct functions from the Dexie service
 const updateFunctionMap: Record<NodeType, (id: string, data: any) => Promise<any>> = {
     project: updateProject,
     chapter: updateChapter,
@@ -50,26 +51,25 @@ const updateFunctionMap: Record<NodeType, (id: string, data: any) => Promise<any
 const panelVariants = {
     open: {
         opacity: 1,
-        // x: 0, // Position controlled by Draggable
         height: 'auto', // Let content define height, constrained by max-h
-        width: '384px', // Keep width fixed or allow resize if needed
+        width: '384px', // Keep width fixed
         transition: { type: 'spring', stiffness: 300, damping: 30 }
     },
     closed: {
         opacity: 1,
-        // x: 0,
         height: '52px', // Height when minimized
         width: '384px',
         transition: { type: 'spring', stiffness: 300, damping: 30 }
     }
 };
 
-export default function PropertiesPanel({ isOpen, node, onClose }: PropertiesPanelProps) {
+export default function PropertiesPanel({ node, onClose }: PropertiesPanelProps) {
     const { toast } = useToast();
-    const queryClient = useQueryClient();
-    const refreshFlowData = useVisualEditorStore((state) => state.refreshFlowData);
+    // QueryClient might not be necessary if we rely solely on Dexie's reactivity via useLiveQuery in VisualEditor
+    // const queryClient = useQueryClient();
+    const refreshFlowData = useVisualEditorStore((state) => state.refreshFlowData); // Keep for potential manual refresh trigger
     const [isMinimized, setIsMinimized] = useState(false);
-    const formRef = useRef<HTMLFormElement>(null); // Ref for the form
+    const formRef = useRef<HTMLFormElement>(null);
 
     const nodeData = node?.data;
     const nodeId = node?.data?.properties?.id;
@@ -79,23 +79,25 @@ export default function PropertiesPanel({ isOpen, node, onClose }: PropertiesPan
     const description = nodeType ? `Edit properties for ${nodeData?.label || 'selected item'}.` : 'Select an item to edit.';
 
     const mutation = useMutation({
-        mutationFn: ({ nodeType, id, data }: { nodeType: NodeType, id: string, data: DeepPartial<any> }) => {
+        mutationFn: async ({ nodeType, id, data }: { nodeType: NodeType, id: string, data: DeepPartial<any> }) => {
             const updateFn = updateFunctionMap[nodeType];
             if (!updateFn) {
                 throw new Error(`No update function found for node type: ${nodeType}`);
             }
-            console.log("Submitting update to in-memory store:", { nodeType, id, data });
-            return updateFn(id, data);
+            console.log("Submitting update to Dexie:", { nodeType, id, data });
+            await updateFn(id, data); // Await the Dexie update
+            return { nodeType, id }; // Return identifier for onSuccess
         },
-        onSuccess: (updatedData, variables) => {
+        onSuccess: (result, variables) => {
             toast({
                 title: "Success",
-                description: `${variables.nodeType.charAt(0).toUpperCase() + variables.nodeType.slice(1)} properties saved successfully.`,
+                description: `${result.nodeType.charAt(0).toUpperCase() + result.nodeType.slice(1)} properties saved successfully.`,
             });
-            queryClient.invalidateQueries({ queryKey: ['projectFlowData'] }); // Invalidate cache if using React Query elsewhere
-            refreshFlowData(); // Refresh the visual editor data
-            // Keep panel open after save
-            // onClose();
+            // No need to invalidate React Query cache if not using it for this data
+            // queryClient.invalidateQueries({ queryKey: ['projectFlowData'] });
+            // Data should update automatically via useLiveQuery in VisualEditor,
+            // but keep refreshFlowData trigger if needed for complex scenarios
+            // refreshFlowData();
         },
         onError: (error: any, variables) => {
             console.error(`Error updating ${variables.nodeType} (${variables.id}):`, error);
@@ -113,18 +115,19 @@ export default function PropertiesPanel({ isOpen, node, onClose }: PropertiesPan
             return;
         }
         const updateData = { ...formData };
-        // Remove fields that shouldn't be directly updated if necessary
-        // delete updateData.id;
 
         mutation.mutate({
             nodeType: nodeType,
             id: nodeId,
-            data: updateData, // Pass the processed data
+            data: updateData,
         });
     };
 
-    // Don't render anything if the parent Draggable wrapper isn't rendered
-    // The isOpen logic is handled in the parent component (src/app/page.tsx)
+     // Conditional rendering based on node selection is handled by the parent Draggable wrapper
+     if (!node) {
+        return null; // Don't render if no node is selected
+     }
+
 
     return (
         // This div is now positioned by the Draggable wrapper in page.tsx
@@ -134,14 +137,15 @@ export default function PropertiesPanel({ isOpen, node, onClose }: PropertiesPan
             initial={false}
             animate={isMinimized ? "closed" : "open"}
             className={cn(
-                 "bg-card border border-border rounded-lg shadow-xl overflow-hidden flex flex-col backdrop-blur-sm bg-opacity-95",
-                 isMinimized ? "max-h-[52px]" : "max-h-[calc(100vh-5rem)]" // Keep max height relative to viewport
+                 "bg-card border border-border rounded-lg shadow-xl overflow-hidden flex flex-col backdrop-blur-sm bg-opacity-95 dark:bg-opacity-80", // Adjusted opacity for dark mode
+                 isMinimized ? "max-h-[52px]" : "max-h-[calc(100vh-8rem)]" // Adjusted max height
             )}
-            // Remove absolute positioning styles here
+            style={{ width: '384px' }} // Keep fixed width
         >
             {/* Header - Make this the draggable handle */}
             <div
                  className="properties-panel-drag-handle flex items-center justify-between px-4 py-2 border-b border-border bg-background/80 shrink-0 cursor-grab active:cursor-grabbing"
+                 style={{ height: '52px' }} // Fixed header height
             >
                 <div className="flex items-center gap-2 text-muted-foreground">
                     <GripVertical size={14} />
@@ -179,12 +183,12 @@ export default function PropertiesPanel({ isOpen, node, onClose }: PropertiesPan
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="flex flex-col flex-grow min-h-0" // Important for flex layout with scroll
+                        className="flex flex-col flex-grow min-h-0 overflow-hidden" // Important for flex layout with scroll
                     >
-                        <ScrollArea className="flex-grow px-4 py-3"> {/* ScrollArea wraps the form */}
+                        <ScrollArea className="flex-grow px-4 py-3">
                             {nodeData && nodeType && nodeData.properties ? (
                                 <PropertyForm
-                                    key={nodeId || 'no-node'} // Re-render form when node changes
+                                    key={nodeId || 'no-node'}
                                     nodeType={nodeType}
                                     initialValues={nodeData.properties}
                                     onSubmit={handleFormSubmit}
@@ -193,26 +197,24 @@ export default function PropertiesPanel({ isOpen, node, onClose }: PropertiesPan
                                 />
                             ) : (
                                 <div className="flex items-center justify-center h-full text-sm text-muted-foreground p-4">
-                                    <p>{description}</p>
+                                    <p>{description}</p> {/* Should not be reached if parent hides panel */}
                                 </div>
                             )}
                         </ScrollArea>
 
-                        {/* Footer with Buttons (only if a node is selected) */}
-                         {nodeData && (
-                            <div className="px-4 pb-4 pt-3 border-t border-border mt-auto bg-background/80 flex justify-end gap-2 shrink-0">
-                                <Button variant="outline" onClick={onClose} disabled={mutation.isPending}>
-                                    Close
-                                </Button>
-                                <Button
-                                    type="submit"
-                                    form="property-form" // Link button to the form ID
-                                    disabled={mutation.isPending}
-                                >
-                                    {mutation.isPending ? 'Saving...' : 'Save Changes'}
-                                </Button>
-                            </div>
-                         )}
+                        {/* Footer with Buttons */}
+                         <div className="px-4 pb-4 pt-3 border-t border-border mt-auto bg-background/80 flex justify-end gap-2 shrink-0">
+                            <Button variant="outline" onClick={onClose} disabled={mutation.isPending}>
+                                Close
+                            </Button>
+                            <Button
+                                type="submit"
+                                form="property-form" // Link button to the form ID
+                                disabled={mutation.isPending}
+                            >
+                                {mutation.isPending ? 'Saving...' : 'Save Changes'}
+                            </Button>
+                        </div>
                     </motion.div>
                 )}
             </AnimatePresence>

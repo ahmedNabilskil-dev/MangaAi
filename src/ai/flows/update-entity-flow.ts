@@ -1,9 +1,9 @@
 
 'use server';
 /**
- * @fileOverview Defines a Genkit flow for updating various manga entities (Project, Chapter, Scene, Panel, Dialogue, Character) in the in-memory store based on user prompts.
+ * @fileOverview Defines a Genkit flow for updating various manga entities (Project, Chapter, Scene, Panel, Dialogue, Character) in the Dexie database based on user prompts.
  *
- * This flow uses specific tools to interact with the backend service (in-memory) for updates.
+ * This flow uses specific tools to interact with the backend service (Dexie via db.ts) for updates.
  * - updateEntity - A function that takes an entity type, ID, and prompt, then orchestrates the update using tools.
  * - UpdateEntityInput - The input type for the updateEntity function.
  * - UpdateEntityOutput - The return type for the updateEntity function.
@@ -11,7 +11,7 @@
 
 import { ai } from '@/ai/ai-instance';
 import { z } from 'genkit';
-// Import in-memory service functions
+// Import Dexie service functions
 import {
     updateProject,
     updateChapter,
@@ -21,15 +21,14 @@ import {
     updateCharacter,
     assignCharacterToPanel,
     removeCharacterFromPanel,
-    getProject, // Use the main getter which populates relations
+    getProject as getProjectForContext, // Renamed for clarity
     getChapterForContext,
     getSceneForContext,
     getPanelForContext,
     getPanelDialogueForContext,
-    getCharacter as getCharacterForContext,
+    getCharacterForContext,
     getAllCharacters,
-} from '@/services/in-memory';
-import { DEFAULT_PROJECT_ID } from '@/config/constants'; // Import default project ID
+} from '@/services/db'; // Import from Dexie service (db.ts)
 import type { NodeType } from '@/types/nodes';
 import type { MangaProject, Chapter, Scene, Panel, PanelDialogue, Character } from '@/types/entities';
 import type { DeepPartial } from '@/types/utils';
@@ -64,8 +63,8 @@ const UpdateEntityInputSchema = z.object({
   entityType: z.enum(['project', 'chapter', 'scene', 'panel', 'dialogue', 'character']).describe("The type of entity to update."),
   entityId: z.string().describe("The ID of the specific entity instance to update."),
   prompt: z.string().describe("The user's instruction for how to update the entity (e.g., 'Change the scene setting to a dark forest', 'Add character X to the panel', 'Rewrite the dialogue to be more menacing')."),
-  // ProjectId is less critical for in-memory but good practice
-  projectId: z.string().optional().default(DEFAULT_PROJECT_ID).describe("The ID of the project context (defaults to the standard in-memory project)."),
+  // ProjectId is needed for context when finding characters by name
+  projectId: z.string().optional().describe("The ID of the project context, needed for character lookups."),
 });
 export type UpdateEntityInput = z.infer<typeof UpdateEntityInputSchema>;
 
@@ -89,27 +88,66 @@ type AugmentedUpdateEntityInput = z.infer<typeof AugmentedUpdateEntityInputSchem
 export async function updateEntity(input: UpdateEntityInput): Promise<UpdateEntityOutput> {
     // Fetch current data to provide context to the LLM if needed
     let currentData: any = null;
-    const projectId = input.projectId || DEFAULT_PROJECT_ID; // Ensure project ID
+    let projectId = input.projectId; // Use provided projectId first
 
     try {
         console.log(`Fetching current data for ${input.entityType} ${input.entityId}`);
         switch (input.entityType) {
-            // Use the specific context getters which don't fetch nested data
-            case 'project': currentData = await getProject(input.entityId); break; // Get full project for context
-            case 'chapter': currentData = await getChapterForContext(input.entityId); break;
-            case 'scene': currentData = await getSceneForContext(input.entityId); break;
-            case 'panel': currentData = await getPanelForContext(input.entityId); break;
-            case 'dialogue': currentData = await getPanelDialogueForContext(input.entityId); break;
-            case 'character': currentData = await getCharacterForContext(input.entityId); break;
+            case 'project':
+                currentData = await getProjectForContext(input.entityId);
+                // If projectId wasn't passed, set it from the fetched project
+                if (!projectId && currentData) projectId = currentData.id;
+                break;
+            case 'chapter':
+                currentData = await getChapterForContext(input.entityId);
+                if (!projectId && currentData) projectId = currentData.mangaProjectId;
+                break;
+            case 'scene':
+                currentData = await getSceneForContext(input.entityId);
+                if (!projectId && currentData) {
+                    const chapter = await getChapterForContext(currentData.chapterId);
+                    if (chapter) projectId = chapter.mangaProjectId;
+                }
+                break;
+            case 'panel':
+                currentData = await getPanelForContext(input.entityId);
+                if (!projectId && currentData) {
+                     const scene = await getSceneForContext(currentData.sceneId);
+                     if (scene) {
+                         const chapter = await getChapterForContext(scene.chapterId);
+                         if (chapter) projectId = chapter.mangaProjectId;
+                     }
+                }
+                break;
+            case 'dialogue':
+                currentData = await getPanelDialogueForContext(input.entityId);
+                 if (!projectId && currentData) {
+                     const panel = await getPanelForContext(currentData.panelId);
+                     if (panel) {
+                         const scene = await getSceneForContext(panel.sceneId);
+                         if (scene) {
+                             const chapter = await getChapterForContext(scene.chapterId);
+                             if (chapter) projectId = chapter.mangaProjectId;
+                         }
+                     }
+                 }
+                break;
+            case 'character':
+                currentData = await getCharacterForContext(input.entityId);
+                 if (!projectId && currentData) projectId = currentData.mangaProjectId;
+                break;
         }
          console.log("Current data fetched:", currentData ? 'Data found' : 'Not found');
+         if (!projectId) {
+             console.warn(`Could not determine projectId for ${input.entityType} ${input.entityId}. Character lookups might fail.`);
+         }
     } catch (error: any) {
         console.warn(`Could not fetch current data for ${input.entityType} ${input.entityId}:`, error.message);
         // Proceed without currentData, but the LLM might be less effective
     }
 
 
-    // Augment input with current data and project ID for the flow
+    // Augment input with current data and determined project ID for the flow
     const flowInput: AugmentedUpdateEntityInput = { ...input, projectId, currentData };
 
     return updateEntityFlow(flowInput);
@@ -214,30 +252,31 @@ const findCharacterByNameTool = ai.defineTool({
     description: "Finds the ID of an existing character given their name within the current project context.",
     inputSchema: z.object({
         characterName: z.string().describe("The exact name of the character to find."),
-        projectId: z.string().optional().default(DEFAULT_PROJECT_ID).describe("The ID of the current project context (uses default)."),
+        projectId: z.string().optional().describe("The ID of the current project context. REQUIRED for lookup."),
     }),
     // Return ID or null explicitly
     outputSchema: z.string().nullable().describe("The ID of the found character, or null if not found."),
 }, async ({ characterName, projectId }) => {
-    const finalProjectId = projectId || DEFAULT_PROJECT_ID;
-    if (!finalProjectId) {
+    if (!projectId) {
          console.warn("findCharacterByNameTool requires projectId for context.");
-         return null; // Should not happen with default
+         // Optionally throw an error or just return null if projectId is missing
+         // throw new Error("Project ID is required for findCharacterByNameTool.");
+          return null;
     }
     try {
-        console.log(`Finding character "${characterName}" in project ${finalProjectId}`);
-        const characters = await getAllCharacters(finalProjectId);
+        console.log(`Finding character "${characterName}" in project ${projectId}`);
+        const characters = await getAllCharacters(projectId);
         const found = characters.find(c => c.name.toLowerCase() === characterName.toLowerCase());
         console.log(`Found character: ${found?.id ?? 'null'}`);
         return found?.id ?? null;
     } catch (error: any) {
-        console.error(`Error finding character "${characterName}" in project ${finalProjectId}:`, error.message);
+        console.error(`Error finding character "${characterName}" in project ${projectId}:`, error.message);
         return null;
     }
 });
 
 
-// Use in-memory assignment tools
+// Use Dexie assignment tools
 const assignCharacterToPanelTool = ai.defineTool({
     name: 'assignCharacterToPanel',
     description: 'Assigns an *existing* character to a specific panel. Use findCharacterByName first if you only have the name.',
@@ -248,7 +287,7 @@ const assignCharacterToPanelTool = ai.defineTool({
     outputSchema: z.boolean().describe("True if assignment was successful."),
 }, async (input) => {
     try {
-        await assignCharacterToPanel(input.panelId, input.characterId); // In-memory service
+        await assignCharacterToPanel(input.panelId, input.characterId); // Dexie service
         return true;
     } catch (error: any) {
         console.error(`Failed to assign character ${input.characterId} to panel ${input.panelId}:`, error.message);
@@ -266,7 +305,7 @@ const removeCharacterFromPanelTool = ai.defineTool({
     outputSchema: z.boolean().describe("True if removal was successful."),
 }, async (input) => {
     try {
-        await removeCharacterFromPanel(input.panelId, input.characterId); // In-memory service
+        await removeCharacterFromPanel(input.panelId, input.characterId); // Dexie service
         return true;
     } catch (error: any) {
         console.error(`Failed to remove character ${input.characterId} from panel ${input.panelId}:`, error.message);
@@ -291,14 +330,14 @@ const prompt = ai.definePrompt({
       removeCharacterFromPanelTool
     ],
   input: {
-    schema: AugmentedUpdateEntityInputSchema,
+    schema: AugmentedUpdateEntityInputSchema, // Use augmented schema with currentData and projectId
   },
   output: {
     schema: z.object({
         confirmation: z.string().describe("Confirmation message indicating if the update was attempted based on the prompt and which tools were used.")
     }),
   },
-  prompt: `You are an AI assistant helping update elements of a manga project stored in memory. The user wants to modify a specific {{entityType}} with ID: {{entityId}}. The project context ID is {{projectId}}.
+  prompt: `You are an AI assistant helping update elements of a manga project stored in a Dexie (IndexedDB) database. The user wants to modify a specific {{entityType}} with ID: {{entityId}}. {{#if projectId}}The project context ID is {{projectId}}.{{else}}Project context ID is unknown.{{/if}}
 
 User Prompt:
 "{{prompt}}"
@@ -312,21 +351,27 @@ Based *only* on the user's prompt and the current data:
 1.  Determine the specific changes requested.
 2.  Identify the correct tool(s) to apply these changes (e.g., \`updateScene\`, \`assignCharacterToPanel\`).
 3.  If the prompt involves adding or removing a character from a panel BY NAME:
-    a. FIRST use \`findCharacterByName\` to get their ID, providing the \`projectId\` ({{projectId}}) for context.
-    b. If the character ID is found, use \`assignCharacterToPanel\` or \`removeCharacterFromPanel\` with the panel ID and the found character ID.
-    c. If the character ID is NOT found, inform the user in the confirmation message and DO NOT attempt to assign/remove.
+    a. You MUST have the \`projectId\` for context. If the projectId is missing or unknown, state this limitation in your confirmation and DO NOT proceed with character lookup/assignment/removal.
+    b. If you have the \`projectId\`, FIRST use \`findCharacterByName\` to get their ID, providing the \`projectId\` for context.
+    c. If the character ID is found, use \`assignCharacterToPanel\` or \`removeCharacterFromPanel\` with the panel ID and the found character ID.
+    d. If the character ID is NOT found (or projectId was missing), inform the user in the confirmation message and DO NOT attempt to assign/remove.
 4.  If the prompt involves updating fields of an entity (e.g., changing title, description, context):
     a. Construct the \`data\` object for the appropriate update tool (e.g., \`updateScene\`, \`updatePanelDialogue\`). Include ONLY the fields to be changed with their NEW values.
     b. For \`updatePanel\`, DO NOT include \`characterIds\` in the \`data\` object; use the assignment/removal tools instead.
     c. Call the appropriate update tool with the entity ID (\`{{entityId}}\`) and the update \`data\`.
-5.  Handle speaker changes in dialogue: If the prompt requests changing the speaker by name, use \`findCharacterByName\` to get the ID (requires \`projectId\`), then call \`updatePanelDialogue\` with the new \`speakerId\`. If the name is not found, report it.
+5.  Handle speaker changes in dialogue: If the prompt requests changing the speaker by name:
+    a. You MUST have the \`projectId\` for context. If the projectId is missing or unknown, state this limitation in your confirmation and DO NOT proceed.
+    b. Use \`findCharacterByName\` to get the ID (requires \`projectId\`).
+    c. If the ID is found, call \`updatePanelDialogue\` with the dialogue's ID and the new \`speakerId\` in the \`data\` object.
+    d. If the name is not found (or projectId was missing), report it.
 
 **CRITICAL RULES:**
 *   **Targeted Updates:** Only update the fields or relationships explicitly requested or strongly implied by the user's prompt. Do not change unrelated data.
 *   **Correct Tool:** Use the tool corresponding to the \`entityType\` (e.g., use \`updateSceneTool\` for a scene). Use assignment/removal tools for panel character list changes.
-*   **Use IDs:** Provide the correct \`entityId\` (\`{{entityId}}\`) to the tools. Use character IDs found via \`findCharacterByName\` when required by other tools. Provide the \`projectId\` ({{projectId}}) to \`findCharacterByName\`.
+*   **Use IDs:** Provide the correct \`entityId\` (\`{{entityId}}\`) to the tools. Use character IDs found via \`findCharacterByName\` when required by other tools. You MUST provide the \`projectId\` to \`findCharacterByName\`.
+*   **Project ID Context:** You MUST have the projectId to perform character lookups (findByName) or assign/remove characters by name. State this limitation if the projectId is missing.
 *   **Character IDs:** Only use \`assignCharacterToPanel\` or \`removeCharacterFromPanel\` if you have the character's ID.
-*   **Confirmation:** After attempting the updates, respond ONLY with a confirmation message summarizing the actions taken (or why they couldn't be taken, e.g., character not found). Do not include full data structures in the response.
+*   **Confirmation:** After attempting the updates, respond ONLY with a confirmation message summarizing the actions taken (or why they couldn't be taken, e.g., character not found, projectId missing). Do not include full data structures in the response.
 `,
 });
 
