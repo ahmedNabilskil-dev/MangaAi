@@ -1,19 +1,20 @@
+
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Minus, PanelRightOpen, X, GripVertical } from 'lucide-react';
+import { Minus, PanelRightOpen, X, GripVertical, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import PropertyForm from './property-form';
 import { type NodeData, type NodeType } from '@/types/nodes';
 import { useVisualEditorStore } from '@/store/visual-editor-store';
+import { useEditorStore } from '@/store/editor-store'; // Import editor store
 import type { Node } from 'reactflow';
 import { cn } from '@/lib/utils';
 import nodeFormConfig from '@/config/node-form-config';
-import { useEditorStore } from '@/store/editor-store'; // Import editor store
-// Import specific update functions from the abstract data-service
+// Import specific update functions from the abstract data-service (for Flow nodes)
 import {
     updateProject,
     updateChapter,
@@ -23,11 +24,12 @@ import {
     updateCharacter
 } from '@/services/data-service';
 import type { DeepPartial } from '@/types/utils';
-import type { MangaProject, Chapter, Scene, Panel, PanelDialogue, Character } from '@/types/entities';
+import type { MangaProject, Chapter, Scene, Panel, PanelDialogue, Character, ShapeConfig } from '@/types/entities';
+
 
 interface PropertiesPanelProps {
-    node: Node<NodeData> | null;
-    onClose: () => void; // Keep onClose to allow panel to signal closure
+    selectedItemId: string | null; // ID of the selected Flow Node or Fabric Shape
+    selectedItemType: NodeType | ShapeConfig['type'] | null; // Type of the selected item
 }
 
 const panelVariants = {
@@ -45,35 +47,75 @@ const panelVariants = {
     }
 };
 
-export default function PropertiesPanel({ node, onClose }: PropertiesPanelProps) {
+export default function PropertiesPanel({ selectedItemId, selectedItemType }: PropertiesPanelProps) {
     const { toast } = useToast();
     const refreshFlowData = useVisualEditorStore((state) => state.refreshFlowData); // Keep for manual refresh trigger
+    const clearFlowNodeSelection = useVisualEditorStore((state) => state.setSelectedNode);
+    const clearShapeSelection = useEditorStore((state) => state.setSelectedShapeId);
+    const updateFabricShape = useEditorStore((state) => state.updateShape);
+
     const [isMinimized, setIsMinimized] = useState(false);
     const [isSaving, setIsSaving] = useState(false); // Track saving state
-    const formId = "property-form"; // Define form ID
+    const [itemData, setItemData] = useState<Record<string, any> | null>(null);
+    const [isLoadingData, setIsLoadingData] = useState(false);
+    const formId = useMemo(() => `property-form-${selectedItemId ?? 'none'}`, [selectedItemId]); // Unique form ID per item
 
-    // Get the updateShape function from the editor store for Fabric canvas elements
-    const updateFabricShape = useEditorStore((state) => state.updateShape);
-    // Get the selected shape ID from the editor store to pass to PropertyForm
-    const selectedFabricShapeId = useEditorStore((state) => state.selectedShapeId);
 
-    // Extract data from the selected React Flow node (for flow elements)
-    const flowNodeData = node?.data;
-    const flowNodeType = node?.data?.type;
-    const flowNodeId = node?.id; // React Flow node ID
-    const initialFlowProperties = node?.data?.properties; // Properties from Flow node
+    const isFlowNode = useMemo(() => selectedItemType && ['project', 'chapter', 'scene', 'panel', 'dialogue', 'character'].includes(selectedItemType), [selectedItemType]);
+    const isFabricShape = useMemo(() => selectedItemType && ['panel', 'bubble', 'image', 'text'].includes(selectedItemType), [selectedItemType]);
 
-    // Determine which item is selected (Flow node or Fabric shape)
-    const isFlowNodeSelected = !!flowNodeId;
-    const isFabricShapeSelected = !!selectedFabricShapeId && !isFlowNodeSelected; // Prioritize Flow node if both somehow selected
+    // Fetch data when selected item changes
+    useEffect(() => {
+        const fetchData = () => {
+            if (!selectedItemId || !selectedItemType) {
+                setItemData(null);
+                return;
+            }
 
-    const selectedItemId = isFlowNodeSelected ? flowNodeId : selectedFabricShapeId;
-    const selectedItemType = isFlowNodeSelected ? flowNodeType : useEditorStore.getState().pages.flatMap(p => p.shapes).find(s => s.id === selectedFabricShapeId)?.type;
-    const initialProperties = isFlowNodeSelected ? initialFlowProperties : useEditorStore.getState().pages.flatMap(p => p.shapes).find(s => s.id === selectedFabricShapeId);
+            setIsLoadingData(true);
+            setItemData(null); // Clear previous data while loading
 
-    const title = selectedItemType ? `${selectedItemType.charAt(0).toUpperCase() + selectedItemType.slice(1)} Properties` : 'Properties';
-    const description = selectedItemType ? `Edit properties for selected ${selectedItemType}.` : 'Select an item to edit.';
+            if (isFlowNode) {
+                // Fetch Flow node data from store
+                const node = useVisualEditorStore.getState().nodes.find(n => n.id === selectedItemId);
+                if (node?.data?.properties) {
+                    setItemData(node.data.properties);
+                } else {
+                    console.warn(`Flow node data not found for ID: ${selectedItemId}`);
+                    toast({ title: "Error", description: "Could not load flow node data.", variant: "destructive" });
+                }
+            } else if (isFabricShape) {
+                // Fetch Fabric shape data from store
+                const shape = useEditorStore.getState().pages.flatMap(p => p.shapes).find(s => s.id === selectedItemId);
+                if (shape) {
+                    setItemData(shape); // Fabric shape object itself contains the properties
+                } else {
+                     console.warn(`Fabric shape data not found for ID: ${selectedItemId}`);
+                     toast({ title: "Error", description: "Could not load canvas shape data.", variant: "destructive" });
+                }
+            } else {
+                 console.warn(`Unknown item type: ${selectedItemType}`);
+                 toast({ title: "Error", description: "Unknown item type selected.", variant: "destructive" });
+            }
 
+            setIsLoadingData(false);
+        };
+
+        fetchData();
+    }, [selectedItemId, selectedItemType, isFlowNode, isFabricShape, toast]);
+
+    // Handle closing the panel (clearing selection in the relevant store)
+    const handleClose = () => {
+        console.log("Properties panel close triggered.");
+         if (isFlowNode) {
+             clearFlowNodeSelection(null);
+         } else if (isFabricShape) {
+            clearShapeSelection(null);
+         }
+         // Reset internal state if needed
+         setItemData(null);
+         setIsMinimized(false);
+    };
 
     // Handle explicit form submission (e.g., clicking Save)
     const handleFinalSubmit = async (formData: any) => {
@@ -86,66 +128,52 @@ export default function PropertiesPanel({ node, onClose }: PropertiesPanelProps)
          console.log(`Final save triggered for ${selectedItemType}:`, selectedItemId, "Data:", formData);
 
          try {
-            let updatePromise: Promise<void>;
+            let updatePromise: Promise<void> = Promise.resolve();
 
-             // Use appropriate update function based on type
-             switch (selectedItemType) {
-                 case 'project':
-                     updatePromise = updateProject(selectedItemId, formData as DeepPartial<MangaProject>);
-                     break;
-                 case 'chapter':
-                     updatePromise = updateChapter(selectedItemId, formData as DeepPartial<Chapter>);
-                     break;
-                 case 'scene':
-                     updatePromise = updateScene(selectedItemId, formData as DeepPartial<Scene>);
-                     break;
-                 case 'panel':
-                     // Update both backend/flow node data and Fabric shape if applicable
-                     updatePromise = updatePanel(selectedItemId, formData as DeepPartial<Panel>);
-                     // If it's also a Fabric shape, update it too
-                     if (useEditorStore.getState().pages.flatMap(p => p.shapes).some(s => s.id === selectedItemId && s.type === 'panel')) {
-                        updateFabricShape(selectedItemId, formData);
-                     }
-                     break;
-                 case 'dialogue':
-                     updatePromise = updatePanelDialogue(selectedItemId, formData as DeepPartial<PanelDialogue>);
-                      // If it's also a Fabric shape (e.g., bubble), update it too
-                      if (useEditorStore.getState().pages.flatMap(p => p.shapes).some(s => s.id === selectedItemId && s.type === 'bubble')) {
-                         updateFabricShape(selectedItemId, formData);
-                      }
-                     break;
-                 case 'character':
-                     updatePromise = updateCharacter(selectedItemId, formData as DeepPartial<Character>);
-                       // If it's also a Fabric shape (e.g., image), update it too
-                       if (useEditorStore.getState().pages.flatMap(p => p.shapes).some(s => s.id === selectedItemId && s.type === 'image')) {
-                         updateFabricShape(selectedItemId, formData);
-                       }
-                     break;
-                // Add cases for Fabric-only shapes if needed
-                 case 'image': // Assume this updates the Fabric shape directly
-                 case 'text':
-                 case 'bubble':
-                     updateFabricShape(selectedItemId, formData);
-                     updatePromise = Promise.resolve(); // No backend update for pure Fabric shapes yet
-                     break;
-                 default:
-                     console.warn(`No specific update handler for type: ${selectedItemType}`);
-                     updatePromise = Promise.resolve();
-                     break;
+            if (isFlowNode) {
+                 // Use appropriate update function based on type
+                 switch (selectedItemType as NodeType) {
+                     case 'project':
+                         updatePromise = updateProject(selectedItemId, formData as DeepPartial<MangaProject>);
+                         break;
+                     case 'chapter':
+                         updatePromise = updateChapter(selectedItemId, formData as DeepPartial<Chapter>);
+                         break;
+                     case 'scene':
+                         updatePromise = updateScene(selectedItemId, formData as DeepPartial<Scene>);
+                         break;
+                     case 'panel':
+                         updatePromise = updatePanel(selectedItemId, formData as DeepPartial<Panel>);
+                         break;
+                     case 'dialogue':
+                         updatePromise = updatePanelDialogue(selectedItemId, formData as DeepPartial<PanelDialogue>);
+                         break;
+                     case 'character':
+                         updatePromise = updateCharacter(selectedItemId, formData as DeepPartial<Character>);
+                         break;
+                     default:
+                         console.warn(`No specific backend update handler for flow node type: ${selectedItemType}`);
+                         break;
+                 }
+            }
+
+             // If it's also a Fabric shape (could be panel, dialogue (bubble), character (image)), update it too
+             // Note: updateFabricShape triggers Zustand, which handles real-time canvas updates via its effect
+             if (isFabricShape) {
+                  updateFabricShape(selectedItemId, formData); // Use Zustand action directly
              }
 
-             await updatePromise;
+             await updatePromise; // Wait for backend update if applicable
 
              toast({
                  title: "Success",
                  description: `${selectedItemType.charAt(0).toUpperCase() + selectedItemType.slice(1)} properties saved.`,
              });
 
-             // Refresh Flow data if a flow node was updated
-             if (isFlowNodeSelected) {
+             // Refresh Flow data only if a flow node was updated
+             if (isFlowNode) {
                  refreshFlowData();
              }
-            // Fabric updates happen via Zustand store changes triggering re-renders
 
          } catch (error: any) {
             console.error(`Error saving ${selectedItemType}:`, error);
@@ -161,9 +189,13 @@ export default function PropertiesPanel({ node, onClose }: PropertiesPanelProps)
 
      // Conditional rendering based on item selection
      if (!selectedItemId) {
-        // Optionally render a placeholder when nothing is selected, or let the Draggable wrapper hide it
+        // Panel is not rendered if no item is selected (handled by parent's conditional rendering)
         return null;
      }
+
+    const title = selectedItemType ? `${selectedItemType.charAt(0).toUpperCase() + selectedItemType.slice(1)} Properties` : 'Properties';
+    const description = selectedItemType ? `Edit properties for selected ${selectedItemType}.` : 'Select an item to edit.';
+    const ItemIcon = selectedItemType ? nodeFormConfig[selectedItemType as NodeType]?.icon ?? null : null;
 
 
     return (
@@ -173,7 +205,7 @@ export default function PropertiesPanel({ node, onClose }: PropertiesPanelProps)
             initial={false}
             animate={isMinimized ? "closed" : "open"}
             className={cn(
-                 "bg-card border border-border rounded-lg shadow-xl overflow-hidden flex flex-col backdrop-blur-sm bg-opacity-95 dark:bg-opacity-80", // Adjusted opacity for dark mode
+                 "bg-card border border-border rounded-lg shadow-xl overflow-hidden flex flex-col backdrop-blur-sm bg-opacity-95 dark:bg-opacity-80 absolute z-10", // Position absolute for Draggable
                  isMinimized ? "max-h-[52px]" : "max-h-[calc(100vh-8rem)]" // Adjusted max height
             )}
             style={{ width: '384px' }} // Keep fixed width
@@ -184,8 +216,7 @@ export default function PropertiesPanel({ node, onClose }: PropertiesPanelProps)
             >
                 <div className="flex items-center gap-2 text-muted-foreground">
                     <GripVertical size={14} />
-                     {/* Use selectedItemType to get icon */}
-                     {selectedItemType && nodeFormConfig[selectedItemType as NodeType]?.icon && React.createElement(nodeFormConfig[selectedItemType as NodeType].icon, { className: "h-4 w-4 shrink-0"})}
+                    {ItemIcon && <ItemIcon className="h-4 w-4 shrink-0" />}
                     <h3 className="text-sm font-medium truncate">{title}</h3>
                 </div>
                 <div className="flex items-center gap-1">
@@ -202,7 +233,7 @@ export default function PropertiesPanel({ node, onClose }: PropertiesPanelProps)
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6"
-                        onClick={onClose} // Use onClose prop passed from parent
+                        onClick={handleClose} // Use internal close handler
                         aria-label="Close Panel"
                     >
                         <X size={16} />
@@ -221,34 +252,35 @@ export default function PropertiesPanel({ node, onClose }: PropertiesPanelProps)
                         className="flex flex-col flex-grow min-h-0 overflow-hidden"
                     >
                         <ScrollArea className="flex-grow px-4 py-3">
-                            {selectedItemType && initialProperties ? (
+                            {isLoadingData ? (
+                                <div className="flex items-center justify-center h-full">
+                                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                                </div>
+                             ) : selectedItemType && itemData ? (
                                 <PropertyForm
-                                    key={selectedItemId} // Use the ID of the selected item
-                                    // Use appropriate type cast if needed, ensure config exists
-                                    nodeType={selectedItemType as NodeType}
-                                    initialValues={initialProperties} // Pass properties
+                                    key={formId} // Use unique key to force re-render on item change
+                                    nodeType={selectedItemType as NodeType} // Cast needed for config lookup
+                                    initialValues={itemData} // Pass fetched/derived data
                                     onSubmit={handleFinalSubmit} // Pass the explicit save handler
                                     formId={formId} // Pass the form ID
-                                    // Pass fabric shape ID for real-time updates if it's a fabric shape
-                                    selectedShapeId={isFabricShapeSelected ? selectedItemId : null}
+                                    selectedShapeId={isFabricShape ? selectedItemId : null} // Pass ID for fabric updates
                                 />
                             ) : (
-                                <div className="flex items-center justify-center h-full text-sm text-muted-foreground p-4">
+                                <div className="flex items-center justify-center h-full text-sm text-muted-foreground p-4 text-center">
                                     <p>{description}</p>
                                 </div>
                             )}
                         </ScrollArea>
 
                          <div className="px-4 pb-4 pt-3 border-t border-border mt-auto bg-background/80 flex justify-end gap-2 shrink-0">
-                            <Button variant="outline" onClick={onClose} disabled={isSaving}>
+                            <Button variant="outline" onClick={handleClose} disabled={isSaving}>
                                 Close
                             </Button>
-                            {/* The 'Save Changes' button triggers the form submission via its form attribute */}
-                            {selectedItemId && ( // Only show Save if an item is selected
+                            {selectedItemId && itemData && !isLoadingData && ( // Only show Save if data is loaded
                                 <Button
                                     type="submit"
                                     form={formId} // Link button to the form ID
-                                    disabled={isSaving} // Disable while saving
+                                    disabled={isSaving || isLoadingData} // Disable while saving or loading
                                 >
                                     {isSaving ? 'Saving...' : 'Save Changes'}
                                 </Button>

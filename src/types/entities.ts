@@ -1,5 +1,7 @@
+
 import type { MangaStatus } from './enums';
-import type { DocumentReference, Timestamp } from 'firebase/firestore'; // Import Firestore types
+import type { Timestamp } from 'firebase/firestore'; // Import Firestore types
+import type { ShapeConfig } from './editor'; // Import ShapeConfig
 
 // --- Simple Interfaces (keep as is) ---
 export interface Location {
@@ -200,9 +202,9 @@ export interface Panel {
     cameraAngle?: 'close-up' | 'medium' | 'wide' | "bird's eye" | 'low angle';
     shotType?: 'action' | 'reaction' | 'establishing' | 'detail';
     backgroundDescription?: string;
-    backgroundImageUrl?: string;
+    backgroundImageUrl?: string; // (New) separate background image if needed
     lighting: string;
-    effects: string[];
+    effects: string[]; // (Updated) multiple effects like ["rain", "fog"]
     dramaticPurpose: string;
     narrativePosition: string;
   };
@@ -225,7 +227,7 @@ export interface PanelDialogue {
   content: string;
   order: number;
   style?: {
-    bubbleType?: 'normal' | 'thought' | 'scream' | 'whisper';
+    bubbleType?: 'normal' | 'thought' | 'scream' | 'whisper' | 'narration'; // Added narration
     fontSize?: 'x-small' | 'small' | 'medium' | 'large' | 'x-large';
     fontType?: string;
     emphasis?: boolean;
@@ -242,3 +244,7 @@ export interface PanelDialogue {
   // speaker?: Character;
   speaker?: Character | null; // For holding fetched data
 }
+
+
+// Export ShapeConfig along with entities
+export type { ShapeConfig };

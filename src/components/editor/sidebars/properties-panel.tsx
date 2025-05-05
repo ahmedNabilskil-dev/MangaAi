@@ -1,3 +1,4 @@
+
 // src/components/editor/sidebars/properties-panel.tsx
 'use client';
 
@@ -26,6 +27,7 @@ const availableFonts = [
 ];
 
 
+// This component is now specific to Fabric shape properties
 const PropertiesPanel: React.FC<{ selectedShape: ShapeConfig | undefined }> = ({ selectedShape }) => {
   const { updateShape } = useEditorStore();
 
@@ -403,4 +405,4 @@ const PropertiesPanel: React.FC<{ selectedShape: ShapeConfig | undefined }> = ({
   );
 };
 
-export default PropertiesPanel;
+// export default PropertiesPanel; // Removed default export as it's now part of the unified panel

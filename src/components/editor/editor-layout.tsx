@@ -4,14 +4,13 @@
 import React, { useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import LibraryPanel from './sidebars/library-panel';
-import PropertiesPanel from './sidebars/properties-panel'; // Adjusted import path
+import PropertiesPanel from '@/components/properties-panel/properties-panel'; // Use the unified properties panel
 import TopBar from '@/components/layout/top-bar';
 import { Separator } from '@/components/ui/separator';
 import { useEditorStore } from '@/store/editor-store';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TooltipProvider } from "@/components/ui/tooltip";
 import PageManager from './page-manager';
-import { useVisualEditorStore } from '@/store/visual-editor-store'; // Import flow store
 
 // Dynamically import FabricCanvas with ssr: false
 const FabricCanvas = dynamic(() => import('./canvas/fabric-canvas'), {
@@ -30,25 +29,8 @@ export default function EditorLayout() {
       currentPageId,
       selectedShapeId, // Get the ID from the editor store
       setCurrentPageId,
+      setSelectedShapeId, // Get setter to clear selection
   } = useEditorStore();
-
-   // Get selected flow node from the visual editor store
-   const selectedFlowNode = useVisualEditorStore((state) => state.selectedNode);
-   // Clear shape selection when flow node selection changes (and vice-versa)
-   const setSelectedShapeId = useEditorStore((state) => state.setSelectedShapeId);
-   const setSelectedFlowNode = useVisualEditorStore((state) => state.setSelectedNode);
-
-    useEffect(() => {
-        if (selectedFlowNode) {
-            setSelectedShapeId(null); // Clear shape selection if flow node selected
-        }
-    }, [selectedFlowNode, setSelectedShapeId]);
-
-    useEffect(() => {
-        if (selectedShapeId) {
-            setSelectedFlowNode(null); // Clear flow selection if shape selected
-        }
-    }, [selectedShapeId, setSelectedFlowNode]);
 
 
    // Initialize currentPageId on mount if it's null and pages exist
@@ -64,7 +46,7 @@ export default function EditorLayout() {
   const currentPage = pages.find(p => p.id === currentPageId);
   const currentShapes = currentPage ? currentPage.shapes : [];
 
-  // Find the selected shape *object* if needed (though panel primarily uses ID)
+  // Find the selected shape *object* to determine its type
   const selectedShape = currentShapes.find(shape => shape.id === selectedShapeId);
 
   // Determine project title (replace with actual logic if needed)
@@ -89,14 +71,11 @@ export default function EditorLayout() {
 
           <Separator orientation="vertical" className="h-full" />
 
-          {/* Pass selected Flow node (if any) to the PropertiesPanel */}
-          {/* The panel will use this OR the selectedShapeId from its own store access */}
+          {/* Pass selected ID and type to the unified PropertiesPanel */}
           <PropertiesPanel
-             node={selectedFlowNode} // Pass the selected flow node
-             onClose={() => { // Define onClose behavior for the panel
-                 setSelectedFlowNode(null);
-                 setSelectedShapeId(null);
-             }}
+             selectedItemId={selectedShapeId} // Pass the selected shape ID
+             selectedItemType={selectedShape?.type ?? null} // Pass the type if shape found
+             // PropertiesPanel now handles its own open/close logic based on selectedItemId
           />
         </div>
       </div>
