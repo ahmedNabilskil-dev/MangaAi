@@ -12,41 +12,37 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Info, KeyRound } from 'lucide-react';
-import { getDefaultModelId, getConfiguredProviders, getDefaultProvider } from '@/ai/ai-instance'; // Import helpers
+// Import helpers from the new config file
+import {
+    getDefaultModelId,
+    getConfiguredProviderLabels,
+    getDefaultProvider,
+    getProvidersConfig, // Get the full config including API key var names
+    getConfiguredProvidersMap // Get the key->label map of *actually* configured ones
+} from '@/ai/ai-config';
 
 // Define available providers and their models (expand this as needed)
-const providersConfig = {
-  googleai: {
-    label: 'Google AI (Gemini)',
-    models: [
+// Keep this structure for defining models per provider
+const providerModels = {
+  googleai: [
       { value: 'googleai/gemini-1.5-flash-latest', label: 'Gemini 1.5 Flash (Latest)' },
       { value: 'googleai/gemini-1.5-pro-latest', label: 'Gemini 1.5 Pro (Latest)' },
       { value: 'googleai/gemini-2.0-flash-exp', label: 'Gemini 2.0 Flash (Experimental)' },
       // Add other relevant Gemini models
-    ],
-    apiKeyEnvVar: 'GOOGLE_GENAI_API_KEY',
-  },
+  ],
   // Add other providers like OpenAI, Anthropic when implemented
-  // openai: {
-  //   label: 'OpenAI (ChatGPT)',
-  //   models: [
+  // openai: [
   //     { value: 'openai/gpt-4', label: 'GPT-4' },
   //     { value: 'openai/gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
-  //   ],
-  //   apiKeyEnvVar: 'OPENAI_API_KEY',
-  // },
-  // anthropic: {
-  //   label: 'Anthropic (Claude)',
-  //   models: [
-  //       { value: 'anthropic/claude-3-haiku', label: 'Claude 3 Haiku' },
-  //       { value: 'anthropic/claude-3-sonnet', label: 'Claude 3 Sonnet' },
-  //       { value: 'anthropic/claude-3-opus', label: 'Claude 3 Opus' },
-  //   ],
-  //   apiKeyEnvVar: 'ANTHROPIC_API_KEY',
-  // }
+  // ],
+  // anthropic: [
+  //     { value: 'anthropic/claude-3-haiku', label: 'Claude 3 Haiku' },
+  //     { value: 'anthropic/claude-3-sonnet', label: 'Claude 3 Sonnet' },
+  //     { value: 'anthropic/claude-3-opus', label: 'Claude 3 Opus' },
+  // ]
 };
 
-type ProviderKey = keyof typeof providersConfig;
+type ProviderKey = keyof typeof providerModels;
 
 // Form Schema (Focus on reading/displaying, not saving state directly)
 const settingsSchema = z.object({
@@ -66,37 +62,41 @@ export default function SettingsForm() {
     // openai: 'unset',
     // anthropic: 'unset',
   });
-  const [configuredProvidersList, setConfiguredProvidersList] = useState<string[]>([]);
+  const [configuredProviderKeysList, setConfiguredProviderKeysList] = useState<string[]>([]);
+  const [allProviderOptions, setAllProviderOptions] = useState<Array<{ key: ProviderKey; label: string }>>([]);
 
   // Fetch current configuration on mount (client-side)
   useEffect(() => {
-    const defaultProviderKey = getDefaultProvider(); // Get the first configured or default
+    const defaultProviderKey = getDefaultProvider(); // Get the key ('googleai', etc.)
     const defaultModel = getDefaultModelId();
-    const providers = getConfiguredProviders(); // Get list of names like "Google AI"
+    const configuredMap = getConfiguredProvidersMap(); // Get { 'googleai': 'Google AI...' }
+    const allProvidersConfig = getProvidersConfig(); // Get { googleai: { label: ..., apiKeyEnvVar: ...}}
 
-    // Map display names back to keys if possible (simplistic)
-    const configuredProviderKeys = Object.entries(providersConfig)
-        .filter(([key, config]) => providers.includes(config.label))
-        .map(([key]) => key as ProviderKey);
+    const configuredKeys = Object.keys(configuredMap);
+    setConfiguredProviderKeysList(configuredKeys);
 
-    setConfiguredProvidersList(providers);
+    const providerOptions = Object.entries(allProvidersConfig).map(([key, config]) => ({
+        key: key as ProviderKey,
+        label: config.label,
+    }));
+    setAllProviderOptions(providerOptions);
 
-    if (defaultProviderKey && providersConfig[defaultProviderKey as ProviderKey]) {
+
+    if (defaultProviderKey && allProvidersConfig[defaultProviderKey as ProviderKey]) {
       setCurrentProviderKey(defaultProviderKey as ProviderKey);
-    } else if (configuredProviderKeys.length > 0) {
-        setCurrentProviderKey(configuredProviderKeys[0]); // Fallback to first configured
+    } else if (configuredKeys.length > 0) {
+        setCurrentProviderKey(configuredKeys[0] as ProviderKey); // Fallback to first configured
     }
 
     setCurrentModel(defaultModel);
 
-    // Check API key status (client-side access to process.env is limited, this is illustrative)
-    // In a real scenario, this status check would likely need to happen server-side
-    // or be inferred differently if keys aren't exposed to the client.
-    // This simulation assumes we can know *if* a key was provided during server start.
-    const keyStatuses: Record<ProviderKey, 'set' | 'unset'> = { googleai: 'unset' };
-    if (configuredProviderKeys.includes('googleai')) keyStatuses.googleai = 'set';
-    // Add checks for other providers if implemented
-    setApiKeyStatus(keyStatuses);
+    // Check API key status based on which providers are actually configured
+    const keyStatuses: Partial<Record<ProviderKey, 'set' | 'unset'>> = {};
+    configuredKeys.forEach(key => {
+        keyStatuses[key as ProviderKey] = 'set';
+    });
+    setApiKeyStatus(prev => ({ ...prev, ...keyStatuses }));
+
 
   }, []);
 
@@ -112,10 +112,10 @@ export default function SettingsForm() {
 
   const handleProviderChange = (value: string) => {
       const newProviderKey = value as ProviderKey;
-      if (providersConfig[newProviderKey]) {
+      if (providerModels[newProviderKey]) {
           setCurrentProviderKey(newProviderKey);
           // Select the first model of the new provider as default display
-          const firstModel = providersConfig[newProviderKey].models[0]?.value;
+          const firstModel = providerModels[newProviderKey]?.[0]?.value;
           setCurrentModel(firstModel ?? ''); // Update displayed model
           // Update the masked API key display based on the new provider
           form.setValue('apiKey', apiKeyStatus[newProviderKey] === 'set' ? '********' : '');
@@ -133,9 +133,10 @@ export default function SettingsForm() {
     });
   };
 
-   const currentProviderConfig = currentProviderKey ? providersConfig[currentProviderKey] : null;
-   const currentApiKeyEnvVar = currentProviderConfig?.apiKeyEnvVar;
+   const currentProviderFullConfig = currentProviderKey ? getProvidersConfig()[currentProviderKey] : null;
+   const currentApiKeyEnvVar = currentProviderFullConfig?.apiKeyEnvVar;
    const isCurrentApiKeySet = currentProviderKey ? apiKeyStatus[currentProviderKey] === 'set' : false;
+   const currentModels = currentProviderKey ? providerModels[currentProviderKey] : [];
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -161,26 +162,26 @@ export default function SettingsForm() {
             <SelectValue placeholder="Select a provider" />
           </SelectTrigger>
           <SelectContent>
-            {Object.entries(providersConfig).map(([key, config]) => (
-              <SelectItem key={key} value={key} disabled={!configuredProvidersList.includes(config.label)}>
-                {config.label} {!configuredProvidersList.includes(config.label) && '(Not Configured)'}
+            {allProviderOptions.map(({key, label}) => (
+              <SelectItem key={key} value={key} disabled={!configuredProviderKeysList.includes(key)}>
+                {label} {!configuredProviderKeysList.includes(key) && '(Not Configured)'}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-         {!currentProviderKey && configuredProvidersList.length === 0 && (
+         {!currentProviderKey && configuredProviderKeysList.length === 0 && (
              <p className="text-sm text-destructive">No AI providers configured via API keys.</p>
           )}
-          {currentProviderKey && !configuredProvidersList.includes(currentProviderConfig?.label ?? '') && (
+          {currentProviderKey && !configuredProviderKeysList.includes(currentProviderKey) && (
               <p className="text-sm text-destructive">
-                  Selected provider ({currentProviderConfig?.label}) is not currently configured with an API key.
+                  Selected provider ({currentProviderFullConfig?.label}) is not currently configured with an API key.
               </p>
           )}
       </div>
 
 
       {/* Model Selection */}
-      {currentProviderConfig && (
+      {currentProviderKey && currentModels.length > 0 && (
         <div className="space-y-2">
           <Label htmlFor="model">Default Model</Label>
            <Select
@@ -194,7 +195,7 @@ export default function SettingsForm() {
               <SelectValue placeholder="Select a model" />
             </SelectTrigger>
             <SelectContent>
-                {currentProviderConfig.models.map((model) => (
+                {currentModels.map((model) => (
                     <SelectItem key={model.value} value={model.value}>
                     {model.label} {model.value === getDefaultModelId() && '(Current Default)'}
                     </SelectItem>
@@ -209,7 +210,7 @@ export default function SettingsForm() {
 
 
       {/* API Key Display */}
-      {currentProviderConfig && (
+      {currentProviderFullConfig && (
         <div className="space-y-2">
           <Label htmlFor="apiKey">API Key ({currentApiKeyEnvVar})</Label>
           <div className="flex items-center gap-2">
@@ -225,7 +226,7 @@ export default function SettingsForm() {
             <KeyRound className={`h-5 w-5 ${isCurrentApiKeySet ? 'text-green-500' : 'text-destructive'}`} />
             </div>
            <p className="text-xs text-muted-foreground">
-                API Key status for {currentProviderConfig.label} is based on the presence of the <code>{currentApiKeyEnvVar}</code> environment variable at startup.
+                API Key status for {currentProviderFullConfig.label} is based on the presence of the <code>{currentApiKeyEnvVar}</code> environment variable at startup.
             </p>
         </div>
       )}

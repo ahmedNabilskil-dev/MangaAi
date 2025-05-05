@@ -1,18 +1,30 @@
+// src/ai/ai-instance.ts
+// This file should only run on the server or during build where environment variables are fully available.
 
 import { genkit, type Plugin } from 'genkit';
 import { googleAI } from '@genkit-ai/googleai';
+// Import helpers and config values from the new config file
+import {
+    getDefaultModelId,
+    getDefaultProvider,
+    getConfiguredProvidersMap,
+    getProvidersConfig
+} from './ai-config';
+
 // Hypothetical imports - install these packages if needed: npm install @genkit-ai/openai @genkit-ai/anthropic
 // import { openAI } from '@genkit-ai/openai';
 // import { anthropic } from '@genkit-ai/anthropic';
 
+
 const plugins: Plugin<any>[] = [];
-const configuredProviders: Record<string, string> = {}; // Store key -> label
+const configuredProviders = getConfiguredProvidersMap(); // Get the map { 'googleai': 'Google AI (Gemini)' }
+const providersConfig = getProvidersConfig(); // Get { 'googleai': { label: ..., apiKeyEnvVar: ... }}
 
 // Configure Google AI if API key is provided
-if (process.env.GOOGLE_GENAI_API_KEY) {
+if (configuredProviders['googleai'] && process.env.GOOGLE_GENAI_API_KEY) {
   try {
     plugins.push(googleAI({ apiKey: process.env.GOOGLE_GENAI_API_KEY }));
-    configuredProviders['googleai'] = 'Google AI (Gemini)';
+    console.log("Google AI Plugin configured.");
   } catch (error) {
     console.error("Failed to initialize Google AI plugin:", error);
   }
@@ -20,10 +32,10 @@ if (process.env.GOOGLE_GENAI_API_KEY) {
 
 // Configure OpenAI if API key is provided (Uncomment when needed)
 /*
-if (process.env.OPENAI_API_KEY) {
+if (configuredProviders['openai'] && process.env.OPENAI_API_KEY) {
   try {
     plugins.push(openAI({ apiKey: process.env.OPENAI_API_KEY }));
-    configuredProviders['openai'] = 'OpenAI (ChatGPT)';
+     console.log("OpenAI Plugin configured.");
   } catch (error) {
     console.error("Failed to initialize OpenAI plugin:", error);
   }
@@ -32,66 +44,39 @@ if (process.env.OPENAI_API_KEY) {
 
 // Configure Anthropic if API key is provided (Uncomment when needed)
 /*
-if (process.env.ANTHROPIC_API_KEY) {
+if (configuredProviders['anthropic'] && process.env.ANTHROPIC_API_KEY) {
   try {
     plugins.push(anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }));
-    configuredProviders['anthropic'] = 'Anthropic (Claude)';
+     console.log("Anthropic Plugin configured.");
   } catch (error) {
     console.error("Failed to initialize Anthropic plugin:", error);
   }
 }
 */
 
-// Determine the default model ID from environment or fallback
-let defaultModelId = process.env.DEFAULT_GENAI_MODEL_ID || 'googleai/gemini-1.5-flash-latest'; // Updated fallback
-let defaultProvider: string | null = null;
-
-// Determine default provider based on model ID or first configured
-if (defaultModelId.startsWith('googleai/')) {
-    defaultProvider = 'googleai';
-} else if (defaultModelId.startsWith('openai/')) {
-    defaultProvider = 'openai';
-} else if (defaultModelId.startsWith('anthropic/')) {
-    defaultProvider = 'anthropic';
-} else if (Object.keys(configuredProviders).length > 0) {
-    // Fallback to the first configured provider if the default model doesn't match known prefixes
-    defaultProvider = Object.keys(configuredProviders)[0];
-     // Adjust default model if the provider doesn't match
-     if (defaultProvider === 'googleai' && !defaultModelId.startsWith('googleai/')) {
-         defaultModelId = 'googleai/gemini-1.5-flash-latest'; // Default google model
-     }
-    // Add similar logic for other providers if they become the default fallback
-    console.warn(`Default model ID '${process.env.DEFAULT_GENAI_MODEL_ID}' does not match a known provider prefix. Falling back to first configured provider '${defaultProvider}' and adjusting model ID to '${defaultModelId}'.`);
-}
+// Get default model and provider from config helpers
+const finalDefaultModelId = getDefaultModelId();
+const finalDefaultProvider = getDefaultProvider();
 
 
 if (plugins.length === 0) {
   console.warn("No AI provider API keys found or plugins configured in environment. Genkit may not function correctly.");
 } else {
     console.log("Configured Genkit AI Providers:", Object.values(configuredProviders).join(', '));
-    console.log("Default Genkit Model ID set to:", defaultModelId);
-    console.log("Default Genkit Provider set to:", defaultProvider);
+    console.log("Default Genkit Model ID set to:", finalDefaultModelId);
+    console.log("Default Genkit Provider set to:", finalDefaultProvider);
 }
 
-
+// Initialize Genkit
 export const ai = genkit({
   plugins: plugins,
   logLevel: 'debug', // Optional: for more verbose logging during development
-  // Setting a default model here might be overridden by model specified in definePrompt
-  // model: defaultModelId, // Consider if a global default is needed vs. per-prompt
+  // We don't necessarily need to set a global default model here,
+  // as it's usually specified per prompt/flow using getDefaultModelId()
 });
 
-// Helper function to get the configured default model ID
-export function getDefaultModelId(): string {
-    return defaultModelId;
-}
+// Note: Helper functions like getDefaultModelId are now imported from ai-config.ts
+// No need to export them again from here.
 
-// Helper function to get the configured default provider key (e.g., 'googleai')
-export function getDefaultProvider(): string | null {
-    return defaultProvider;
-}
-
-// Helper function to get the list of configured provider display names
-export function getConfiguredProviders(): string[] {
-    return Object.values(configuredProviders);
-}
+// Export the initialized ai instance
+export default ai;

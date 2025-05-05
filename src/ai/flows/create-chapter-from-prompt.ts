@@ -10,7 +10,8 @@
  * - CreateChapterFromPromptOutput - The return type for the createChapterFromPrompt function.
  */
 
-import { ai, getDefaultModelId } from '@/ai/ai-instance'; // Import helper
+import ai from '@/ai/ai-instance'; // Import the initialized ai instance
+import { getDefaultModelId } from '@/ai/ai-config'; // Import helper from config
 import { z } from 'genkit';
 // Import specific CRUD operations from the Dexie service
 import {
@@ -288,7 +289,7 @@ const assignCharacterToPanelTool = ai.defineTool({
 
 const prompt = ai.definePrompt({
   name: 'createChapterFromPromptPrompt',
-  model: getDefaultModelId(), // Use the configured default model
+  model: getDefaultModelId(), // Use the configured default model from config
   // Available tools for the LLM
   tools: [
       createChapterTool,

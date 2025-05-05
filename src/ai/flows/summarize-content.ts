@@ -10,7 +10,8 @@
  * - SummarizeContentOutput - The return type for the summarizeContent function.
  */
 
-import { ai, getDefaultModelId } from '@/ai/ai-instance'; // Import helper
+import ai from '@/ai/ai-instance'; // Import the initialized ai instance
+import { getDefaultModelId } from '@/ai/ai-config'; // Import helper from config
 import { z } from 'genkit';
 
 // Input can be simple text or potentially structured data later
@@ -38,7 +39,7 @@ export async function summarizeContent(input: SummarizeContentInput): Promise<Su
 
 const prompt = ai.definePrompt({
   name: 'summarizeContentPrompt',
-  model: getDefaultModelId(), // Use the configured default model
+  model: getDefaultModelId(), // Use the configured default model from config
   input: {
     schema: SummarizeContentInputSchema,
   },

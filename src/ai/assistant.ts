@@ -1,7 +1,8 @@
 
 'use server';
 
-import { ai, getDefaultModelId } from './ai-instance'; // Use the configured instance and default model
+import ai from './ai-instance'; // Use the configured instance
+import { getDefaultModelId } from './ai-config'; // Use the configured instance and default model from config
 import { z } from 'genkit';
 
 // Define input/output for the general assistant prompt (can be simple for now)
@@ -16,7 +17,7 @@ const AssistantOutputSchema = z.object({
 
 const assistantPrompt = ai.definePrompt({
     name: 'generalAssistantPrompt',
-    model: getDefaultModelId(), // Use the configured default model
+    model: getDefaultModelId(), // Use the configured default model from config
     input: { schema: AssistantInputSchema },
     output: { schema: AssistantOutputSchema },
     prompt: `You are a helpful Manga creation assistant using a Dexie database.

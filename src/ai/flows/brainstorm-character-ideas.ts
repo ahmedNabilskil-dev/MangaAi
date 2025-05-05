@@ -10,7 +10,8 @@
  * - BrainstormCharacterIdeasOutput - The return type for the brainstormCharacterIdeas function.
  */
 
-import { ai, getDefaultModelId } from '@/ai/ai-instance'; // Import helper
+import ai from '@/ai/ai-instance'; // Import the initialized ai instance
+import { getDefaultModelId } from '@/ai/ai-config'; // Import helper from config
 import { z } from 'genkit';
 
 // Accept project or chapter context for better brainstorming
@@ -50,7 +51,7 @@ export async function brainstormCharacterIdeas(
 
 const brainstormCharacterIdeasPrompt = ai.definePrompt({
   name: 'brainstormCharacterIdeasPrompt',
-  model: getDefaultModelId(), // Use the configured default model
+  model: getDefaultModelId(), // Use the configured default model from config
   input: {
     schema: BrainstormCharacterIdeasInputSchema,
   },
