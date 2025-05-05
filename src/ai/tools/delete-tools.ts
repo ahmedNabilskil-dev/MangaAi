@@ -14,14 +14,14 @@ import {
     deleteChapter as deleteChapterService,
     deleteScene as deleteSceneService,
     deletePanel as deletePanelService,
-    deletePanelDialogue as deleteDialogueService,
+    deletePanelDialogue as deleteDialogueService, // Corrected import name
     deleteCharacter as deleteCharacterService,
     // Import context fetchers if needed for validation
     getProject as getProjectForContext,
     getChapterForContext,
     getSceneForContext,
     getPanelForContext,
-    getPanelDialogueForContext,
+    getPanelDialogueForContext, // Corrected import name
     getCharacterForContext,
 } from '@/services/data-service';
 
@@ -30,17 +30,19 @@ import {
 // WARNING: This is a destructive operation and cascades. Use with extreme caution.
 export const deleteProjectTool = ai.defineTool({
     name: 'deleteProject',
-    description: 'Deletes an entire manga project and ALL its associated data (chapters, scenes, characters, etc.). This action is IRREVERSIBLE.',
+    description: 'Deletes an entire manga project and ALL its associated data (chapters, scenes, characters, etc.). This action is IRREVERSIBLE. Requires explicit confirmation.',
     inputSchema: z.object({
         projectId: z.string().describe('The ID of the manga project to delete.'),
-        confirmation: z.boolean().refine(val => val === true, {
-            message: "Confirmation required to delete the entire project.",
-        }).describe("Must be set to true to confirm deletion."),
+        // Removed refine from schema, check will happen in the executor
+        confirmation: z.boolean().describe("Must be set to true to confirm deletion."),
     }),
     outputSchema: z.boolean().describe('True if deletion was successful, false otherwise.'),
 }, async ({ projectId, confirmation }) => {
+     // Perform confirmation check inside the executor
      if (!confirmation) {
-         console.warn("Project deletion requires explicit confirmation.");
+         console.warn("Project deletion requires explicit confirmation. Deletion aborted.");
+         // Optionally throw an error instead of returning false
+         // throw new Error("Confirmation required to delete the entire project.");
          return false;
      }
     console.log(`Tool: Deleting project ${projectId} (Confirmation received)`);
@@ -142,7 +144,7 @@ export const deleteDialogueTool = ai.defineTool({
 }, async ({ dialogueId }) => {
      console.log(`Tool: Deleting dialogue ${dialogueId}`);
      try {
-          const exists = await getDialogueService(dialogueId);
+          const exists = await getPanelDialogueForContext(dialogueId); // Use correct context getter
           if (!exists) {
               console.warn(`Dialogue ${dialogueId} not found for deletion.`);
               return false;
