@@ -1,3 +1,4 @@
+
 // src/ai/ai-config.ts
 'use client'; // Mark as client-safe, as it only deals with config values read from process.env
 
@@ -20,76 +21,73 @@ const providersConfigMap: Record<string, ProviderInfo> = {
 };
 
 
-// Determine configured providers based *only* on the presence of environment keys
-// This check *can* run safely on the client, but process.env might be limited
-const configuredProviders: Record<string, string> = {}; // Store key -> label
-if (typeof process !== 'undefined' && process.env?.GOOGLE_GENAI_API_KEY) {
-    configuredProviders['googleai'] = providersConfigMap['googleai'].label;
-}
-// Add similar checks for other providers using their respective env vars
-
-
 // Determine the default model ID from environment or fallback
+// This logic can run on server/build time safely.
 let defaultModelId = (typeof process !== 'undefined' ? process.env?.DEFAULT_GENAI_MODEL_ID : undefined) || 'googleai/gemini-1.5-flash-latest'; // Updated fallback
 let defaultProvider: string | null = null;
 
-// Determine default provider based on model ID or first configured
+// Determine default provider based on model ID
 if (defaultModelId.startsWith('googleai/')) {
     defaultProvider = 'googleai';
 } else if (defaultModelId.startsWith('openai/')) {
     // defaultProvider = 'openai'; // Uncomment when OpenAI supported
 } else if (defaultModelId.startsWith('anthropic/')) {
     // defaultProvider = 'anthropic'; // Uncomment when Anthropic supported
-} else if (Object.keys(configuredProviders).length > 0) {
-    // Fallback to the first configured provider if the default model doesn't match known prefixes
-    defaultProvider = Object.keys(configuredProviders)[0];
-     // Adjust default model if the provider doesn't match
-     if (defaultProvider === 'googleai' && !defaultModelId.startsWith('googleai/')) {
-         defaultModelId = 'googleai/gemini-1.5-flash-latest'; // Default google model
-     }
-    // Add similar logic for other providers if they become the default fallback
-    console.warn(`Default model ID '${process.env?.DEFAULT_GENAI_MODEL_ID}' does not match a known provider prefix. Falling back to first configured provider '${defaultProvider}' and adjusting model ID to '${defaultModelId}'.`);
+} else {
+    // Fallback logic if default model doesn't match known prefixes is handled in ai-instance.ts
+    // We only set the provider based on the explicit default model ID here.
+     console.warn(`Default model ID '${defaultModelId}' does not match a known provider prefix. Default provider cannot be determined solely from model ID.`);
 }
+
 
 // --- Exported Helper Functions ---
 
-// Helper function to get the configured default model ID
+// Helper function to get the configured default model ID (safe for server/client)
 export function getDefaultModelId(): string {
     // Recalculate in case env vars change during build/runtime (though typically static)
     // This simple implementation uses the values computed above.
-    return defaultModelId;
+     const envModelId = (typeof process !== 'undefined' ? process.env?.DEFAULT_GENAI_MODEL_ID : undefined);
+     return envModelId || 'googleai/gemini-1.5-flash-latest';
 }
 
-// Helper function to get the configured default provider key (e.g., 'googleai')
+// Helper function to get the configured default provider key (e.g., 'googleai') (safe for server/client)
 export function getDefaultProvider(): string | null {
-     // Recalculate
+     // Recalculate based on default model ID
      let provider: string | null = null;
      const modelId = getDefaultModelId(); // Use the helper to get current default
      if (modelId.startsWith('googleai/')) provider = 'googleai';
      // Add checks for openai, anthropic
-     else if (Object.keys(getConfiguredProvidersMap()).length > 0) {
-         provider = Object.keys(getConfiguredProvidersMap())[0];
-     }
+     // Note: Fallback logic if model ID doesn't match is in ai-instance.ts
     return provider;
 }
 
-// Helper function to get the map of configured providers (key -> label)
+// Helper function to get the map of *all* potential providers (key -> { label, apiKeyEnvVar }) (safe for server/client)
+export function getProvidersConfig(): Record<string, ProviderInfo> {
+    return providersConfigMap;
+}
+
+
+// --- Client-Side Specific Helpers ---
+// These helpers read process.env and are intended for client-side components like SettingsForm.
+// They determine configuration based on the *presence* of environment variables *accessible to the client*.
+// IMPORTANT: This does NOT guarantee the keys are valid or that the server is configured correctly.
+
+// Helper function to get the map of *configured* providers based on client-accessible env vars (key -> label)
+// Intended for client-side use (e.g., SettingsForm)
 export function getConfiguredProvidersMap(): Record<string, string> {
-    // Recalculate based on env vars
     const providers: Record<string, string> = {};
+    // Check for NEXT_PUBLIC_ prefixed vars if secrets shouldn't be exposed,
+    // otherwise check for regular env vars (understand the security implications).
+    // For now, assume settings page checks general env vars (which might be empty on client).
     if (typeof process !== 'undefined' && process.env?.GOOGLE_GENAI_API_KEY) {
         providers['googleai'] = providersConfigMap['googleai'].label;
     }
-    // Add checks for others
+    // Add checks for others (e.g., process.env.OPENAI_API_KEY)
     return providers;
 }
 
-// Helper function to get just the labels of configured providers
+
+// Helper function to get just the labels of configured providers (client-side)
 export function getConfiguredProviderLabels(): string[] {
     return Object.values(getConfiguredProvidersMap());
-}
-
-// Helper function to get the full provider config map (used internally and potentially by settings)
-export function getProvidersConfig(): Record<string, ProviderInfo> {
-    return providersConfigMap;
 }
