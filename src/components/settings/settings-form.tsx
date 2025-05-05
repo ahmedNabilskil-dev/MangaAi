@@ -17,16 +17,17 @@ import {
     getDefaultModelId,
     getDefaultProvider,
     getProvidersConfig, // Get the full config including API key var names
-    getConfiguredProvidersMap // Get the key->label map of *actually* configured ones (Client-side check)
+    // Removed getConfiguredProvidersMap as client-side detection is less reliable than server config
 } from '@/ai/ai-config';
 
 // Define available providers and their models (expand this as needed)
 // Keep this structure for defining models per provider
+// Note: This list doesn't guarantee the provider is *actually* configured on the server.
 const providerModels = {
   googleai: [
       { value: 'googleai/gemini-1.5-flash-latest', label: 'Gemini 1.5 Flash (Latest)' },
       { value: 'googleai/gemini-1.5-pro-latest', label: 'Gemini 1.5 Pro (Latest)' },
-      { value: 'googleai/gemini-2.0-flash-exp', label: 'Gemini 2.0 Flash (Experimental)' },
+      { value: 'googleai/gemini-2.0-flash-exp', label: 'Gemini 2.0 Flash (Experimental Image Gen)' },
       // Add other relevant Gemini models
   ],
   // Add other providers like OpenAI, Anthropic when implemented
@@ -45,103 +46,79 @@ type ProviderKey = keyof typeof providerModels;
 
 // Form Schema (Focus on reading/displaying, not saving state directly)
 const settingsSchema = z.object({
-  provider: z.string(), // Just stores the key (e.g., 'googleai')
-  model: z.string(),
-  apiKey: z.string().optional(), // API key is read-only from env
+  provider: z.string().optional(), // Display only
+  model: z.string().optional(), // Display only
+  apiKeyStatus: z.enum(['set', 'unset']).optional(), // Display only
 });
 
 type SettingsFormData = z.infer<typeof settingsSchema>;
 
 export default function SettingsForm() {
   const { toast } = useToast();
-  const [currentProviderKey, setCurrentProviderKey] = useState<ProviderKey | null>(null);
-  const [currentModel, setCurrentModel] = useState<string>('');
-  const [apiKeyStatus, setApiKeyStatus] = useState<Record<string, 'set' | 'unset'>>({}); // Use string key
-  const [configuredProviderKeysList, setConfiguredProviderKeysList] = useState<string[]>([]);
-  const [allProviderOptions, setAllProviderOptions] = useState<Array<{ key: string; label: string }>>([]); // Use string key
+  // State to hold the configuration read from ai-config (which reads from process.env)
+  const [displayProviderKey, setDisplayProviderKey] = useState<string | null>(null);
+  const [displayModel, setDisplayModel] = useState<string>('');
+  const [apiKeyIsSet, setApiKeyIsSet] = useState<boolean>(false); // Track if the *default* provider's key is set
+  const [allProviderOptions, setAllProviderOptions] = useState<Array<{ key: string; label: string; isConfigured: boolean; apiKeyEnvVar: string }>>([]);
 
-  // Fetch current configuration on mount (client-side)
+  // Fetch current configuration on mount (client-side reading server-set defaults)
   useEffect(() => {
-    const defaultProviderKey = getDefaultProvider(); // Get the key ('googleai', etc.)
-    const defaultModel = getDefaultModelId();
-    const configuredMap = getConfiguredProvidersMap(); // Get client-side { 'googleai': 'Google AI...' }
+    const defaultProviderKey = getDefaultProvider(); // Get the key ('googleai', etc.) from server config
+    const defaultModel = getDefaultModelId(); // Get the model ID from server config
     const allProvidersConfig = getProvidersConfig(); // Get { googleai: { label: ..., apiKeyEnvVar: ...}}
 
-    const configuredKeys = Object.keys(configuredMap);
-    setConfiguredProviderKeysList(configuredKeys);
+    setDisplayProviderKey(defaultProviderKey);
+    setDisplayModel(defaultModel);
 
-    const providerOptions = Object.entries(allProvidersConfig).map(([key, config]) => ({
-        key: key, // Key is string
-        label: config.label,
-    }));
+    // Determine which providers are configured *based on server-side logic* reflected in defaults
+    const providerOptions = Object.entries(allProvidersConfig).map(([key, config]) => {
+         // We assume the default provider *is* configured if it was successfully set.
+         // This is a slight simplification, but avoids client-side env checks.
+         const isConfigured = key === defaultProviderKey;
+         return {
+             key: key,
+             label: config.label,
+             isConfigured: isConfigured,
+             apiKeyEnvVar: config.apiKeyEnvVar,
+         };
+    });
     setAllProviderOptions(providerOptions);
 
-
-    if (defaultProviderKey && allProvidersConfig[defaultProviderKey]) {
-      setCurrentProviderKey(defaultProviderKey as ProviderKey);
-    } else if (configuredKeys.length > 0) {
-        setCurrentProviderKey(configuredKeys[0] as ProviderKey); // Fallback to first configured
-    } else {
-        // If no default and none configured, maybe pick the first available option?
-         const firstAvailableKey = providerOptions.length > 0 ? providerOptions[0].key : null;
-         setCurrentProviderKey(firstAvailableKey as ProviderKey | null);
-    }
-
-    setCurrentModel(defaultModel);
-
-    // Check API key status based on the client-side check
-    const keyStatuses: Record<string, 'set' | 'unset'> = {};
-    providerOptions.forEach(opt => {
-        keyStatuses[opt.key] = configuredMap[opt.key] ? 'set' : 'unset';
-    });
-    setApiKeyStatus(keyStatuses);
+    // Set API key status based *only* on the default provider being set
+    setApiKeyIsSet(!!defaultProviderKey);
 
   }, []);
 
+  // Form setup - primarily for display structure
   const form = useForm<SettingsFormData>({
     resolver: zodResolver(settingsSchema),
-    values: { // Use 'values' to reflect current state, not for submission
-      provider: currentProviderKey ?? '',
-      model: currentModel,
-      // Display based on the *client-side* detection of the key
-      apiKey: apiKeyStatus[currentProviderKey ?? ''] === 'set' ? '********' : '', // Mask if detected
+    values: { // Use 'values' to reflect current state, read-only
+      provider: displayProviderKey ?? '',
+      model: displayModel,
+      apiKeyStatus: apiKeyIsSet ? 'set' : 'unset',
     },
-    // mode: 'onChange', // Not needed as we're not really submitting
+    // mode: 'onChange', // Not needed
   });
 
-   // Update form values when state changes
+  // Update form display values if state changes (e.g., initial load)
    useEffect(() => {
-       form.setValue('provider', currentProviderKey ?? '');
-       form.setValue('model', currentModel);
-       form.setValue('apiKey', apiKeyStatus[currentProviderKey ?? ''] === 'set' ? '********' : '');
-   }, [currentProviderKey, currentModel, apiKeyStatus, form]);
+       form.setValue('provider', displayProviderKey ?? '');
+       form.setValue('model', displayModel);
+       form.setValue('apiKeyStatus', apiKeyIsSet ? 'set' : 'unset');
+   }, [displayProviderKey, displayModel, apiKeyIsSet, form]);
 
 
-  const handleProviderChange = (value: string) => {
-      const newProviderKey = value as ProviderKey;
-      // Use getProvidersConfig() to check if it's a valid potential provider
-      if (getProvidersConfig()[newProviderKey]) {
-          setCurrentProviderKey(newProviderKey);
-          // Select the first model of the new provider as default display
-          const firstModel = providerModels[newProviderKey]?.[0]?.value;
-          setCurrentModel(firstModel ?? ''); // Update displayed model
-      }
-  };
-
-
-  // This form doesn't actually save anything, it just displays current config read on mount
+  // This form doesn't actually save anything
   const onSubmit = (data: SettingsFormData) => {
     toast({
       title: 'Information',
-      description: 'Settings are configured via environment variables and require an application restart.',
+      description: 'Settings are configured via environment variables in your .env file and require an application restart to take effect.',
     });
   };
 
-   const currentProviderFullConfig = currentProviderKey ? getProvidersConfig()[currentProviderKey] : null;
-   const currentApiKeyEnvVar = currentProviderFullConfig?.apiKeyEnvVar;
-   // Use the client-side detected status for display
-   const isCurrentApiKeySet = currentProviderKey ? apiKeyStatus[currentProviderKey] === 'set' : false;
-   const currentModels = currentProviderKey ? providerModels[currentProviderKey] : [];
+   const currentProviderInfo = displayProviderKey ? allProviderOptions.find(p => p.key === displayProviderKey) : null;
+   const currentApiKeyEnvVar = currentProviderInfo?.apiKeyEnvVar;
+   const currentModels = displayProviderKey ? providerModels[displayProviderKey as ProviderKey] ?? [] : [];
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -151,95 +128,75 @@ export default function SettingsForm() {
         <AlertTitle>Configuration Method</AlertTitle>
         <AlertDescription>
           AI provider settings are managed using environment variables (e.g., in a <code>.env</code> file).
-          Changes here are for display only. You must update your environment variables and restart the application for changes to take effect.
+          Changes made require updating your environment variables and **restarting the application** server for them to take effect. This form displays the currently active configuration.
         </AlertDescription>
       </Alert>
 
-      {/* Provider Selection */}
+      {/* Provider Display */}
       <div className="space-y-2">
-        <Label htmlFor="provider">AI Provider</Label>
-        <Select
-            name="provider"
-            value={currentProviderKey ?? ''}
-            onValueChange={handleProviderChange}
-        >
-          <SelectTrigger id="provider">
-            <SelectValue placeholder="Select a provider" />
-          </SelectTrigger>
-          <SelectContent>
-            {allProviderOptions.map(({key, label}) => (
-              <SelectItem key={key} value={key}>
-                 {label}
-                 {/* Indicate if the key was detected client-side */}
-                 {!configuredProviderKeysList.includes(key) && ' (API Key Not Detected)'}
-              </SelectItem>
+        <Label htmlFor="provider">Configured AI Provider</Label>
+         <Input
+            id="provider"
+            readOnly
+            value={currentProviderInfo?.label ?? 'None Configured'}
+            className="bg-muted/50"
+         />
+         <p className="text-xs text-muted-foreground">
+            The active provider is determined by the API keys found in your server environment.
+            The currently active default provider is: <strong>{displayProviderKey || 'None'}</strong>.
+         </p>
+         {/* Optionally list all potential providers and their status */}
+         {/* <ul className="text-xs text-muted-foreground list-disc pl-5">
+            {allProviderOptions.map(opt => (
+                <li key={opt.key}>{opt.label}: {opt.isConfigured ? <span className='text-green-500'>Configured</span> : <span className='text-orange-500'>Not Configured</span>} (<code>{opt.apiKeyEnvVar}</code>)</li>
             ))}
-          </SelectContent>
-        </Select>
-         {configuredProviderKeysList.length === 0 && (
-             <p className="text-sm text-destructive">No AI provider API keys detected in client environment.</p>
-          )}
+         </ul> */}
       </div>
 
 
-      {/* Model Selection */}
-      {currentProviderKey && currentModels.length > 0 && (
+      {/* Model Display */}
+      {displayProviderKey && currentModels.length > 0 && (
         <div className="space-y-2">
-          <Label htmlFor="model">Default Model</Label>
-           <Select
-               name="model"
-               value={currentModel}
-                // Only allow changing display, doesn't affect actual default
-               onValueChange={(value) => setCurrentModel(value)}
-               disabled={!currentProviderKey}
-           >
-            <SelectTrigger id="model">
-              <SelectValue placeholder="Select a model" />
-            </SelectTrigger>
-            <SelectContent>
-                {currentModels.map((model) => (
-                    <SelectItem key={model.value} value={model.value}>
-                    {model.label} {model.value === getDefaultModelId() && '(Current Default)'}
-                    </SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
+          <Label htmlFor="model">Configured Default Model</Label>
+           <Input
+               id="model"
+               readOnly
+               value={`${currentProviderInfo?.label ? providerModels[displayProviderKey as ProviderKey]?.find(m => m.value === displayModel)?.label : ''} (${displayModel})` ?? 'Not Set'}
+               className="bg-muted/50"
+           />
            <p className="text-xs text-muted-foreground">
-                Default model is set via <code>DEFAULT_GENAI_MODEL_ID</code> environment variable (currently: <code>{getDefaultModelId()}</code>). This may differ from the model selected above, which is for display reference only.
+                Default model is set via the <code>DEFAULT_GENAI_MODEL_ID</code> environment variable. Current value: <code>{getDefaultModelId()}</code>.
             </p>
         </div>
       )}
 
 
-      {/* API Key Display */}
-      {currentProviderFullConfig && (
+      {/* API Key Status Display */}
+      {currentProviderInfo && (
         <div className="space-y-2">
-          <Label htmlFor="apiKey">API Key ({currentApiKeyEnvVar})</Label>
+          <Label htmlFor="apiKey">API Key Status ({currentApiKeyEnvVar})</Label>
           <div className="flex items-center gap-2">
             <Input
-                id="apiKey"
-                name="apiKey"
-                type="password"
+                id="apiKeyStatus"
+                name="apiKeyStatus"
                 readOnly
-                value={isCurrentApiKeySet ? '••••••••••••••••' : ''}
-                placeholder={isCurrentApiKeySet ? 'API Key Detected' : 'API Key Not Detected'}
-                className="bg-muted/50"
+                value={apiKeyIsSet ? 'Detected & Active' : 'Not Detected / Inactive'}
+                className={`bg-muted/50 ${apiKeyIsSet ? 'border-green-500' : 'border-destructive'}`}
             />
-            <KeyRound className={`h-5 w-5 ${isCurrentApiKeySet ? 'text-green-500' : 'text-destructive'}`} />
+            <KeyRound className={`h-5 w-5 ${apiKeyIsSet ? 'text-green-500' : 'text-destructive'}`} />
             </div>
            <p className="text-xs text-muted-foreground">
-                API Key status shown here is based on client-side detection of the <code>{currentApiKeyEnvVar}</code> environment variable. The actual server configuration might differ.
+                Indicates if the API key for the currently active provider (<code>{currentApiKeyEnvVar}</code>) was found in the server environment during startup.
             </p>
         </div>
       )}
 
        {/* Informational 'Save' Button */}
        <div className='flex justify-end'>
-           <Button type="submit" disabled>
-             View Only (Configure via .env)
+           <Button type="submit">
+             Understood (Configure via .env)
            </Button>
        </div>
     </form>
   );
 }
-```

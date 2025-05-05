@@ -1,6 +1,7 @@
 
 // src/ai/ai-config.ts
-'use client'; // Mark as client-safe, as it only deals with config values read from process.env
+// This file should ONLY rely on server-side environment variables (process.env)
+// It provides helpers to get the configuration determined at server startup.
 
 // --- Configuration Values (Derived from Environment Variables) ---
 
@@ -10,6 +11,7 @@ interface ProviderInfo {
     apiKeyEnvVar: string; // Keep track of the expected env var
 }
 
+// Map of ALL potential providers the application *could* support.
 const providersConfigMap: Record<string, ProviderInfo> = {
   googleai: {
     label: 'Google AI (Gemini)',
@@ -22,72 +24,48 @@ const providersConfigMap: Record<string, ProviderInfo> = {
 
 
 // Determine the default model ID from environment or fallback
-// This logic can run on server/build time safely.
-let defaultModelId = (typeof process !== 'undefined' ? process.env?.DEFAULT_GENAI_MODEL_ID : undefined) || 'googleai/gemini-1.5-flash-latest'; // Updated fallback
-let defaultProvider: string | null = null;
-
-// Determine default provider based on model ID
-if (defaultModelId.startsWith('googleai/')) {
-    defaultProvider = 'googleai';
-} else if (defaultModelId.startsWith('openai/')) {
-    // defaultProvider = 'openai'; // Uncomment when OpenAI supported
-} else if (defaultModelId.startsWith('anthropic/')) {
-    // defaultProvider = 'anthropic'; // Uncomment when Anthropic supported
-} else {
-    // Fallback logic if default model doesn't match known prefixes is handled in ai-instance.ts
-    // We only set the provider based on the explicit default model ID here.
-     console.warn(`Default model ID '${defaultModelId}' does not match a known provider prefix. Default provider cannot be determined solely from model ID.`);
+// This logic runs on server/build time safely.
+// It reflects the intended default, assuming the corresponding provider is configured.
+function readDefaultModelId(): string {
+     // Read directly from server environment
+     const envModelId = (typeof process !== 'undefined' ? process.env?.DEFAULT_GENAI_MODEL_ID : undefined);
+     return envModelId || 'googleai/gemini-1.5-flash-latest'; // Default fallback
 }
 
+// Determine the intended default provider based on the model ID prefix
+function determineDefaultProviderFromModel(modelId: string): string | null {
+     if (modelId.startsWith('googleai/')) return 'googleai';
+     if (modelId.startsWith('openai/')) return 'openai'; // Uncomment when OpenAI supported
+     if (modelId.startsWith('anthropic/')) return 'anthropic'; // Uncomment when Anthropic supported
+     console.warn(`Default model ID '${modelId}' does not match a known provider prefix. Default provider cannot be determined solely from model ID.`);
+     return null;
+}
 
 // --- Exported Helper Functions ---
+// These functions provide read-only access to the configuration *determined by the server environment*.
 
 // Helper function to get the configured default model ID (safe for server/client)
+// Reads the value determined by the server environment.
 export function getDefaultModelId(): string {
-    // Recalculate in case env vars change during build/runtime (though typically static)
-    // This simple implementation uses the values computed above.
-     const envModelId = (typeof process !== 'undefined' ? process.env?.DEFAULT_GENAI_MODEL_ID : undefined);
-     return envModelId || 'googleai/gemini-1.5-flash-latest';
+    return readDefaultModelId();
 }
 
 // Helper function to get the configured default provider key (e.g., 'googleai') (safe for server/client)
+// This reflects the *intended* default based on the DEFAULT_GENAI_MODEL_ID env var.
+// The actual *active* provider depends on API keys being present (handled in ai-instance.ts).
 export function getDefaultProvider(): string | null {
-     // Recalculate based on default model ID
-     let provider: string | null = null;
-     const modelId = getDefaultModelId(); // Use the helper to get current default
-     if (modelId.startsWith('googleai/')) provider = 'googleai';
-     // Add checks for openai, anthropic
-     // Note: Fallback logic if model ID doesn't match is in ai-instance.ts
-    return provider;
+    const modelId = getDefaultModelId();
+    return determineDefaultProviderFromModel(modelId);
 }
 
 // Helper function to get the map of *all* potential providers (key -> { label, apiKeyEnvVar }) (safe for server/client)
+// This lists all providers the app *could* support, not necessarily what's active.
 export function getProvidersConfig(): Record<string, ProviderInfo> {
     return providersConfigMap;
 }
 
-
-// --- Client-Side Specific Helpers ---
-// These helpers read process.env and are intended for client-side components like SettingsForm.
-// They determine configuration based on the *presence* of environment variables *accessible to the client*.
-// IMPORTANT: This does NOT guarantee the keys are valid or that the server is configured correctly.
-
-// Helper function to get the map of *configured* providers based on client-accessible env vars (key -> label)
-// Intended for client-side use (e.g., SettingsForm)
-export function getConfiguredProvidersMap(): Record<string, string> {
-    const providers: Record<string, string> = {};
-    // Check for NEXT_PUBLIC_ prefixed vars if secrets shouldn't be exposed,
-    // otherwise check for regular env vars (understand the security implications).
-    // For now, assume settings page checks general env vars (which might be empty on client).
-    if (typeof process !== 'undefined' && process.env?.GOOGLE_GENAI_API_KEY) {
-        providers['googleai'] = providersConfigMap['googleai'].label;
-    }
-    // Add checks for others (e.g., process.env.OPENAI_API_KEY)
-    return providers;
-}
-
-
-// Helper function to get just the labels of configured providers (client-side)
-export function getConfiguredProviderLabels(): string[] {
-    return Object.values(getConfiguredProvidersMap());
-}
+// --- REMOVED Client-Side Specific Helpers ---
+// getConfiguredProvidersMap and getConfiguredProviderLabels are removed.
+// Client-side checks are unreliable as they don't reflect the server's actual Genkit configuration.
+// The settings form now relies on the server-determined defaults (getDefaultProvider/Model)
+// and indicates status based on whether the *default* provider is active.

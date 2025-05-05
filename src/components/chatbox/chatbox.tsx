@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
@@ -9,21 +10,20 @@ import { ScrollArea, ScrollAreaViewport } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { useVisualEditorStore } from '@/store/visual-editor-store';
+import { useEditorStore } from '@/store/editor-store'; // For fabric shape selection
 import { cn } from '@/lib/utils';
 
-// Import Genkit flow functions
-import { createChapterFromPrompt } from '@/ai/flows/create-chapter-from-prompt';
-import { brainstormCharacterIdeas } from '@/ai/flows/brainstorm-character-ideas';
-import { updateEntity } from '@/ai/flows/update-entity-flow';
-import type { NodeType } from '@/types/nodes';
-// Import function from the abstract data service
-import { getDefaultProject } from '@/services/data-service';
-import { askGeneralAssistant } from '@/ai/assistant'; // Import the abstract assistant function
+// Import the central orchestration flow function
+import { processUserPrompt } from '@/ai/flows/orchestration-flow';
+import type { NodeType } from '@/types/nodes'; // For Flow node types
+import type { ShapeConfig } from '@/types/editor'; // For Fabric shape types
 
+// Import function from the abstract data service to get project context
+import { getDefaultProject } from '@/services/data-service';
 
 interface Message {
     id: string;
-    text: string | React.ReactNode;
+    text: string | React.ReactNode; // Allow React nodes for rich responses
     sender: 'user' | 'ai';
     isThinking?: boolean;
 }
@@ -53,31 +53,39 @@ export default function Chatbox() {
     const { toast } = useToast();
     const scrollAreaRef = useRef<HTMLDivElement>(null);
     const viewportRef = useRef<HTMLDivElement>(null);
-    const selectedNode = useVisualEditorStore((state) => state.selectedNode);
-    const setSelectedNode = useVisualEditorStore((state) => state.setSelectedNode);
-    const refreshFlowData = useVisualEditorStore((state) => state.refreshFlowData); // Trigger refresh
+
+    // Get selected items from both stores
+    const selectedFlowNode = useVisualEditorStore((state) => state.selectedNode);
+    const selectedShapeId = useEditorStore((state) => state.selectedShapeId); // Fabric shape ID
+    const selectedShape = useEditorStore((state) => state.pages.flatMap(p => p.shapes).find(s => s.id === selectedShapeId));
+
+    // Determine the currently selected item (Flow node takes precedence for now if both are selected)
+    const selectedItemId = selectedFlowNode?.id ?? selectedShapeId ?? null;
+    const selectedItemType = selectedFlowNode?.data?.type ?? selectedShape?.type ?? null;
+
+    const clearFlowNodeSelection = useVisualEditorStore((state) => state.setSelectedNode);
+    const clearShapeSelection = useEditorStore((state) => state.setSelectedShapeId);
+    const refreshFlowData = useVisualEditorStore((state) => state.refreshFlowData); // Trigger flow refresh
 
     // ---- Project Context ----
-    // Fetch the default project ID and title dynamically
     const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
-    const [currentProjectTitle, setCurrentProjectTitle] = useState<string | null>(null);
     const [projectLoading, setProjectLoading] = useState(true);
 
     useEffect(() => {
         const fetchProject = async () => {
             setProjectLoading(true);
             try {
-                const project = await getDefaultProject(); // Use abstract data service
+                const project = await getDefaultProject();
                 if (project) {
                     setCurrentProjectId(project.id);
-                    setCurrentProjectTitle(project.title);
+                    console.log("Chatbox: Project context loaded - ID:", project.id);
                 } else {
-                    console.error("Could not load default project for chat context.");
-                     toast({ title: "Error", description: "Could not load project context for AI.", variant: "destructive" });
+                    console.error("Chatbox: Could not load default project for context.");
+                    toast({ title: "Error", description: "Could not load project context for AI.", variant: "destructive" });
                 }
             } catch (error) {
-                console.error("Error fetching project context:", error);
-                 toast({ title: "Error", description: "Failed to fetch project context.", variant: "destructive" });
+                console.error("Chatbox: Error fetching project context:", error);
+                toast({ title: "Error", description: "Failed to fetch project context.", variant: "destructive" });
             } finally {
                 setProjectLoading(false);
             }
@@ -86,16 +94,14 @@ export default function Chatbox() {
     }, [toast]);
     // ---- End Context ----
 
-
     const scrollToBottom = useCallback(() => {
         setTimeout(() => {
             const viewport = viewportRef.current;
             if (viewport) {
                 viewport.scrollTop = viewport.scrollHeight;
             }
-        }, 50); // Short delay to ensure DOM update
+        }, 50);
     }, []);
-
 
     useEffect(() => {
         if (!isMinimized && messages.length > 0) {
@@ -103,134 +109,71 @@ export default function Chatbox() {
         }
     }, [messages, isMinimized, scrollToBottom]);
 
+    // --- Send user input to the central orchestration flow ---
     const processUserInput = async (userInput: string) => {
-        if (!currentProjectId) {
+        if (!currentProjectId && !(userInput.toLowerCase().startsWith('create project'))) {
              toast({ title: "Error", description: "Project context not loaded. Cannot process command.", variant: "destructive" });
              setIsLoading(false);
-             return; // Need project context for most operations
+             return; // Usually need project context
         }
 
         setIsLoading(true);
         const thinkingId = Date.now().toString() + '-think';
         setMessages((prev) => [...prev, { id: thinkingId, text: 'Thinking...', sender: 'ai', isThinking: true }]);
-        scrollToBottom(); // Scroll down when thinking message appears
+        scrollToBottom();
 
-        let aiResponse: Message | null = null;
-        let actionTaken = false;
+        let finalResponse: Message | null = null;
 
         try {
-             // --- Command Interpretation ---
+            console.log("Chatbox: Sending prompt to orchestration flow:", userInput);
+            const result = await processUserPrompt({
+                prompt: userInput,
+                projectId: currentProjectId,
+                selectedItemId: selectedItemId,
+                selectedItemType: selectedItemType as string | undefined, // Pass type as string
+            });
+            console.log("Chatbox: Received result from orchestration flow:", result);
 
-             // 1. Creation Commands (No selection needed)
-             if (userInput.toLowerCase().startsWith('create chapter')) {
-                 actionTaken = true;
-                 const match = userInput.match(/create chapter (\d+)\s+titled\s+["']?([^"']+)["']?\s*(?:about|:)?\s*(.*)/i);
-                 if (match) {
-                    const [, chapterNum, title, prompt] = match;
-                    toast({ title: "AI Action", description: `Creating Chapter ${chapterNum}: ${title}...` });
-                    const result = await createChapterFromPrompt({
-                        projectId: currentProjectId, // Use fetched project ID
-                        chapterNumber: parseInt(chapterNum, 10),
-                        chapterTitle: title.trim(),
-                        prompt: prompt.trim() || `Create content for ${title}`,
-                    });
-                     aiResponse = { id: Date.now().toString(), sender: 'ai', text: (
-                         <div>
-                             <p>✅ Chapter "{title}" (ID: {result.chapterId?.substring(0, 8)}...) created!</p>
-                             <p>   - Scenes created: {result.sceneIds.length}</p>
-                             {result.panelIds && result.panelIds.length > 0 && <p>   - Panels created: {result.panelIds.length}</p>}
-                             {result.dialogueIds && result.dialogueIds.length > 0 && <p>   - Dialogues created: {result.dialogueIds.length}</p>}
-                             {result.characterIds && result.characterIds.length > 0 && <p className="text-xs italic">   - Characters created/assigned: {result.characterIds.length}</p>}
-                         </div>
-                     )};
-                     refreshFlowData(); // Refresh editor
-                 } else {
-                      aiResponse = { id: Date.now().toString(), sender: 'ai', text: "Please use the format: 'create chapter [number] titled \"[Title]\" about [prompt]'." };
-                 }
+            finalResponse = { id: Date.now().toString(), text: result.aiResponse, sender: 'ai' };
 
-             } else if (userInput.toLowerCase().startsWith('brainstorm character') || userInput.toLowerCase().startsWith('suggest character')) {
-                  actionTaken = true;
-                 const match = userInput.match(/(?:brainstorm|suggest) character ideas?(?:\s+for\s+(.+))?/i);
-                 const prompt = match?.[1]?.trim() || 'general manga';
-                 toast({ title: "AI Action", description: "Brainstorming character ideas..." });
-                 const result = await brainstormCharacterIdeas({
-                     projectId: currentProjectId, // Provide project context
-                     projectTitle: currentProjectTitle ?? undefined, // Optional title context
-                     prompt: `Brainstorm characters for: ${prompt}`,
-                 });
-                 aiResponse = { id: Date.now().toString(), sender: 'ai', text: (
-                     <div>
-                         <p>💡 Here are some character ideas:</p>
-                         <ul className="list-disc list-inside ml-4 text-sm">
-                             {result.characterIdeas.map((idea, index) => (
-                                 <li key={index}><strong>{idea.name || 'Unnamed'}:</strong> {idea.briefDescription} {idea.role && `(${idea.role})`}</li>
-                             ))}
-                         </ul>
-                     </div>
-                 )};
-                 // Note: Brainstorming doesn't automatically add characters yet.
+            // Handle side effects based on the result
+            if (result.requiresRefresh) {
+                 console.log("Chatbox: Orchestration result requires refresh.");
+                 // Determine which refresh to call (Flow or Fabric)
+                 // For now, assume Flow refresh covers most backend data changes
+                 refreshFlowData();
+                 // Optionally trigger Fabric refresh if result indicates shape changes
+                 // useEditorStore.getState().forceUpdate(); // Add forceUpdate if needed
+            }
 
-             // 2. Update Command (*Requires* a selected node)
-             } else if (selectedNode && selectedNode.data?.properties?.id && selectedNode.data.type) {
-                  actionTaken = true;
-                  const entityId = selectedNode.data.properties.id; // Entity ID from properties
-                  const entityType = selectedNode.data.type as NodeType;
-
-                  // Check if the input seems like an update command
-                  if (['change', 'update', 'edit', 'set', 'add', 'remove'].some(keyword => userInput.toLowerCase().startsWith(keyword))) {
-                      toast({ title: "AI Action", description: `Updating ${entityType} "${selectedNode.data.label}"...` });
-
-                      const result = await updateEntity({
-                          entityType: entityType,
-                          entityId: entityId,
-                          prompt: userInput,
-                          projectId: currentProjectId, // Pass project context
-                      });
-
-                      aiResponse = { id: Date.now().toString(), sender: 'ai', text: (
-                          <div>
-                              <p>{result.success ? '✅' : '⚠️'} Update for {entityType} (ID: {result.updatedEntityId?.substring(0, 8)}...) processed.</p>
-                              <p className="text-xs italic">{result.message}</p>
-                          </div>
-                      )};
-                      if (result.success) {
-                          refreshFlowData(); // Refresh editor
-                          setSelectedNode(null); // Clear selection after update
-                      }
-                  } else {
-                       actionTaken = false;
-                       console.log("Input given while node selected, but not an update command. Passing to general assistant.");
-                  }
-
-             // 3. General Assistant Fallback
+             // Clear selection if an update was successful or context changed significantly
+             if (result.actionTaken === 'tool_used' && result.toolName?.startsWith('update') && result.toolOutput?.success) {
+                 clearFlowNodeSelection(null);
+                 clearShapeSelection(null);
              }
-
-             // If no specific action was taken, use the general assistant
-             if (!actionTaken) {
-                 const generalResponseText = await askGeneralAssistant(userInput, currentProjectId); // Pass project ID
-                 aiResponse = { id: Date.now().toString(), text: generalResponseText, sender: 'ai' };
+             if (result.actionTaken === 'selection_needed') {
+                // Don't clear selection if AI needs it
              }
 
         } catch (error: any) {
-            console.error('Error processing AI command:', error);
+            console.error('Chatbox: Error calling processUserPrompt flow:', error);
             const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
             toast({
                 title: "AI Error",
                 description: `Failed to process request: ${errorMessage}`,
                 variant: "destructive",
             });
-            aiResponse = { id: Date.now().toString(), text: `Sorry, I encountered an error: ${errorMessage}`, sender: 'ai' };
+            finalResponse = { id: Date.now().toString(), text: `Sorry, I encountered an error: ${errorMessage}`, sender: 'ai' };
         } finally {
              setMessages((prev) => {
-                return prev.map(msg => msg.id === thinkingId ? (aiResponse ?? { id: thinkingId, text: '...', sender: 'ai' }) : msg)
-                           .filter(msg => !(msg.id === thinkingId && !aiResponse));
+                return prev.map(msg => msg.id === thinkingId ? (finalResponse ?? { id: thinkingId, text: '...', sender: 'ai' }) : msg)
+                           .filter(msg => !(msg.id === thinkingId && !finalResponse)); // Remove thinking if no response
             });
 
             setIsLoading(false);
-            scrollToBottom(); // Scroll down after response is added
+            scrollToBottom();
         }
     };
-
 
     const handleSend = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -246,16 +189,21 @@ export default function Chatbox() {
 
         setMessages((prev) => [...prev, userMessage]);
         setInput('');
-        scrollToBottom(); // Scroll down after user message is added
+        scrollToBottom();
 
         await processUserInput(userMessageText);
     };
 
+    const handleClearSelection = () => {
+        clearFlowNodeSelection(null);
+        clearShapeSelection(null);
+    };
+
      const placeholderText = projectLoading
         ? "Loading project context..."
-        : selectedNode
-        ? `Editing ${selectedNode.data.type} "${selectedNode.data.label}"...`
-        : "Ask AI: 'create chapter 1 titled...' or 'brainstorm characters...'";
+        : selectedItemId
+        ? `Editing ${selectedItemType} "${(selectedFlowNode?.data?.label || selectedShape?.id)?.substring(0, 20)}..."`
+        : "Ask AI to create, edit, or describe manga elements...";
 
 
     return (
@@ -263,19 +211,17 @@ export default function Chatbox() {
             layout
             animate={isMinimized ? "closed" : "open"}
             variants={chatboxVariants}
-            initial={false}
+            initial={false} // Start based on current state (open)
             className={cn(
                 "bg-card border border-border rounded-lg shadow-xl overflow-hidden flex flex-col backdrop-blur-sm bg-opacity-95 dark:bg-opacity-80",
-                "resizable-chat", // Keep resizable class if needed for styling handles
-                // Remove explicit height settings, let variants control it
-                 "max-h-[80vh]" // Keep max-height constraint
+                "resizable-chat", // Keep resizable class
+                "max-h-[80vh]"
             )}
              style={{
-                 // Width can still be managed by resizable-chat class/JS if implemented
-                 width: '500px', // Default width, can be overridden by resize handles
-                 position: 'absolute', // Required for Draggable
-                 resize: 'both', // Enable browser's native resize
-                 overflow: 'auto', // Important for resize to work
+                 width: '500px', // Default width
+                 position: 'absolute', // Needed for Draggable
+                 resize: 'both',
+                 overflow: 'auto',
              }}
         >
             {/* Header */}
@@ -304,11 +250,10 @@ export default function Chatbox() {
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="flex flex-col flex-grow min-h-0 overflow-hidden" // Important for flex layout with scroll
+                        className="flex flex-col flex-grow min-h-0 overflow-hidden"
                     >
                         {/* Message Area */}
                         <ScrollArea className="flex-grow p-4" ref={scrollAreaRef}>
-                            {/* Viewport needs ref for scrolling */}
                             <ScrollAreaViewport ref={viewportRef} className="h-full w-full">
                                 <AnimatePresence initial={false}>
                                     {messages.map((message) => (
@@ -322,17 +267,18 @@ export default function Chatbox() {
                                             className={`flex gap-3 my-3 ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                                         >
                                             {message.sender === 'ai' && (
-                                                <Avatar className="h-8 w-8 border border-primary/20 shrink-0"> {/* Added shrink-0 */}
+                                                <Avatar className="h-8 w-8 border border-primary/20 shrink-0">
                                                     <AvatarFallback className="bg-primary/10 text-primary">
                                                         <Bot size={18} />
                                                     </AvatarFallback>
                                                 </Avatar>
                                             )}
                                             <div
-                                                className={`rounded-lg p-2.5 max-w-[80%] text-sm shadow-sm break-words ${message.sender === 'user'
-                                                        ? 'bg-primary text-primary-foreground'
-                                                        : 'bg-secondary text-secondary-foreground'
-                                                    } ${message.isThinking ? 'italic text-muted-foreground' : ''}`}
+                                                className={cn(
+                                                    "rounded-lg p-2.5 max-w-[80%] text-sm shadow-sm break-words",
+                                                    message.sender === 'user' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground',
+                                                    message.isThinking && 'italic text-muted-foreground'
+                                                )}
                                             >
                                                 {message.isThinking ? (
                                                      <div className="flex items-center gap-2">
@@ -344,7 +290,7 @@ export default function Chatbox() {
                                                 )}
                                             </div>
                                             {message.sender === 'user' && (
-                                                <Avatar className="h-8 w-8 shrink-0"> {/* Added shrink-0 */}
+                                                <Avatar className="h-8 w-8 shrink-0">
                                                     <AvatarFallback>
                                                         <User size={18} />
                                                     </AvatarFallback>
@@ -357,11 +303,11 @@ export default function Chatbox() {
                         </ScrollArea>
 
                          {/* Selected Item Indicator */}
-                        {selectedNode && (
+                        {selectedItemId && (
                             <div className="p-2 border-t border-border bg-background/80 text-xs text-muted-foreground flex items-center gap-2 justify-center shrink-0">
                                 <Pencil size={14} className="text-primary shrink-0" />
-                                <span>Editing: <span className="font-medium text-foreground">{selectedNode.data.label}</span> ({selectedNode.data.type})</span>
-                                <Button variant="ghost" size="icon" className="h-5 w-5 ml-auto" onClick={() => setSelectedNode(null)} title="Clear selection">
+                                <span>Editing: <span className="font-medium text-foreground">{(selectedFlowNode?.data?.label || selectedShape?.id || 'Item')?.substring(0, 20)}</span> ({selectedItemType})</span>
+                                <Button variant="ghost" size="icon" className="h-5 w-5 ml-auto" onClick={handleClearSelection} title="Clear selection">
                                     <X size={14} />
                                     <span className="sr-only">Clear Selection</span>
                                 </Button>
