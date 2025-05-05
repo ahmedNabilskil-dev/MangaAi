@@ -757,6 +757,7 @@ const FabricCanvas: React.FC = () => {
                  const group = obj as fabric.Group;
                  const rect = group.getObjects('rect')[0] as fabric.Rect;
                  const text = group.getObjects('textbox')[0] as fabric.Textbox;
+                 let changed = false; // Initialize changed flag here for this specific update block
 
                  if (rect && text) {
                      const bubbleUpdates: any = {};
