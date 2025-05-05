@@ -1,10 +1,9 @@
-
 'use server';
 
 /**
  * @fileOverview Defines the main Genkit orchestration flow for the MangaVerse AI assistant.
- * This flow interprets user prompts, determines the required action (creation, update, fetch, deletion, or general assistance),
- * and invokes the appropriate tools or the general assistant LLM.
+ * This flow interprets user prompts, determines the required domain (worldbuilding, plot, character, panel/dialogue),
+ * and invokes the appropriate specialized agent flow.
  *
  * - processUserPrompt - The primary function that handles user input and orchestrates AI responses/actions.
  * - ProcessUserPromptInput - Input schema for the main flow.
@@ -14,17 +13,15 @@
 import ai from '@/ai/ai-instance';
 import { getDefaultModelId } from '@/ai/ai-config';
 import { z } from 'genkit';
-import { askGeneralAssistant } from '@/ai/assistant'; // Fallback assistant
 
-// Import ALL available tools
-import { createProjectTool, createChapterTool, createSceneTool, createPanelTool, createPanelDialogueTool, createCharacterTool } from '@/ai/tools/creation-tools';
-import { getProjectTool, getChapterTool, getSceneTool, getPanelTool, getDialogueTool, getCharacterTool, findCharacterByNameTool } from '@/ai/tools/fetch-tools';
-import { updateProjectTool, updateChapterTool, updateSceneTool, updatePanelTool, updatePanelDialogueTool, updateCharacterTool, assignCharacterToPanelTool, removeCharacterFromPanelTool } from '@/ai/tools/update-tools';
-import { deleteProjectTool, deleteChapterTool, deleteSceneTool, deletePanelTool, deleteDialogueTool, deleteCharacterTool } from '@/ai/tools/delete-tools';
-// Import brainstorming flow
-import { brainstormCharacterIdeas } from '@/ai/flows/brainstorm-character-ideas';
-// Import summarization flow
-import { summarizeContent } from '@/ai/flows/summarize-content';
+// Import the specialized agent flows
+import { buildWorld, type WorldBuilderOutput } from '@/ai/flows/worldbuilder-flow';
+import { weavePlot, type PlotWeaverOutput } from '@/ai/flows/plot-weaver-flow';
+import { manageCharacter, type CharacterArchitectOutput } from '@/ai/flows/character-architect-flow';
+import { detailPanel, type PanelDialogueOutput } from '@/ai/flows/panel-dialogue-flow';
+// Import brainstorming and summarization flows directly (can be called by agents or orchestrator)
+import { brainstormCharacterIdeas, type BrainstormCharacterIdeasOutput } from '@/ai/flows/brainstorm-character-ideas';
+import { summarizeContent, type SummarizeContentOutput } from '@/ai/flows/summarize-content';
 
 // --- Input and Output Schemas for the Orchestration Flow ---
 
@@ -33,15 +30,18 @@ const ProcessUserPromptInputSchema = z.object({
   projectId: z.string().optional().describe("The ID of the current project context. Crucial for most operations."),
   selectedItemId: z.string().optional().describe("The ID of the currently selected item in the editor (if any)."),
   selectedItemType: z.string().optional().describe("The type of the currently selected item (e.g., 'chapter', 'scene', 'panel', 'character')."),
+   // Add currentChapterId context if available and relevant
+  currentChapterId: z.string().optional().describe("The ID of the current chapter context, if relevant."),
+  currentSceneId: z.string().optional().describe("The ID of the current scene context, if relevant."),
+  // Optionally add conversational history context here if needed
 });
 export type ProcessUserPromptInput = z.infer<typeof ProcessUserPromptInputSchema>;
 
+// Output includes agent response and refresh flag
 const ProcessUserPromptOutputSchema = z.object({
-  actionTaken: z.enum(['tool_used', 'brainstormed', 'summarized', 'general_reply', 'error', 'clarification_needed', 'selection_needed']).describe("The type of action performed by the AI."),
-  toolName: z.string().optional().describe("The name of the primary tool used, if any."),
-  toolInput: z.any().optional().describe("The input provided to the tool."),
-  toolOutput: z.any().optional().describe("The result returned by the tool."),
-  aiResponse: z.string().describe("The textual response from the AI to the user."),
+  agentUsed: z.enum(['worldbuilder', 'plotWeaver', 'characterArchitect', 'panelDialogue', 'brainstorm', 'summarize', 'orchestrator', 'clarification', 'error']).describe("Which agent or flow handled the request."),
+  agentResponse: z.any().optional().describe("The structured output from the agent flow."), // Keep flexible for different agent outputs
+  aiResponse: z.string().describe("The final textual response to display to the user."),
   requiresRefresh: z.boolean().optional().default(false).describe("Indicates if the frontend editor data should be refreshed after the action."),
 });
 export type ProcessUserPromptOutput = z.infer<typeof ProcessUserPromptOutputSchema>;
@@ -50,79 +50,41 @@ export type ProcessUserPromptOutput = z.infer<typeof ProcessUserPromptOutputSche
 // --- Exposed Function ---
 
 export async function processUserPrompt(input: ProcessUserPromptInput): Promise<ProcessUserPromptOutput> {
-  console.log("Processing user prompt with orchestration flow:", input);
+  console.log("Orchestrator: Processing user prompt:", input);
 
   // Basic check: If no project ID is provided for potentially context-dependent prompts, ask for it.
   // More sophisticated check needed based on prompt content.
-  if (!input.projectId && (input.prompt.includes('chapter') || input.prompt.includes('scene') || input.prompt.includes('panel') || input.prompt.includes('character'))) {
+   if (!input.projectId && (input.prompt.includes('chapter') || input.prompt.includes('scene') || input.prompt.includes('panel') || input.prompt.includes('character') || input.prompt.includes('plot') || input.prompt.includes('event') || input.prompt.includes('dialogue'))) {
        console.warn("Orchestration Flow: Project ID missing for context-dependent prompt.");
         return {
-            actionTaken: 'clarification_needed',
-            aiResponse: "Please ensure a project is loaded or provide the project context ID for this request.",
+            agentUsed: 'clarification',
+            aiResponse: "Please load or create a project first, or specify the project context for your request.",
             requiresRefresh: false,
         };
   }
 
-   // If an item is selected and the prompt seems like an update, directly use the update flow/tool
-   if (input.selectedItemId && input.selectedItemType && ['change', 'update', 'edit', 'set', 'add', 'remove', 'assign', 'modify'].some(keyword => input.prompt.toLowerCase().startsWith(keyword))) {
-        console.log(`Orchestration Flow: Detected update request for selected item ${input.selectedItemId} (${input.selectedItemType}).`);
-       try {
-             // Directly calling updateEntity tool/flow logic (similar to how Chatbox did)
-             // We'll use the `updateEntityFlow` structure here for consistency
-             const result = await ai.runFlow(updateEntityFlowInternal, { // Assuming updateEntityFlowInternal is the defined flow
-                 entityType: input.selectedItemType as any, // Cast needed? Ensure type compatibility
-                 entityId: input.selectedItemId,
-                 prompt: input.prompt,
-                 projectId: input.projectId,
-                 // We might need to fetch currentData here if updateEntityFlowInternal requires it
-                 // currentData: await fetchCurrentData(input.selectedItemType, input.selectedItemId),
-             });
-
-             return {
-                 actionTaken: 'tool_used',
-                 toolName: 'updateEntity', // Representing the update action
-                 toolInput: { entityType: input.selectedItemType, entityId: input.selectedItemId, prompt: input.prompt },
-                 toolOutput: result,
-                 aiResponse: result.message || (result.success ? `Successfully updated ${input.selectedItemType}.` : `Failed to update ${input.selectedItemType}.`),
-                 requiresRefresh: result.success,
-             };
-       } catch (error: any) {
-           console.error("Error directly calling update logic:", error);
-            return {
-               actionTaken: 'error',
-               aiResponse: `Sorry, I encountered an error trying to update the selected ${input.selectedItemType}: ${error.message}`,
-           };
-       }
-   }
-
-
     // --- Main Orchestration Prompt ---
-    // This prompt decides which tool (if any) to call or if it should fallback to general assistance.
+    // This prompt decides which specialized agent to call.
     const orchestrationPrompt = ai.definePrompt({
-        name: 'mangaAssistantOrchestrator',
+        name: 'mangaOrchestratorAgentSelector',
         model: getDefaultModelId(),
-        // Provide ALL available tools
-        tools: [
-            // Creation
-            createProjectTool, createChapterTool, createSceneTool, createPanelTool, createPanelDialogueTool, createCharacterTool,
-            // Fetching
-            getProjectTool, getChapterTool, getSceneTool, getPanelTool, getDialogueTool, getCharacterTool, findCharacterByNameTool,
-            // Updating
-            updateProjectTool, updateChapterTool, updateSceneTool, updatePanelTool, updatePanelDialogueTool, updateCharacterTool, assignCharacterToPanelTool, removeCharacterFromPanelTool,
-             // Deletion
-            deleteProjectTool, deleteChapterTool, deleteSceneTool, deletePanelTool, deleteDialogueTool, deleteCharacterTool,
-             // Special Flows (represented as tools for the orchestrator)
-             ai.defineTool({ name: 'brainstormCharacterIdeasTool', description: 'Use this tool to brainstorm new character ideas based on a theme or description.', inputSchema: brainstormCharacterIdeasInputSchema, outputSchema: brainstormCharacterIdeasOutputSchema }, async (input) => brainstormCharacterIdeas(input)),
-             ai.defineTool({ name: 'summarizeContentTool', description: 'Use this tool to summarize existing content (like a scene description or chapter summary). Requires the content type and text/ID.', inputSchema: summarizeContentInputSchema, outputSchema: summarizeContentOutputSchema }, async (input) => summarizeContent(input)),
-        ],
+        // NO tools here - this prompt only DECIDES which agent flow to call next.
         input: { schema: ProcessUserPromptInputSchema },
-        output: { schema: z.object({ // LLM decides intent, doesn't return the final user output directly
-            reasoning: z.string().describe("Brief reasoning for the chosen action or tool."),
-            chosenAction: z.enum(['call_tool', 'brainstorm', 'summarize', 'general_assist', 'clarify', 'selection_needed']).describe("The type of action the AI decided to take."),
-            toolToCall: z.string().optional().describe("The name of the specific tool to call, if chosenAction is 'call_tool'."),
-             // Note: The actual tool input is constructed based on the prompt and context *before* calling the tool.
+        output: { schema: z.object({
+            reasoning: z.string().describe("Brief reasoning for choosing the agent or action."),
+            chosenAgent: z.enum([
+                'worldbuilder', // For project setup, world details, locations
+                'plotWeaver',   // For chapters, scenes, plot structure, key events
+                'characterArchitect', // For creating, updating, finding, brainstorming characters
+                'panelDialogue', // For panel content (action, dialogue, image gen trigger)
+                'brainstormCharacter', // Specific call to brainstorming
+                'summarizeContent', // Specific call to summarization
+                'clarify', // Ask user for more info
+                'general', // Handle greetings, simple thanks, etc. directly
+            ]).describe("The specialized agent or action to delegate the task to."),
+            requiresSelection: z.boolean().optional().describe("Set to true if the request likely requires an item to be selected first (e.g., 'update this', 'summarize this')."),
         }) },
-        prompt: `You are the central orchestrator for a Manga Creation AI assistant. Your goal is to understand the user's request and decide the best course of action: either call a specific tool, trigger a brainstorming or summarization flow, ask for clarification, request item selection, or handle it as a general query.
+        prompt: `You are the central orchestrator for a Manga Creation AI assistant. Your primary goal is to analyze the user's request and delegate it to the most appropriate specialized agent or flow.
 
 User Request: "{{prompt}}"
 
@@ -130,264 +92,217 @@ Current Context:
 - Project ID: {{projectId Mappin "Not Set"}}
 - Selected Item ID: {{selectedItemId Mappin "None"}}
 - Selected Item Type: {{selectedItemType Mappin "None"}}
+- Current Chapter ID: {{currentChapterId Mappin "None"}}
+- Current Scene ID: {{currentSceneId Mappin "None"}}
 
-Available Tool Categories:
-- Creation Tools: createProject, createChapter, createScene, createPanel, createPanelDialogue, createCharacter
-- Fetching Tools: getProject, getChapter, getScene, getPanel, getDialogue, getCharacter, findCharacterByName
-- Updating Tools: updateProject, updateChapter, updateScene, updatePanel, updatePanelDialogue, updateCharacter, assignCharacterToPanel, removeCharacterFromPanel
-- Deletion Tools: deleteProject, deleteChapter, deleteScene, deletePanel, deleteDialogue, deleteCharacter (Use delete tools cautiously!)
-- Special Flows: brainstormCharacterIdeasTool, summarizeContentTool
+
+Available Agents/Flows:
+- **worldbuilder**: Handles project creation/updates, world details (lore, history, magic systems), locations. Keywords: 'project', 'world', 'setting', 'lore', 'location', 'history', 'magic system', 'create manga'.
+- **plotWeaver**: Handles chapters, scenes, overall plot structure, key events. Keywords: 'chapter', 'scene', 'plot', 'story', 'event', 'outline', 'structure', 'climax', 'twist'.
+- **characterArchitect**: Handles creating, updating, finding, or brainstorming characters. Keywords: 'character', 'person', 'protagonist', 'villain', 'NPC', 'create character', 'update character', 'find character', 'brainstorm character'.
+- **panelDialogue**: Handles specific panel content: creating/updating panels, dialogue, actions, poses, triggering image generation *for a panel*. Keywords: 'panel', 'dialogue', 'caption', 'action', 'pose', 'camera', 'image for panel', 'speech bubble', 'add text'.
+- **brainstormCharacter**: Specifically for brainstorming character ideas *if explicitly asked*. Keywords: 'brainstorm characters', 'give me character ideas'.
+- **summarizeContent**: Specifically for summarizing existing content *if explicitly asked*. Keywords: 'summarize this', 'summary of scene/chapter'.
+- **clarify**: If the request is too ambiguous or requires missing context (like a missing project ID for creating a chapter).
+- **general**: For simple greetings, thanks, or questions that don't fit other agents.
 
 Decision Process:
-1.  **Analyze Intent:** Determine the user's primary goal (create, update, fetch, delete, brainstorm, summarize, general question?).
-2.  **Check Selection:** If the intent is to update, delete, summarize, or perform a context-specific action (e.g., "add dialogue to this panel"), is an item selected? If not, set \`chosenAction\` to 'selection_needed'.
-3.  **Check Context:** Does the action require the projectId? If so, is it available? If not, set \`chosenAction\` to 'clarify'.
-4.  **Identify Tool/Flow:** If the intent matches a specific tool or special flow (create, update, fetch, delete, brainstorm, summarize) and context/selection are met, set \`chosenAction\` to 'call_tool', 'brainstorm', or 'summarize' and specify the \`toolToCall\` name (e.g., "createChapterTool", "brainstormCharacterIdeasTool"). Ensure the tool matches the intent precisely. For example, if the user asks "tell me about chapter 3", use "getChapterTool". If they ask "change chapter 3's title", use "updateChapterTool".
-5.  **Deletion Safety:** If the intent is deletion, especially \`deleteProject\`, double-check if the prompt clearly confirms the irreversible action. If unsure, set \`chosenAction\` to 'clarify'.
-6.  **Fallback:** If the intent doesn't clearly match a tool/flow, or it's a general question/greeting, set \`chosenAction\` to 'general_assist'.
+1.  **Analyze Intent:** Determine the primary focus of the user's request based on keywords and context.
+2.  **Check Selection Requirement:** If the prompt uses vague terms like "update this", "summarize this", "generate image for this", and no item is selected (\`selectedItemId\` is "None"), set \`requiresSelection\` to true and choose agent 'clarify'.
+3.  **Choose Agent:** Based on the intent, select the MOST relevant agent from the list above (\`chosenAgent\`). Be specific. If the user asks to "brainstorm characters", choose \`brainstormCharacter\`, not \`characterArchitect\`. If they ask "summarize the selected scene", choose \`summarizeContent\`.
+4.  **Fallback:** If the intent doesn't clearly match a specialized agent, or is a simple conversational turn, choose \`general\` or \`clarify\`.
 
-Provide your reasoning and the chosen action. Do NOT attempt to generate the final user response here; just decide the next step.
+Provide your reasoning and the chosen agent/action. Do NOT attempt to fulfill the request here, only delegate.
 `,
     });
 
 
-    // --- Execute Orchestration Prompt ---
+    // --- Execute Orchestration Prompt & Delegate ---
     try {
-        console.log("Orchestration Flow: Calling LLM to determine action...");
-        const { output: decisionOutput, toolRequests, toolResponses } = await orchestrationPrompt(input);
-        console.log("Orchestration Flow: LLM Decision:", decisionOutput);
+        console.log("Orchestrator: Calling LLM to select agent...");
+        const { output: decision } = await orchestrationPrompt(input);
+        console.log("Orchestrator: LLM Decision:", decision);
 
-        if (!decisionOutput) {
-            throw new Error("Orchestration LLM failed to provide a decision.");
+        if (!decision || !decision.chosenAgent) {
+            console.error("Orchestrator: LLM failed to provide a valid decision.");
+            return { agentUsed: 'error', aiResponse: "Sorry, I couldn't determine how to handle that request." };
         }
 
-        // --- Handle LLM Decision ---
-        switch (decisionOutput.chosenAction) {
-             case 'selection_needed':
+        // Handle selection requirement
+         if (decision.requiresSelection) {
+             console.log("Orchestrator: Request requires item selection.");
+             return {
+                 agentUsed: 'clarification',
+                 aiResponse: "Please select the item (panel, scene, etc.) you want to work with first.",
+                 requiresRefresh: false,
+             };
+         }
+
+
+        // --- Delegate to Chosen Agent/Flow ---
+        switch (decision.chosenAgent) {
+            case 'worldbuilder':
+                console.log("Orchestrator: Delegating to Worldbuilder Agent.");
+                const worldOutput: WorldBuilderOutput = await buildWorld({
+                    prompt: input.prompt,
+                    projectId: input.projectId,
+                });
                 return {
-                    actionTaken: 'selection_needed',
-                    aiResponse: "Please select the item (chapter, scene, panel, etc.) you want to modify first.",
-                    requiresRefresh: false,
+                    agentUsed: 'worldbuilder',
+                    agentResponse: worldOutput,
+                    aiResponse: worldOutput.summary, // Use summary from agent
+                    requiresRefresh: worldOutput.requiresRefresh,
                 };
-            case 'clarify':
+
+            case 'plotWeaver':
+                 console.log("Orchestrator: Delegating to Plot Weaver Agent.");
+                  if (!input.projectId) { // Double-check required context
+                      return { agentUsed: 'clarification', aiResponse: "A project context (ID) is needed to manage the plot." };
+                  }
+                 const plotOutput: PlotWeaverOutput = await weavePlot({
+                     prompt: input.prompt,
+                     projectId: input.projectId,
+                     currentChapterId: input.currentChapterId ?? input.selectedItemType === 'chapter' ? input.selectedItemId : undefined, // Pass chapter context
+                 });
                  return {
-                    actionTaken: 'clarification_needed',
-                    aiResponse: decisionOutput.reasoning || "I need a bit more information to proceed. Could you please clarify your request or ensure the project context is set?",
-                    requiresRefresh: false,
-                };
+                     agentUsed: 'plotWeaver',
+                     agentResponse: plotOutput,
+                     aiResponse: plotOutput.summary,
+                     requiresRefresh: plotOutput.requiresRefresh,
+                 };
 
-            case 'brainstorm': // Directly call the brainstorm flow
-                 try {
-                    const brainstormInput = { // Extract necessary input for brainstorming
-                        projectId: input.projectId,
-                        prompt: input.prompt, // Pass the original prompt for context
-                        // Extract other potential fields like genre if possible from prompt/context
-                    };
-                    const result = await brainstormCharacterIdeas(brainstormInput as any); // Use the imported function
-                     return {
-                        actionTaken: 'brainstormed',
-                        toolName: 'brainstormCharacterIdeas',
-                        toolInput: brainstormInput,
-                        toolOutput: result,
-                        aiResponse: `Okay, I've brainstormed some character ideas based on your request! (${result.characterIdeas.length} ideas generated)`, // Modify response as needed
-                        requiresRefresh: false, // Brainstorming doesn't usually change core data
-                    };
-                 } catch (error: any) {
-                     console.error("Error calling brainstormCharacterIdeas flow:", error);
-                     return { actionTaken: 'error', aiResponse: `Sorry, I failed to brainstorm: ${error.message}` };
+            case 'characterArchitect':
+                console.log("Orchestrator: Delegating to Character Architect Agent.");
+                 if (!input.projectId) { // Double-check required context
+                    return { agentUsed: 'clarification', aiResponse: "A project context (ID) is needed to manage characters." };
                  }
-
-             case 'summarize': // Directly call the summarize flow
-                 try {
-                    // Needs more sophisticated input extraction based on prompt/selection
-                    if (!input.selectedItemId || !input.selectedItemType) {
-                       return { actionTaken: 'selection_needed', aiResponse: "Please select the item you want to summarize." };
-                    }
-                     const summarizeInput = {
-                        contentType: input.selectedItemType as any, // Cast needed
-                        contentId: input.selectedItemId,
-                        // text/contextData needs to be fetched or extracted
-                        // text: "Fetch or extract text for " + input.selectedItemId, // Placeholder
-                    };
-                     const result = await summarizeContent(summarizeInput as any); // Use the imported function
-                     return {
-                        actionTaken: 'summarized',
-                        toolName: 'summarizeContent',
-                        toolInput: summarizeInput,
-                        toolOutput: result,
-                        aiResponse: `Here's a summary: ${result.summary}`,
-                        requiresRefresh: false,
-                    };
-                 } catch (error: any) {
-                     console.error("Error calling summarizeContent flow:", error);
-                     return { actionTaken: 'error', aiResponse: `Sorry, I failed to summarize: ${error.message}` };
-                 }
-
-
-            case 'call_tool':
-                if (!decisionOutput.toolToCall) {
-                    throw new Error("Orchestration decided to call a tool but didn't specify which one.");
-                }
-                 // If the LLM *itself* made the tool request via the prompt definition
-                 if (toolRequests && toolRequests.length > 0 && toolResponses && toolResponses.length > 0) {
-                     console.log(`Orchestration Flow: LLM initiated tool call: ${toolRequests[0].toolName}`);
-                     const response = toolResponses[0];
-                     const success = response.result !== null && response.result !== false; // Define success based on tool output
-                     // Construct a user-friendly confirmation message
-                     const confirmationMessage = `Action complete: ${decisionOutput.toolToCall} executed ${success ? 'successfully' : 'with issues'}.`; // Simple confirmation
-                     return {
-                         actionTaken: 'tool_used',
-                         toolName: response.toolRequest.toolName,
-                         toolInput: response.toolRequest.input,
-                         toolOutput: response.result,
-                         aiResponse: confirmationMessage, // Provide confirmation, not raw output
-                         requiresRefresh: success && !response.toolRequest.toolName.startsWith('get') && response.toolRequest.toolName !== 'findCharacterByName', // Refresh if successful and not a fetch tool
-                     };
-                 } else {
-                      // Fallback: If the LLM only *decided* to call a tool, but didn't execute it.
-                      // This shouldn't happen with properly defined tools and prompts.
-                      // We might need to manually invoke the tool here based on `decisionOutput.toolToCall`
-                      // and extracting parameters from `input.prompt`. This is complex and error-prone.
-                      console.warn(`Orchestration Flow: LLM decided to call ${decisionOutput.toolToCall}, but no tool request was generated. Falling back to general assistant.`);
-                      const fallbackResponse = await askGeneralAssistant(input.prompt, input.projectId ?? undefined);
-                      return { actionTaken: 'general_reply', aiResponse: fallbackResponse };
-                 }
-
-            case 'general_assist':
-            default:
-                console.log("Orchestration Flow: Falling back to general assistant.");
-                const generalResponse = await askGeneralAssistant(input.prompt, input.projectId ?? undefined);
+                const charOutput: CharacterArchitectOutput = await manageCharacter({
+                    prompt: input.prompt,
+                    projectId: input.projectId,
+                });
                 return {
-                    actionTaken: 'general_reply',
-                    aiResponse: generalResponse,
+                    agentUsed: 'characterArchitect',
+                    agentResponse: charOutput,
+                    aiResponse: charOutput.summary,
+                    requiresRefresh: charOutput.requiresRefresh,
+                };
+
+             case 'panelDialogue':
+                 console.log("Orchestrator: Delegating to Panel & Dialogue Agent.");
+                  if (!input.projectId) { // Double-check required context
+                      return { agentUsed: 'clarification', aiResponse: "A project context (ID) is needed for panel/dialogue actions." };
+                  }
+                  // Determine panel/scene context from selection or passed props
+                  let panelIdForAgent: string | undefined = input.panelId ?? (input.selectedItemType === 'panel' ? input.selectedItemId ?? undefined : undefined);
+                   let sceneIdForAgent: string | undefined = input.currentSceneId ?? (input.selectedItemType === 'scene' ? input.selectedItemId ?? undefined : undefined);
+
+                   // If panel is selected, try to infer scene if not provided (requires data fetch - skip for now)
+                   // if (panelIdForAgent && !sceneIdForAgent) { /* Fetch panel to get sceneId */ }
+
+                   if (!panelIdForAgent && !sceneIdForAgent && (input.prompt.includes('panel') || input.prompt.includes('dialogue'))) {
+                        // Might need panel context but none is clearly available
+                        // Could try to infer from selected scene if possible, otherwise clarify
+                        if (input.selectedItemType === 'scene' && input.selectedItemId) {
+                             sceneIdForAgent = input.selectedItemId;
+                        } else {
+                             console.warn("Panel/Dialogue Agent: Missing panel/scene context.");
+                            // Ask for clarification or let the agent handle it
+                            // return { agentUsed: 'clarification', aiResponse: "Please select a panel or scene first, or provide context." };
+                        }
+                   }
+
+
+                 const panelOutput: PanelDialogueOutput = await detailPanel({
+                     prompt: input.prompt,
+                     projectId: input.projectId,
+                     sceneId: sceneIdForAgent,
+                     panelId: panelIdForAgent,
+                 });
+                 return {
+                     agentUsed: 'panelDialogue',
+                     agentResponse: panelOutput,
+                     aiResponse: panelOutput.summary,
+                     requiresRefresh: panelOutput.requiresRefresh,
+                 };
+
+            case 'brainstormCharacter':
+                console.log("Orchestrator: Calling Brainstorm Character Ideas flow.");
+                 if (!input.projectId) { // Double-check required context
+                     return { agentUsed: 'clarification', aiResponse: "A project context (ID) is needed to brainstorm characters." };
+                 }
+                const brainstormOutput: BrainstormCharacterIdeasOutput = await brainstormCharacterIdeas({
+                    prompt: input.prompt, // Pass full prompt for context
+                    projectId: input.projectId,
+                });
+                 // Format a user-friendly response from the brainstorm output
+                 const ideaCount = brainstormOutput.characterIdeas?.length ?? 0;
+                 let brainstormResponse = `Okay, I brainstormed ${ideaCount} character ideas:`;
+                 brainstormOutput.characterIdeas?.forEach(idea => {
+                     brainstormResponse += `\n- **${idea.name}**: ${idea.briefDescription}`;
+                 });
+                 if (ideaCount === 0) {
+                     brainstormResponse = "I couldn't come up with any character ideas based on that prompt.";
+                 }
+                return {
+                    agentUsed: 'brainstorm',
+                    agentResponse: brainstormOutput,
+                    aiResponse: brainstormResponse,
+                    requiresRefresh: false, // Brainstorming usually doesn't change core data
+                };
+
+            case 'summarizeContent':
+                console.log("Orchestrator: Calling Summarize Content flow.");
+                if (!input.selectedItemId || !input.selectedItemType) {
+                    return { agentUsed: 'clarification', aiResponse: "Please select the item you want to summarize." };
+                }
+                // More complex logic needed here: Fetch the actual content based on ID/Type
+                // This might require adding fetch tools or integrating data fetching here.
+                // Placeholder call:
+                const summaryInput = {
+                    contentType: input.selectedItemType as any, // Needs validation/mapping
+                    contentId: input.selectedItemId,
+                    // text: await fetchContent(input.selectedItemId, input.selectedItemType), // Needs implementation
+                    text: `Content for ${input.selectedItemType} ${input.selectedItemId}` // Placeholder
+                };
+                const summaryOutput: SummarizeContentOutput = await summarizeContent(summaryInput);
+                return {
+                    agentUsed: 'summarize',
+                    agentResponse: summaryOutput,
+                    aiResponse: `Here's a summary: ${summaryOutput.summary}`,
                     requiresRefresh: false,
                 };
+
+            case 'clarify':
+                 console.log("Orchestrator: Request requires clarification.");
+                 return {
+                     agentUsed: 'clarification',
+                     aiResponse: decision.reasoning || "I need a bit more information or context. Could you please clarify your request?",
+                     requiresRefresh: false,
+                 };
+
+            case 'general':
+            default:
+                 console.log("Orchestrator: Handling as general conversation.");
+                 // Simple hardcoded replies for greetings/thanks
+                 const lowerPrompt = input.prompt.toLowerCase();
+                 if (lowerPrompt.includes('hello') || lowerPrompt.includes('hi')) {
+                     return { agentUsed: 'orchestrator', aiResponse: "Hello there! How can I help you create your manga today?" };
+                 } else if (lowerPrompt.includes('thank')) {
+                     return { agentUsed: 'orchestrator', aiResponse: "You're welcome! Let me know if there's anything else." };
+                 }
+                 // Fallback for unhandled general queries
+                 return {
+                     agentUsed: 'orchestrator',
+                     aiResponse: "I'm ready to help with worldbuilding, plot, characters, or panel details. What would you like to do?",
+                     requiresRefresh: false,
+                 };
         }
 
     } catch (error: any) {
         console.error("Error during orchestration flow:", error);
         return {
-            actionTaken: 'error',
-            aiResponse: `Sorry, an unexpected error occurred while processing your request: ${error.message}`,
+            agentUsed: 'error',
+            aiResponse: `Sorry, an unexpected error occurred: ${error.message}`,
         };
     }
 }
-
-
-// --- Define Internal Flow for Update Entity (used by orchestrator) ---
-// This mirrors the structure previously in update-entity-flow.ts but is kept internal
-// or registered separately if needed directly.
-
-// Schema for the flow's *internal* input, including fetched current data
-const AugmentedUpdateEntityInputSchema = z.object({
-    entityType: z.string().describe("The type of entity to update."), // Keep as string for flexibility
-    entityId: z.string().describe("The ID of the specific entity instance to update."),
-    prompt: z.string().describe("The user's instruction for how to update the entity."),
-    projectId: z.string().optional().describe("The ID of the project context, needed for character lookups."),
-    currentData: z.any().optional().describe("The current data of the entity being updated (for context).") // Optional current data
-});
-type AugmentedUpdateEntityInput = z.infer<typeof AugmentedUpdateEntityInputSchema>;
-
-const updateEntityPrompt = ai.definePrompt({
-    name: 'updateEntityInternalPrompt', // Distinct name
-    model: getDefaultModelId(),
-    tools: [ // Include relevant update/assignment tools
-        updateProjectTool, updateChapterTool, updateSceneTool, updatePanelTool, updatePanelDialogueTool, updateCharacterTool,
-        findCharacterByNameTool, // Needed for assigning/updating by name
-        assignCharacterToPanelTool, removeCharacterFromPanelTool
-    ],
-    input: { schema: AugmentedUpdateEntityInputSchema },
-    output: {
-        schema: z.object({
-            confirmation: z.string().describe("Confirmation message indicating if the update was attempted based on the prompt and which tools were used.")
-        }),
-    },
-    prompt: `You are an AI assistant helping update elements of a manga project stored via tools. The user wants to modify a specific {{entityType}} with ID: {{entityId}}. {{#if projectId}}Project context ID is {{projectId}}.{{else}}Project context ID is unknown.{{/if}}
-
-User Prompt: "{{prompt}}"
-
-Current Data (optional context):
-\`\`\`json
-{{{json currentData}}}
-\`\`\`
-
-Based *only* on the user's prompt and current data:
-1. Determine the specific changes requested.
-2. Identify the correct tool(s) (\`update...\`, \`assign...\`, \`remove...\`, \`findCharacterByName\`).
-3. If assigning/removing characters BY NAME, you MUST have the \`projectId\`. Use \`findCharacterByName\` first. If not found or no projectId, state this limitation.
-4. Construct the input for the tool(s), providing only the necessary IDs and the data to be changed. For \`updatePanel\`, do not include \`characterIds\` directly; use assign/remove tools. For dialogue speaker changes by name, find the ID first.
-5. Call the identified tool(s).
-6. Respond ONLY with a confirmation message summarizing the actions taken or why they couldn't be taken (e.g., character not found, projectId missing).
-`,
-});
-
-
-const updateEntityFlowInternal = ai.defineFlow<
-  AugmentedUpdateEntityInput, // Use the direct type here
-  UpdateEntityOutput // Reusing output schema from original file
->( {
-    name: 'updateEntityFlowInternal', // Distinct name
-    inputSchema: AugmentedUpdateEntityInputSchema,
-    outputSchema: UpdateEntityOutputSchema, // Reusing schema from original update-entity-flow
-  },
-  async (input: AugmentedUpdateEntityInput): Promise<UpdateEntityOutput> => {
-    console.log("Executing updateEntityFlowInternal with input:", input);
-    const { output: toolCallOutput, toolRequests, toolResponses } = await updateEntityPrompt(input);
-
-    let success = false;
-    let message = toolCallOutput?.confirmation || "Update attempt finished.";
-
-    if (toolResponses && toolResponses.length > 0) {
-        const allSucceeded = toolResponses.every(response => response.result === true);
-        success = allSucceeded;
-        const failedTools = toolResponses.filter(r => r.result !== true).map(r => r.toolRequest.toolName);
-        message = toolCallOutput?.confirmation ? `${toolCallOutput.confirmation}${failedTools.length > 0 ? ` Failed steps: ${failedTools.join(', ')}.` : ''}` : `Update ${success ? 'succeeded' : 'failed'}. ${failedTools.length > 0 ? `Failed tools: ${failedTools.join(', ')}.` : ''}`;
-    } else if (toolRequests && toolRequests.length > 0) {
-        message = `Update failed: Tools requested but no responses received for ${input.entityType} ${input.entityId}.`;
-        console.error(message, { toolRequests });
-    } else {
-        success = true; // No backend action needed based on prompt
-        message = toolCallOutput?.confirmation || `No backend update action taken for ${input.entityType} ${input.entityId} based on the prompt.`;
-    }
-
-     return { success, message, updatedEntityId: input.entityId };
-  }
-);
-
-// --- Type alias for the output of the update flow (needed internally) ---
- type UpdateEntityOutput = z.infer<typeof UpdateEntityOutputSchema>;
-
-
-// --- Schemas used by updateEntityFlowInternal (copied from update-entity-flow.ts) ---
- const UpdateEntityOutputSchema = z.object({
-   success: z.boolean().describe("Whether the update was successfully processed."),
-   message: z.string().describe("A message confirming the update or indicating issues."),
-   updatedEntityId: z.string().describe("The ID of the entity that was updated."),
- });
- // Schemas required by the brainstorming and summarize tools
- const brainstormCharacterIdeasInputSchema = z.object({
-   projectId: z.string().uuid().optional().describe('The UUID of the project context (optional).'),
-   chapterTitle: z.string().optional().describe('The title of a specific chapter context (optional).'),
-   projectTitle: z.string().optional().describe('The title of the project (if projectId not provided).'),
-   genre: z.string().optional().describe('The genre of the manga.'),
-   prompt: z.string().optional().describe('Any specific prompt or requirements for the characters.'),
-   numberOfIdeas: z.number().int().positive().optional().default(5).describe('How many character ideas to generate.'),
- });
- const CharacterIdeaSchema = z.object({
-     name: z.string().describe('A potential name for the character.'),
-     role: z.enum(['protagonist', 'antagonist', 'supporting', 'minor']).optional().describe('Potential role in the story.'),
-     briefDescription: z.string().describe('A short description or concept for the character.'),
- }).describe('A single brainstormed character idea.');
- const brainstormCharacterIdeasOutputSchema = z.object({
-   characterIdeas: z.array(CharacterIdeaSchema)
-     .describe('A list of brainstormed character ideas.'),
- });
- const summarizeContentInputSchema = z.object({
-   contentType: z.enum(['scene', 'panel', 'chapter', 'project', 'character', 'dialogue']).describe('The type of content being summarized.'),
-   text: z.string().optional().describe('The primary text content to summarize (e.g., scene description, panel action, chapter summary).'),
-   contextData: z.record(z.any()).optional().describe('Additional structured context data (e.g., full entity properties).'),
-   contentId: z.string().uuid().optional().describe("The ID of the content being summarized (for context)."),
- });
- const summarizeContentOutputSchema = z.object({
-   summary: z.string().describe('A short, concise summary of the provided content, suitable for display in a list or node label.'),
- });
