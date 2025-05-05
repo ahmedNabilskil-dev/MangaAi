@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -7,24 +8,33 @@ import PropertiesPanel from '@/components/properties-panel/properties-panel';
 import { useVisualEditorStore } from '@/store/visual-editor-store';
 import TopBar from '@/components/layout/top-bar';
 import Draggable from 'react-draggable';
+import { useEditorStore } from '@/store/editor-store'; // Import editor store for selected shape
 
 export default function Home() {
-  const selectedNode = useVisualEditorStore((state) => state.selectedNode);
-  const setSelectedNode = useVisualEditorStore((state) => state.setSelectedNode);
+  // Get selected node from visual editor store (React Flow selection)
+  const selectedFlowNode = useVisualEditorStore((state) => state.selectedNode);
+  // Get selected shape ID from editor store (for properties panel)
+  const selectedShapeId = useEditorStore((state) => state.selectedShapeId);
+  // Use Zustand action to clear flow selection
+  const clearFlowSelection = useVisualEditorStore((state) => state.setSelectedNode);
+  // Use Zustand action to clear editor shape selection
+  const clearShapeSelection = useEditorStore((state) => state.setSelectedShapeId);
+
 
   // State for default positions, calculated on client-side
-  // Use simpler initial defaults first, useEffect will refine
   const [chatboxPos, setChatboxPos] = useState({ x: 100, y: 400 });
   const [propertiesPanelPos, setPropertiesPanelPos] = useState({ x: 600, y: 70 });
 
-  // Panel visibility controlled by selection
-  const isPanelOpen = !!selectedNode;
+  // Panel visibility controlled by selection from either store
+  const isPanelOpen = !!selectedFlowNode || !!selectedShapeId;
 
   const handlePanelClose = () => {
-    setSelectedNode(null);
+     // Clear selection in both stores when panel is closed
+    clearFlowSelection(null);
+    clearShapeSelection(null);
   };
 
-  const projectTitle = "Adventures in CodeLand";
+  const projectTitle = "MangaVerse AI"; // Updated Project Title
 
   const chatboxNodeRef = useRef(null);
   const propertiesPanelNodeRef = useRef(null);
@@ -32,23 +42,24 @@ export default function Home() {
   // Calculate better default positions on the client-side after mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
-        const chatX = Math.max(0, window.innerWidth / 2 - 250); // Centered horizontally, ensure >= 0
-        const chatY = Math.max(50, window.innerHeight - 250); // Near bottom, ensure >= 50
+        const chatWidth = 500; // Match default chatbox width
+        const chatX = Math.max(0, window.innerWidth / 2 - chatWidth / 2); // Centered horizontally
+        const chatY = Math.max(50, window.innerHeight - 250); // Near bottom
         setChatboxPos({ x: chatX, y: chatY });
 
         const panelWidth = 384; // Match panel width
-        const panelX = Math.max(0, window.innerWidth - panelWidth - 20); // Right side with margin, ensure >= 0
+        const panelX = Math.max(0, window.innerWidth - panelWidth - 20); // Right side with margin
         const panelY = 70; // Below TopBar
         setPropertiesPanelPos({ x: panelX, y: panelY });
     }
-  }, []); // Empty dependency array ensures this runs only once on mount
+  }, []);
 
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
       <TopBar projectTitle={projectTitle} />
       <div className="flex-grow relative overflow-hidden"> {/* This container holds the editor and panels */}
         {/* Visual Editor takes full space */}
-        <div className="absolute inset-0"> {/* Position editor absolutely to allow panels over it */}
+        <div className="absolute inset-0">
           <VisualEditor />
         </div>
 
@@ -59,7 +70,6 @@ export default function Home() {
           defaultPosition={chatboxPos} // Use state for initial position
           bounds="parent" // Keep draggable within the parent container
         >
-          {/* Let Draggable control position entirely */}
           <div ref={chatboxNodeRef} className="absolute z-10">
             <Chatbox />
           </div>
@@ -73,10 +83,11 @@ export default function Home() {
             defaultPosition={propertiesPanelPos} // Use state for initial position
             bounds="parent" // Keep draggable within the parent container
           >
-            {/* Let Draggable control position entirely */}
             <div ref={propertiesPanelNodeRef} className="absolute z-10">
               <PropertiesPanel
-                node={selectedNode}
+                 // Pass the selected Flow node (if any) to the panel
+                 // The panel itself will decide how to use this info, potentially looking up shape data
+                node={selectedFlowNode}
                 onClose={handlePanelClose}
               />
             </div>

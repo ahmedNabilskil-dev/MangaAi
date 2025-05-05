@@ -1,10 +1,10 @@
 
 'use client';
 
-import React from 'react';
-import { useForm } from 'react-hook-form';
+import React, { useCallback, useEffect } from 'react';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod'; // Import Zod
+import { z } from 'zod';
 import { Button } from "@/components/ui/button";
 import {
     Form,
@@ -30,17 +30,34 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@/components/ui/accordion"; // Import Accordion components
+} from "@/components/ui/accordion";
+import { useEditorStore } from '@/store/editor-store';
+import { type ShapeConfig } from '@/types/editor';
+import { debounce } from 'lodash-es'; // Using lodash for debouncing
 
 interface PropertyFormProps {
     nodeType: NodeType;
     initialValues?: Record<string, any>;
-    onSubmit: (data: any) => void;
+    onSubmit: (data: any) => void; // Keep onSubmit for explicit save action
     isLoading?: boolean;
-    formId: string; // Add formId prop
+    formId: string;
+    selectedShapeId: string | null; // Pass selected shape ID for updates
 }
 
-export default function PropertyForm({ nodeType, initialValues = {}, onSubmit, isLoading, formId }: PropertyFormProps) {
+// Debounced update function
+const debouncedUpdateShape = debounce((id: string, updates: Partial<ShapeConfig> | { props: Record<string, any> }) => {
+    useEditorStore.getState().updateShape(id, updates);
+}, 300); // Debounce updates by 300ms
+
+
+export default function PropertyForm({
+    nodeType,
+    initialValues = {},
+    onSubmit,
+    isLoading,
+    formId,
+    selectedShapeId
+}: PropertyFormProps) {
     const config = nodeFormConfig[nodeType];
     if (!config) {
         return <p className="text-destructive">Form configuration not found for node type: {nodeType}</p>;
@@ -48,100 +65,132 @@ export default function PropertyForm({ nodeType, initialValues = {}, onSubmit, i
     const currentSchema = config.schema;
     type CurrentSchemaType = z.infer<typeof currentSchema>;
 
-    // Pre-process initialValues based on field type
     const processedInitialValues = React.useMemo(() => {
-        const values = { ...initialValues };
-        let schemaDefaults = {};
-        // Attempt to create default object from schema BEFORE merging initial values
-        // Use safeParse to avoid errors with complex schemas that might not allow empty objects
-        const parseResult = currentSchema.safeParse({});
-        if (parseResult.success) {
-          schemaDefaults = parseResult.data; // Use parsed defaults if safeParse succeeds
-        } else {
-            console.warn(`Could not generate defaults for schema ${nodeType}, parsing empty object failed.`);
-            // Handle potential error or fallback - for now, empty object
-            schemaDefaults = {};
-        }
+         const values = { ...initialValues };
+         // Attempt to get defaults from the schema by parsing an empty object
+         const parseResult = currentSchema.safeParse({});
+         const schemaDefaults = parseResult.success ? parseResult.data : {};
 
-        // Merge defaults with initial values provided
-        const mergedValues = { ...schemaDefaults, ...initialValues };
+         const mergedValues = { ...schemaDefaults, ...initialValues };
 
-        config.fields.forEach(field => {
-            const fieldName = field.name;
-            const value = mergedValues[fieldName]; // Check merged value
+         config.fields.forEach(field => {
+             const fieldName = field.name as keyof typeof mergedValues;
+             const value = mergedValues[fieldName];
 
-             // Ensure arrays/booleans/numbers have correct default types if undefined AFTER merge
+             // Ensure correct default types if undefined *after* merging schema defaults and initial values
              if (field.type === 'multi-select' && !Array.isArray(value)) {
                  mergedValues[fieldName] = [];
              } else if (field.type === 'checkbox' && typeof value !== 'boolean') {
                  mergedValues[fieldName] = false;
              } else if (field.type === 'number' && (typeof value !== 'number' || isNaN(value))) {
-                 mergedValues[fieldName] = field.numberConfig?.defaultValue ?? null; // Use null or 0 based on schema
+                 mergedValues[fieldName] = field.numberConfig?.defaultValue ?? null;
              } else if (field.type !== 'checkbox' && field.type !== 'multi-select' && field.type !== 'number' && typeof value === 'undefined') {
-                 // For text, textarea, select, combobox, file - default to empty string if undefined
-                  mergedValues[fieldName] = '';
+                 mergedValues[fieldName] = '';
              }
-        });
-        return mergedValues;
-    }, [initialValues, config.fields, currentSchema, nodeType]);
+             // Handle file type - initial value might be string URL or File object, keep as is
+             else if (field.type === 'file' && value instanceof File) {
+                 // Keep File object if present
+                 mergedValues[fieldName] = value;
+             } else if (field.type === 'file' && typeof value !== 'string' && !(value instanceof File)) {
+                 mergedValues[fieldName] = null; // Default to null if not string or File
+             }
 
+         });
+         return mergedValues as CurrentSchemaType;
+     }, [initialValues, config.fields, currentSchema]);
 
     const form = useForm<CurrentSchemaType>({
         resolver: zodResolver(currentSchema),
         defaultValues: processedInitialValues,
+        mode: 'onChange', // Enable validation on change
     });
 
-    // Reset form when initialValues change (after processing)
-    React.useEffect(() => {
+    // Reset form when initialValues change (e.g., selecting a different node)
+    useEffect(() => {
         form.reset(processedInitialValues);
     }, [form, processedInitialValues]);
 
+    // Watch form values and trigger debounced update
+    useEffect(() => {
+        if (!selectedShapeId) return;
 
-    // Post-process form data before submitting
+        const subscription = form.watch((value, { name, type }) => {
+            if (type === 'change' && name) {
+                 console.log(`Value changed for ${name}:`, value[name as keyof typeof value]);
+                const fieldName = name as keyof ShapeConfig | string;
+                const fieldValue = value[name as keyof typeof value];
+                let updatePayload: Partial<ShapeConfig> | { props: Record<string, any> } = {};
+
+                const nameParts = fieldName.split('.');
+                 if (nameParts.length === 1) {
+                     updatePayload = { [fieldName as keyof ShapeConfig]: fieldValue };
+                 } else if (nameParts.length === 2 && nameParts[0] === 'props') {
+                     updatePayload = { props: { [nameParts[1]]: fieldValue } };
+                 } else {
+                      console.warn("Unsupported property path for real-time update:", fieldName);
+                      return; // Skip update for unsupported paths
+                 }
+
+                debouncedUpdateShape(selectedShapeId, updatePayload);
+            }
+        });
+        return () => subscription.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [form.watch, selectedShapeId]);
+
+
+    // Function to handle the explicit save button click
     const handleFormSubmit = async (data: CurrentSchemaType) => {
+         // Cancel any pending debounced updates before explicit save
+         debouncedUpdateShape.cancel();
+         console.log("Explicit save triggered with data:", data);
+
+        // Optional: Process file data before submitting if needed
         const processedData = { ...data };
         const fileFields = config.fields.filter(f => f.type === 'file');
         for (const field of fileFields) {
-            const file = processedData[field.name as keyof CurrentSchemaType];
+            const fileKey = field.name as keyof CurrentSchemaType;
+            const file = processedData[fileKey];
             if (file instanceof File) {
-                 console.log(`Uploading file for field ${field.name}: ${file.name}`);
-                 processedData[field.name as keyof CurrentSchemaType] = file.name as any; // Example: store filename
-            } else if (typeof file === 'string' && file.startsWith('data:image')) {
-                 // Handle potential Data URL if needed, or just keep the string
-                 processedData[field.name as keyof CurrentSchemaType] = file;
-            } else if (typeof file !== 'string') { // If it's not a file or data url string, nullify
-                processedData[field.name as keyof CurrentSchemaType] = null as any;
+                 // Handle file upload logic here if necessary (e.g., upload to storage)
+                 // For now, just pass the File object or maybe its name/URL after upload
+                 console.log(`File field ${field.name}:`, file.name);
+                 // Example: processedData[fileKey] = await uploadFile(file);
+                 // Keep as File for now, assuming updateShape/store handles it
+                 processedData[fileKey] = file;
+            } else if (typeof file === 'string') {
+                 // Assume it's a URL, keep it
+                  processedData[fileKey] = file;
+            } else {
+                 processedData[fileKey] = null as any; // Clear if not file or string
             }
         }
-        onSubmit(processedData);
+        onSubmit(processedData); // Call the original onSubmit passed from parent
     };
 
     // --- Group fields by section ---
     const fieldsBySection: Record<string, FormFieldConfig[]> = {};
     config.fields.forEach(field => {
-        const section = field.section || 'General'; // Default section
+        const section = field.section || 'General';
         if (!fieldsBySection[section]) {
             fieldsBySection[section] = [];
         }
         fieldsBySection[section].push(field);
     });
     const sections = Object.keys(fieldsBySection);
-    // Determine default open sections (e.g., the first one or 'Basic Info')
     const defaultOpenSection = sections.includes('Basic Info') ? 'Basic Info' : sections[0];
-
 
     // Function to render a single form field
     const renderFormField = (fieldConfig: FormFieldConfig) => {
         const { name, label, type, description, placeholder, options, fileConfig, comboboxConfig, numberConfig, multiselectConfig } = fieldConfig;
-        const fieldSchema = (currentSchema.shape as any)[name]; // Access shape properties
 
         return (
             <FormField
                 key={name}
                 control={form.control}
-                name={name as any} // Type assertion needed due to dynamic nature
-                render={({ field }) => (
-                    <FormItem className="mb-4"> {/* Add some margin between fields */}
+                name={name as any}
+                render={({ field, fieldState }) => ( // Access fieldState for error status
+                    <FormItem className="mb-4">
                         <FormLabel>{label}</FormLabel>
                          {type === 'checkbox' ? (
                             <div className="flex items-center space-x-2 pt-1">
@@ -152,24 +201,24 @@ export default function PropertyForm({ nodeType, initialValues = {}, onSubmit, i
                                         onCheckedChange={field.onChange}
                                         disabled={isLoading}
                                         aria-describedby={description ? `${field.name}-description` : undefined}
+                                        aria-invalid={fieldState.invalid} // Indicate invalid state
                                     />
                                 </FormControl>
                                  <Label
                                     htmlFor={name}
                                     className="text-sm font-normal leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                                 >
-                                    {placeholder || label} {/* Use placeholder as inline label */}
+                                    {placeholder || label}
                                 </Label>
                             </div>
                          ) : (
                             <FormControl>
-                                {/* Replace React.Fragment with a div */}
-                                <div>
+                                <div> {/* Ensure FormControl wraps a single element */}
                                     {type === 'text' && (
-                                        <Input placeholder={placeholder} {...field} value={field.value ?? ''} disabled={isLoading} className="h-8" />
+                                        <Input placeholder={placeholder} {...field} value={field.value ?? ''} disabled={isLoading} className="h-8" aria-invalid={fieldState.invalid}/>
                                     )}
                                     {type === 'textarea' && (
-                                        <Textarea placeholder={placeholder} {...field} value={field.value ?? ''} rows={3} disabled={isLoading}/>
+                                        <Textarea placeholder={placeholder} {...field} value={field.value ?? ''} rows={3} disabled={isLoading} aria-invalid={fieldState.invalid}/>
                                     )}
                                     {type === 'number' && (
                                         <Input
@@ -182,16 +231,16 @@ export default function PropertyForm({ nodeType, initialValues = {}, onSubmit, i
                                             value={field.value ?? ''}
                                             onChange={(e) => {
                                                 const val = e.target.value;
-                                                // Allow empty input, otherwise parse as float
-                                                field.onChange(val === '' ? undefined : parseFloat(val));
+                                                field.onChange(val === '' ? null : parseFloat(val)); // Use null for empty numeric input if schema allows
                                             }}
                                             disabled={isLoading}
                                             className="h-8"
+                                            aria-invalid={fieldState.invalid}
                                         />
                                     )}
                                     {type === 'select' && options && (
                                         <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value ?? ''} disabled={isLoading}>
-                                            <SelectTrigger className="h-8">
+                                            <SelectTrigger className="h-8" aria-invalid={fieldState.invalid}>
                                                 <SelectValue placeholder={placeholder || `Select ${label.toLowerCase()}`} />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -214,6 +263,7 @@ export default function PropertyForm({ nodeType, initialValues = {}, onSubmit, i
                                             allowCustomValue={comboboxConfig?.allowCustomValue}
                                             disabled={isLoading}
                                             className="h-8"
+                                            // Add aria-invalid or visual indicator based on fieldState.invalid
                                         />
                                     )}
                                     {type === 'multi-select' && options && (
@@ -223,22 +273,23 @@ export default function PropertyForm({ nodeType, initialValues = {}, onSubmit, i
                                             onChange={field.onChange}
                                             placeholder={placeholder}
                                             disabled={isLoading}
-                                            // className="h-auto min-h-8" // Let MultiSelect control its height
+                                             // Add aria-invalid or visual indicator based on fieldState.invalid
                                         />
                                     )}
                                     {type === 'file' && (
                                         <FileUpload
-                                            onFileChange={(file) => field.onChange(file)}
+                                            onFileChange={(fileOrUrl) => field.onChange(fileOrUrl)}
                                             accept={fileConfig?.accept}
                                             disabled={isLoading}
-                                            currentFile={field.value} // Pass current value for display
+                                            currentFile={field.value}
+                                            // Add aria-invalid or visual indicator based on fieldState.invalid
                                         />
                                     )}
                                 </div>
                             </FormControl>
                         )}
                         {description && <FormDescription id={`${field.name}-description`} className="text-xs">{description}</FormDescription>}
-                        <FormMessage />
+                        <FormMessage /> {/* Displays validation errors */}
                     </FormItem>
                 )}
             />
@@ -248,19 +299,19 @@ export default function PropertyForm({ nodeType, initialValues = {}, onSubmit, i
 
     return (
         <Form {...form}>
+             {/* Pass the ID for external submission trigger */}
             <form
-                id={formId} // Use the passed formId
+                id={formId}
                 onSubmit={form.handleSubmit(handleFormSubmit)}
-                className="space-y-0" // Remove base spacing, handle inside accordion/fields
+                className="space-y-0"
             >
-                <Accordion type="single" collapsible defaultValue={defaultOpenSection} className="w-full">
+                <Accordion type="multiple" defaultValue={sections} className="w-full"> {/* Default open all sections */}
                     {sections.map((section) => (
-                        <AccordionItem value={section} key={section} className="border-b-0"> {/* Remove internal border */}
+                        <AccordionItem value={section} key={section} className="border-b-0">
                             <AccordionTrigger className="text-sm font-medium py-2 hover:no-underline border-b">
                                 {section}
                             </AccordionTrigger>
                             <AccordionContent>
-                                {/* Add space within the content area */}
                                 <div className="space-y-4 pt-3">
                                     {fieldsBySection[section].map((fieldConfig) => renderFormField(fieldConfig))}
                                 </div>
@@ -268,6 +319,7 @@ export default function PropertyForm({ nodeType, initialValues = {}, onSubmit, i
                         </AccordionItem>
                     ))}
                 </Accordion>
+                {/* Submit button moved outside, triggered by form ID */}
             </form>
         </Form>
     );

@@ -9,16 +9,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import PropertyForm from './property-form';
 import { type NodeData, type NodeType } from '@/types/nodes';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useVisualEditorStore } from '@/store/visual-editor-store';
-import {
-    updateProject,
-    updateChapter,
-    updateScene,
-    updatePanel,
-    updatePanelDialogue,
-    updateCharacter
-} from '@/services/db'; // Use Dexie service (db.ts)
+// Removed Dexie imports - updates now handled by Zustand/PropertyForm
 import type { Node } from 'reactflow';
 import type { DeepPartial } from '@/types/utils';
 import { cn } from '@/lib/utils';
@@ -30,23 +22,13 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { useEditorStore } from '@/store/editor-store'; // Import editor store
 
 
 interface PropertiesPanelProps {
-    // isOpen prop removed as visibility is controlled by parent now
     node: Node<NodeData> | null;
     onClose: () => void; // Keep onClose to allow panel to signal closure
 }
-
-// Ensure the update map uses the correct functions from the Dexie service
-const updateFunctionMap: Record<NodeType, (id: string, data: any) => Promise<any>> = {
-    project: updateProject,
-    chapter: updateChapter,
-    scene: updateScene,
-    panel: updatePanel,
-    dialogue: updatePanelDialogue,
-    character: updateCharacter,
-};
 
 const panelVariants = {
     open: {
@@ -65,62 +47,52 @@ const panelVariants = {
 
 export default function PropertiesPanel({ node, onClose }: PropertiesPanelProps) {
     const { toast } = useToast();
-    // QueryClient might not be necessary if we rely solely on Dexie's reactivity via useLiveQuery in VisualEditor
-    // const queryClient = useQueryClient();
     const refreshFlowData = useVisualEditorStore((state) => state.refreshFlowData); // Keep for potential manual refresh trigger
     const [isMinimized, setIsMinimized] = useState(false);
-    const formRef = useRef<HTMLFormElement>(null);
+    const formId = "property-form"; // Define form ID
 
+     // Get the updateShape function from the editor store
+     const updateShape = useEditorStore((state) => state.updateShape);
+     // Get the selected shape ID from the editor store to pass to PropertyForm
+     const selectedShapeId = useEditorStore((state) => state.selectedShapeId);
+
+    // Extract data from the selected React Flow node
     const nodeData = node?.data;
-    const nodeId = node?.data?.properties?.id;
     const nodeType = node?.data?.type;
+    // Get the properties from the React Flow node's data, which should match ShapeConfig structure
+    const initialProperties = node?.data?.properties;
+
 
     const title = nodeType ? `${nodeType.charAt(0).toUpperCase() + nodeType.slice(1)} Properties` : 'Properties';
     const description = nodeType ? `Edit properties for ${nodeData?.label || 'selected item'}.` : 'Select an item to edit.';
 
-    const mutation = useMutation({
-        mutationFn: async ({ nodeType, id, data }: { nodeType: NodeType, id: string, data: DeepPartial<any> }) => {
-            const updateFn = updateFunctionMap[nodeType];
-            if (!updateFn) {
-                throw new Error(`No update function found for node type: ${nodeType}`);
-            }
-            console.log("Submitting update to Dexie:", { nodeType, id, data });
-            await updateFn(id, data); // Await the Dexie update
-            return { nodeType, id }; // Return identifier for onSuccess
-        },
-        onSuccess: (result, variables) => {
+
+    // Handle explicit form submission (e.g., clicking Save)
+    const handleFinalSubmit = (formData: any) => {
+         if (!selectedShapeId) {
+            toast({ title: "Error", description: "No shape selected.", variant: "destructive" });
+            return;
+         }
+        console.log("Final save triggered for:", selectedShapeId, "Data:", formData);
+        try {
+            // Update shape using the zustand store function
+            // PropertyForm now handles debounced updates, so this might just be for confirmation/final processing
+            // updateShape(selectedShapeId, formData); // Update with the final, validated data
+
             toast({
                 title: "Success",
-                description: `${result.nodeType.charAt(0).toUpperCase() + result.nodeType.slice(1)} properties saved successfully.`,
+                description: `${nodeType?.charAt(0).toUpperCase() + nodeType!.slice(1)} properties saved.`,
             });
-            // No need to invalidate React Query cache if not using it for this data
-            // queryClient.invalidateQueries({ queryKey: ['projectFlowData'] });
-            // Data should update automatically via useLiveQuery in VisualEditor,
-            // but keep refreshFlowData trigger if needed for complex scenarios
-            // refreshFlowData();
-        },
-        onError: (error: any, variables) => {
-            console.error(`Error updating ${variables.nodeType} (${variables.id}):`, error);
+            // Optionally close the panel after saving
+            // onClose();
+        } catch (error: any) {
+            console.error(`Error saving ${nodeType}:`, error);
             toast({
                 title: "Error saving properties",
-                description: `Failed to save ${variables.nodeType}: ${error.message || 'Unknown error'}`,
+                description: `Failed to save ${nodeType}: ${error.message || 'Unknown error'}`,
                 variant: "destructive",
             });
-        },
-    });
-
-    const handleFormSubmit = (formData: any) => {
-        if (!nodeType || !nodeId) {
-            toast({ title: "Error", description: "No node selected or node ID/type missing.", variant: "destructive" });
-            return;
         }
-        const updateData = { ...formData };
-
-        mutation.mutate({
-            nodeType: nodeType,
-            id: nodeId,
-            data: updateData,
-        });
     };
 
      // Conditional rendering based on node selection is handled by the parent Draggable wrapper
@@ -130,7 +102,6 @@ export default function PropertiesPanel({ node, onClose }: PropertiesPanelProps)
 
 
     return (
-        // This div is now positioned by the Draggable wrapper in page.tsx
         <motion.div
             layout
             variants={panelVariants}
@@ -142,7 +113,6 @@ export default function PropertiesPanel({ node, onClose }: PropertiesPanelProps)
             )}
             style={{ width: '384px' }} // Keep fixed width
         >
-            {/* Header - Make this the draggable handle */}
             <div
                  className="properties-panel-drag-handle flex items-center justify-between px-4 py-2 border-b border-border bg-background/80 shrink-0 cursor-grab active:cursor-grabbing"
                  style={{ height: '52px' }} // Fixed header height
@@ -166,7 +136,7 @@ export default function PropertiesPanel({ node, onClose }: PropertiesPanelProps)
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6"
-                        onClick={onClose} // Use the onClose prop to hide the panel (via parent state)
+                        onClick={onClose}
                         aria-label="Close Panel"
                     >
                         <X size={16} />
@@ -174,7 +144,6 @@ export default function PropertiesPanel({ node, onClose }: PropertiesPanelProps)
                 </div>
             </div>
 
-            {/* Content Area */}
             <AnimatePresence initial={false}>
                 {!isMinimized && (
                     <motion.div
@@ -183,36 +152,38 @@ export default function PropertiesPanel({ node, onClose }: PropertiesPanelProps)
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="flex flex-col flex-grow min-h-0 overflow-hidden" // Important for flex layout with scroll
+                        className="flex flex-col flex-grow min-h-0 overflow-hidden"
                     >
                         <ScrollArea className="flex-grow px-4 py-3">
-                            {nodeData && nodeType && nodeData.properties ? (
+                            {nodeType && initialProperties ? (
                                 <PropertyForm
-                                    key={nodeId || 'no-node'}
+                                    key={selectedShapeId || 'no-selection'} // Use selectedShapeId for key
                                     nodeType={nodeType}
-                                    initialValues={nodeData.properties}
-                                    onSubmit={handleFormSubmit}
-                                    isLoading={mutation.isPending}
-                                    formId="property-form" // Pass the form ID down
+                                    initialValues={initialProperties} // Pass node properties
+                                    onSubmit={handleFinalSubmit} // Pass the explicit save handler
+                                    // isLoading={mutation.isPending} // isLoading state removed, handled internally or not needed
+                                    formId={formId} // Pass the form ID
+                                    selectedShapeId={selectedShapeId} // Pass the shape ID for real-time updates
                                 />
                             ) : (
                                 <div className="flex items-center justify-center h-full text-sm text-muted-foreground p-4">
-                                    <p>{description}</p> {/* Should not be reached if parent hides panel */}
+                                    <p>{description}</p>
                                 </div>
                             )}
                         </ScrollArea>
 
-                        {/* Footer with Buttons */}
                          <div className="px-4 pb-4 pt-3 border-t border-border mt-auto bg-background/80 flex justify-end gap-2 shrink-0">
-                            <Button variant="outline" onClick={onClose} disabled={mutation.isPending}>
+                            <Button variant="outline" onClick={onClose} >
                                 Close
                             </Button>
+                            {/* The 'Save Changes' button triggers the form submission via its form attribute */}
                             <Button
                                 type="submit"
-                                form="property-form" // Link button to the form ID
-                                disabled={mutation.isPending}
+                                form={formId} // Link button to the form ID
+                                // disabled={mutation.isPending} // Disable based on form state if needed
                             >
-                                {mutation.isPending ? 'Saving...' : 'Save Changes'}
+                                {/* {mutation.isPending ? 'Saving...' : 'Save Changes'} */}
+                                Save Changes {/* Keep label simple for now */}
                             </Button>
                         </div>
                     </motion.div>

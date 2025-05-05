@@ -1,21 +1,22 @@
+
 'use client';
 
 import React, { useEffect } from 'react';
-import dynamic from 'next/dynamic'; // Import dynamic
+import dynamic from 'next/dynamic';
 import LibraryPanel from './sidebars/library-panel';
-import PropertiesPanel from './sidebars/properties-panel';
-import TopBar from '@/components/layout/top-bar'; // Reuse existing TopBar if suitable
+import PropertiesPanel from './sidebars/properties-panel'; // Adjusted import path
+import TopBar from '@/components/layout/top-bar';
 import { Separator } from '@/components/ui/separator';
-import { useEditorStore } from '@/store/editor-store'; // Import the new store
-import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton for loading state
-import { TooltipProvider } from "@/components/ui/tooltip"; // Import TooltipProvider
-import PageManager from './page-manager'; // Import the new PageManager component
+import { useEditorStore } from '@/store/editor-store';
+import { Skeleton } from '@/components/ui/skeleton';
+import { TooltipProvider } from "@/components/ui/tooltip";
+import PageManager from './page-manager';
+import { useVisualEditorStore } from '@/store/visual-editor-store'; // Import flow store
 
 // Dynamically import FabricCanvas with ssr: false
 const FabricCanvas = dynamic(() => import('./canvas/fabric-canvas'), {
-  ssr: false, // Ensure it only runs on the client
+  ssr: false,
   loading: () => (
-    // Provide a loading state while the canvas loads
     <div className="w-full h-full flex justify-center items-center p-4 bg-muted">
        <Skeleton className="w-full h-full max-w-[800px] max-h-[1100px] rounded-md bg-card" />
     </div>
@@ -27,10 +28,28 @@ export default function EditorLayout() {
   const {
       pages,
       currentPageId,
-      selectedShapeId,
+      selectedShapeId, // Get the ID from the editor store
       setCurrentPageId,
-      // Other actions like addShape, deleteShape are used by sub-components
   } = useEditorStore();
+
+   // Get selected flow node from the visual editor store
+   const selectedFlowNode = useVisualEditorStore((state) => state.selectedNode);
+   // Clear shape selection when flow node selection changes (and vice-versa)
+   const setSelectedShapeId = useEditorStore((state) => state.setSelectedShapeId);
+   const setSelectedFlowNode = useVisualEditorStore((state) => state.setSelectedNode);
+
+    useEffect(() => {
+        if (selectedFlowNode) {
+            setSelectedShapeId(null); // Clear shape selection if flow node selected
+        }
+    }, [selectedFlowNode, setSelectedShapeId]);
+
+    useEffect(() => {
+        if (selectedShapeId) {
+            setSelectedFlowNode(null); // Clear flow selection if shape selected
+        }
+    }, [selectedShapeId, setSelectedFlowNode]);
+
 
    // Initialize currentPageId on mount if it's null and pages exist
     useEffect(() => {
@@ -45,38 +64,40 @@ export default function EditorLayout() {
   const currentPage = pages.find(p => p.id === currentPageId);
   const currentShapes = currentPage ? currentPage.shapes : [];
 
-  // Find the selected shape within the current page's shapes
+  // Find the selected shape *object* if needed (though panel primarily uses ID)
   const selectedShape = currentShapes.find(shape => shape.id === selectedShapeId);
 
   // Determine project title (replace with actual logic if needed)
   const projectTitle = "Manga Page Editor";
 
   return (
-    <TooltipProvider> {/* Wrap layout in TooltipProvider */}
+    <TooltipProvider>
       <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
-        {/* Top Bar */}
         <TopBar projectTitle={projectTitle} />
 
         <div className="flex flex-1 overflow-hidden">
-          {/* Left Sidebar: Element Library */}
           <LibraryPanel />
 
           {/* Separator is handled within LibraryPanel structure */}
 
-          {/* Center Area: Canvas & Page Management */}
           <main className="flex-1 flex flex-col relative bg-muted/30 overflow-auto">
-            {/* Canvas Area */}
             <div className="flex-1 overflow-auto">
                <FabricCanvas />
             </div>
-            {/* Page Management Bar */}
             <PageManager />
           </main>
 
           <Separator orientation="vertical" className="h-full" />
 
-          {/* Right Sidebar: Properties Panel */}
-          <PropertiesPanel selectedShape={selectedShape} />
+          {/* Pass selected Flow node (if any) to the PropertiesPanel */}
+          {/* The panel will use this OR the selectedShapeId from its own store access */}
+          <PropertiesPanel
+             node={selectedFlowNode} // Pass the selected flow node
+             onClose={() => { // Define onClose behavior for the panel
+                 setSelectedFlowNode(null);
+                 setSelectedShapeId(null);
+             }}
+          />
         </div>
       </div>
     </TooltipProvider>
