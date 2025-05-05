@@ -2,6 +2,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link'; // Import Link
 import { ArrowLeft, UserCircle, Settings, LogOut, LayoutGrid } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -24,12 +25,13 @@ export default function TopBar({ projectTitle }: TopBarProps) {
   // Placeholder function for navigation
   const handleBack = () => {
     console.log('Back button clicked');
-    // Implement actual back navigation if needed
+    // Implement actual back navigation if needed, maybe router.back()?
+     window.history.back(); // Simple browser back
   };
 
   // Placeholder functions for menu actions
   const handleProfile = () => console.log('Profile clicked');
-  const handleSettings = () => console.log('Settings clicked');
+  // const handleSettings = () => console.log('Settings clicked'); // Replaced by Link
   const handleLogout = () => console.log('Logout clicked');
 
   return (
@@ -76,10 +78,13 @@ export default function TopBar({ projectTitle }: TopBarProps) {
               <UserCircle className="mr-2 h-4 w-4" />
               <span>Profile</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleSettings}>
-              <Settings className="mr-2 h-4 w-4" />
-              <span>Settings</span>
-            </DropdownMenuItem>
+             {/* Link to Settings Page */}
+             <Link href="/settings" passHref>
+                 <DropdownMenuItem>
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Settings</span>
+                 </DropdownMenuItem>
+             </Link>
              <DropdownMenuItem>
                 <LayoutGrid className="mr-2 h-4 w-4" />
                 <span>Dashboard</span>
