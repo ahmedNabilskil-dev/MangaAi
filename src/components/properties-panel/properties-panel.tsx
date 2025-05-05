@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef } from 'react';
@@ -14,7 +13,15 @@ import type { Node } from 'reactflow';
 import { cn } from '@/lib/utils';
 import nodeFormConfig from '@/config/node-form-config';
 import { useEditorStore } from '@/store/editor-store'; // Import editor store
-import { updateProject, updateChapter, updateScene, updatePanel, updatePanelDialogue, updateCharacter } from '@/services/data-service'; // Import specific update functions
+// Import specific update functions from the abstract data-service
+import {
+    updateProject,
+    updateChapter,
+    updateScene,
+    updatePanel,
+    updatePanelDialogue,
+    updateCharacter
+} from '@/services/data-service';
 import type { DeepPartial } from '@/types/utils';
 import type { MangaProject, Chapter, Scene, Panel, PanelDialogue, Character } from '@/types/entities';
 

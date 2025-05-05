@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview Defines a Genkit flow for updating various manga entities (Project, Chapter, Scene, Panel, Dialogue, Character) in the database based on user prompts.
@@ -14,14 +13,14 @@ import { getDefaultModelId } from '@/ai/ai-config'; // Import helper from config
 import { z } from 'genkit';
 // Import data service functions
 import {
-    updateProject,
-    updateChapter,
-    updateScene,
-    updatePanel,
-    updatePanelDialogue,
-    updateCharacter,
-    assignCharacterToPanel,
-    removeCharacterFromPanel,
+    updateProject as updateProjectService,
+    updateChapter as updateChapterService,
+    updateScene as updateSceneService,
+    updatePanel as updatePanelService,
+    updatePanelDialogue as updatePanelDialogueService,
+    updateCharacter as updateCharacterService,
+    assignCharacterToPanel as assignCharacterToPanelService,
+    removeCharacterFromPanel as removeCharacterFromPanelService,
     getProject as getProjectForContext, // Renamed for clarity
     getChapterForContext,
     getSceneForContext,
@@ -61,7 +60,7 @@ const UpdateCharacterSchema = z.custom<DeepPartial<Omit<Character, 'id' | 'creat
 // --- Input and Output Schemas for the Flow ---
 
 const UpdateEntityInputSchema = z.object({
-  entityType: z.enum(['project', 'chapter', 'scene', 'panel', 'dialogue', 'character']).describe("The type of entity to update."),
+  entityType: z.enum(['project', 'chapter', 'scene', 'panel', 'dialogue', 'character', 'image', 'text', 'bubble']).describe("The type of entity to update."), // Added Fabric shape types
   entityId: z.string().describe("The ID of the specific entity instance to update."),
   prompt: z.string().describe("The user's instruction for how to update the entity (e.g., 'Change the scene setting to a dark forest', 'Add character X to the panel', 'Rewrite the dialogue to be more menacing')."),
   // ProjectId is needed for context when finding characters by name
@@ -91,60 +90,66 @@ export async function updateEntity(input: UpdateEntityInput): Promise<UpdateEnti
     let currentData: any = null;
     let projectId = input.projectId; // Use provided projectId first
 
-    try {
-        console.log(`Fetching current data for ${input.entityType} ${input.entityId}`);
-        switch (input.entityType) {
-            case 'project':
-                currentData = await getProjectForContext(input.entityId);
-                // If projectId wasn't passed, set it from the fetched project
-                if (!projectId && currentData) projectId = currentData.id;
-                break;
-            case 'chapter':
-                currentData = await getChapterForContext(input.entityId);
-                if (!projectId && currentData) projectId = currentData.mangaProjectId;
-                break;
-            case 'scene':
-                currentData = await getSceneForContext(input.entityId);
-                if (!projectId && currentData) {
-                    const chapter = await getChapterForContext(currentData.chapterId);
-                    if (chapter) projectId = chapter.mangaProjectId;
-                }
-                break;
-            case 'panel':
-                currentData = await getPanelForContext(input.entityId);
-                if (!projectId && currentData) {
-                     const scene = await getSceneForContext(currentData.sceneId);
-                     if (scene) {
-                         const chapter = await getChapterForContext(scene.chapterId);
-                         if (chapter) projectId = chapter.mangaProjectId;
-                     }
-                }
-                break;
-            case 'dialogue':
-                currentData = await getPanelDialogueForContext(input.entityId);
-                 if (!projectId && currentData) {
-                     const panel = await getPanelForContext(currentData.panelId);
-                     if (panel) {
-                         const scene = await getSceneForContext(panel.sceneId);
+    // Only fetch backend data for backend entity types
+    if (['project', 'chapter', 'scene', 'panel', 'dialogue', 'character'].includes(input.entityType)) {
+        try {
+            console.log(`Fetching current data for ${input.entityType} ${input.entityId}`);
+            switch (input.entityType) {
+                case 'project':
+                    currentData = await getProjectForContext(input.entityId);
+                    if (!projectId && currentData) projectId = currentData.id;
+                    break;
+                case 'chapter':
+                    currentData = await getChapterForContext(input.entityId);
+                    if (!projectId && currentData) projectId = currentData.mangaProjectId;
+                    break;
+                case 'scene':
+                    currentData = await getSceneForContext(input.entityId);
+                    if (!projectId && currentData) {
+                        const chapter = await getChapterForContext(currentData.chapterId);
+                        if (chapter) projectId = chapter.mangaProjectId;
+                    }
+                    break;
+                case 'panel':
+                    currentData = await getPanelForContext(input.entityId);
+                    if (!projectId && currentData) {
+                         const scene = await getSceneForContext(currentData.sceneId);
                          if (scene) {
                              const chapter = await getChapterForContext(scene.chapterId);
                              if (chapter) projectId = chapter.mangaProjectId;
                          }
+                    }
+                    break;
+                case 'dialogue':
+                    currentData = await getPanelDialogueForContext(input.entityId);
+                     if (!projectId && currentData) {
+                         const panel = await getPanelForContext(currentData.panelId);
+                         if (panel) {
+                             const scene = await getSceneForContext(panel.sceneId);
+                             if (scene) {
+                                 const chapter = await getChapterForContext(scene.chapterId);
+                                 if (chapter) projectId = chapter.mangaProjectId;
+                             }
+                         }
                      }
-                 }
-                break;
-            case 'character':
-                currentData = await getCharacterForContext(input.entityId);
-                 if (!projectId && currentData) projectId = currentData.mangaProjectId;
-                break;
+                    break;
+                case 'character':
+                    currentData = await getCharacterForContext(input.entityId);
+                     if (!projectId && currentData) projectId = currentData.mangaProjectId;
+                    break;
+            }
+             console.log("Current data fetched:", currentData ? 'Data found' : 'Not found');
+             if (!projectId && input.entityType !== 'project') {
+                 console.warn(`Could not determine projectId for ${input.entityType} ${input.entityId}. Character lookups might fail.`);
+             }
+        } catch (error: any) {
+            console.warn(`Could not fetch current data for ${input.entityType} ${input.entityId}:`, error.message);
+            // Proceed without currentData, but the LLM might be less effective
         }
-         console.log("Current data fetched:", currentData ? 'Data found' : 'Not found');
-         if (!projectId) {
-             console.warn(`Could not determine projectId for ${input.entityType} ${input.entityId}. Character lookups might fail.`);
-         }
-    } catch (error: any) {
-        console.warn(`Could not fetch current data for ${input.entityType} ${input.entityId}:`, error.message);
-        // Proceed without currentData, but the LLM might be less effective
+    } else {
+        console.log(`Skipping backend data fetch for Fabric shape type: ${input.entityType}`);
+        // For Fabric shapes, we might need to get the current state from the Zustand store,
+        // but the LLM flow doesn't have direct access. We rely on the prompt for changes.
     }
 
 
@@ -167,7 +172,7 @@ const updateProjectTool = ai.defineTool({
     outputSchema: z.boolean().describe("True if update succeeded."),
 }, async ({ id, data }) => {
     try {
-        await updateProject(id, data);
+        await updateProjectService(id, data); // Use imported service function
         return true;
     } catch (e: any) { console.error("updateProjectTool Error:", e.message); return false; }
 });
@@ -182,7 +187,7 @@ const updateChapterTool = ai.defineTool({
     outputSchema: z.boolean().describe("True if update succeeded."),
 }, async ({ id, data }) => {
      try {
-        await updateChapter(id, data);
+        await updateChapterService(id, data); // Use imported service function
         return true;
     } catch (e: any) { console.error("updateChapterTool Error:", e.message); return false; }
 });
@@ -197,7 +202,7 @@ const updateSceneTool = ai.defineTool({
     outputSchema: z.boolean().describe("True if update succeeded."),
 }, async ({ id, data }) => {
      try {
-        await updateScene(id, data);
+        await updateSceneService(id, data); // Use imported service function
         return true;
     } catch (e: any) { console.error("updateSceneTool Error:", e.message); return false; }
 });
@@ -212,7 +217,7 @@ const updatePanelTool = ai.defineTool({
     outputSchema: z.boolean().describe("True if update succeeded."),
 }, async ({ id, data }) => {
      try {
-        await updatePanel(id, data); // Service function handles the update
+        await updatePanelService(id, data); // Use imported service function
         return true;
     } catch (e: any) { console.error("updatePanelTool Error:", e.message); return false; }
 });
@@ -227,7 +232,7 @@ const updatePanelDialogueTool = ai.defineTool({
     outputSchema: z.boolean().describe("True if update succeeded."),
 }, async ({ id, data }) => {
      try {
-        await updatePanelDialogue(id, data);
+        await updatePanelDialogueService(id, data); // Use imported service function
         return true;
     } catch (e: any) { console.error("updatePanelDialogueTool Error:", e.message); return false; }
 });
@@ -242,7 +247,7 @@ const updateCharacterTool = ai.defineTool({
     outputSchema: z.boolean().describe("True if update succeeded."),
 }, async ({ id, data }) => {
      try {
-        await updateCharacter(id, data);
+        await updateCharacterService(id, data); // Use imported service function
         return true;
     } catch (e: any) { console.error("updateCharacterTool Error:", e.message); return false; }
 });
@@ -260,13 +265,11 @@ const findCharacterByNameTool = ai.defineTool({
 }, async ({ characterName, projectId }) => {
     if (!projectId) {
          console.warn("findCharacterByNameTool requires projectId for context.");
-         // Optionally throw an error or just return null if projectId is missing
-         // throw new Error("Project ID is required for findCharacterByNameTool.");
           return null;
     }
     try {
         console.log(`Finding character "${characterName}" in project ${projectId}`);
-        const characters = await getAllCharacters(projectId);
+        const characters = await getAllCharacters(projectId); // Use imported service function
         const found = characters.find(c => c.name.toLowerCase() === characterName.toLowerCase());
         console.log(`Found character: ${found?.id ?? 'null'}`);
         return found?.id ?? null;
@@ -288,7 +291,7 @@ const assignCharacterToPanelTool = ai.defineTool({
     outputSchema: z.boolean().describe("True if assignment was successful."),
 }, async (input) => {
     try {
-        await assignCharacterToPanel(input.panelId, input.characterId); // Data service
+        await assignCharacterToPanelService(input.panelId, input.characterId); // Use imported service function
         return true;
     } catch (error: any) {
         console.error(`Failed to assign character ${input.characterId} to panel ${input.panelId}:`, error.message);
@@ -306,7 +309,7 @@ const removeCharacterFromPanelTool = ai.defineTool({
     outputSchema: z.boolean().describe("True if removal was successful."),
 }, async (input) => {
     try {
-        await removeCharacterFromPanel(input.panelId, input.characterId); // Data service
+        await removeCharacterFromPanelService(input.panelId, input.characterId); // Use imported service function
         return true;
     } catch (error: any) {
         console.error(`Failed to remove character ${input.characterId} from panel ${input.panelId}:`, error.message);
@@ -330,6 +333,10 @@ const prompt = ai.definePrompt({
       findCharacterByNameTool,
       assignCharacterToPanelTool,
       removeCharacterFromPanelTool
+      // Note: Tools for updating Fabric shapes (image, text, bubble) are not needed here,
+      // as the LLM shouldn't directly manipulate frontend state.
+      // It provides data via the backend tools (panel, dialogue, character),
+      // and the frontend updates Fabric shapes based on changes in the backend data.
     ],
   input: {
     schema: AugmentedUpdateEntityInputSchema, // Use augmented schema with currentData and projectId
@@ -344,20 +351,20 @@ const prompt = ai.definePrompt({
 User Prompt:
 "{{prompt}}"
 
-Current Data (for context, may be null if fetch failed):
+Current Data (for context, may be null if fetch failed or if it's a Fabric shape):
 \`\`\`json
 {{{json currentData}}}
 \`\`\`
 
-Based *only* on the user's prompt and the current data:
-1.  Determine the specific changes requested.
-2.  Identify the correct tool(s) to apply these changes (e.g., \`updateScene\`, \`assignCharacterToPanel\`).
+Based *only* on the user's prompt and the current data (if available for backend entities):
+1.  Determine the specific changes requested for the backend entity (project, chapter, scene, panel, dialogue, character). Ignore requests for purely visual updates to Fabric shapes (image, text, bubble) as those are handled by the frontend.
+2.  Identify the correct tool(s) to apply these backend changes (e.g., \`updateScene\`, \`assignCharacterToPanel\`).
 3.  If the prompt involves adding or removing a character from a panel BY NAME:
     a. You MUST have the \`projectId\` for context. If the projectId is missing or unknown, state this limitation in your confirmation and DO NOT proceed with character lookup/assignment/removal.
     b. If you have the \`projectId\`, FIRST use \`findCharacterByName\` to get their ID, providing the \`projectId\` for context.
     c. If the character ID is found, use \`assignCharacterToPanel\` or \`removeCharacterFromPanel\` with the panel ID and the found character ID.
     d. If the character ID is NOT found (or projectId was missing), inform the user in the confirmation message and DO NOT attempt to assign/remove.
-4.  If the prompt involves updating fields of an entity (e.g., changing title, description, context):
+4.  If the prompt involves updating fields of a backend entity (e.g., changing title, description, context):
     a. Construct the \`data\` object for the appropriate update tool (e.g., \`updateScene\`, \`updatePanelDialogue\`). Include ONLY the fields to be changed with their NEW values.
     b. For \`updatePanel\`, DO NOT include \`characterIds\` in the \`data\` object; use the assignment/removal tools instead.
     c. Call the appropriate update tool with the entity ID (\`{{entityId}}\`) and the update \`data\`.
@@ -368,12 +375,12 @@ Based *only* on the user's prompt and the current data:
     d. If the name is not found (or projectId was missing), report it.
 
 **CRITICAL RULES:**
-*   **Targeted Updates:** Only update the fields or relationships explicitly requested or strongly implied by the user's prompt. Do not change unrelated data.
-*   **Correct Tool:** Use the tool corresponding to the \`entityType\` (e.g., use \`updateSceneTool\` for a scene). Use assignment/removal tools for panel character list changes.
+*   **Targeted Updates:** Only update the fields or relationships of backend entities explicitly requested or strongly implied by the user's prompt. Do not change unrelated data. Do not attempt to update Fabric shapes.
+*   **Correct Tool:** Use the tool corresponding to the backend \`entityType\` (e.g., use \`updateSceneTool\` for a scene). Use assignment/removal tools for panel character list changes.
 *   **Use IDs:** Provide the correct \`entityId\` (\`{{entityId}}\`) to the tools. Use character IDs found via \`findCharacterByName\` when required by other tools. You MUST provide the \`projectId\` to \`findCharacterByName\`.
 *   **Project ID Context:** You MUST have the projectId to perform character lookups (findByName) or assign/remove characters by name. State this limitation if the projectId is missing.
 *   **Character IDs:** Only use \`assignCharacterToPanel\` or \`removeCharacterFromPanel\` if you have the character's ID.
-*   **Confirmation:** After attempting the updates, respond ONLY with a confirmation message summarizing the actions taken (or why they couldn't be taken, e.g., character not found, projectId missing). Do not include full data structures in the response.
+*   **Confirmation:** After attempting the backend updates, respond ONLY with a confirmation message summarizing the actions taken (or why they couldn't be taken, e.g., character not found, projectId missing, request was for visual update). Do not include full data structures in the response.
 `,
 });
 
@@ -416,10 +423,10 @@ const updateEntityFlow = ai.defineFlow<
         message = `Update failed: Tools were requested but no responses received for ${input.entityType} ${input.entityId}.`;
         console.error(message, { toolRequests });
     } else {
-        // No tool calls were made - maybe the prompt didn't require an update?
+        // No tool calls were made - maybe the prompt didn't require a backend update?
         success = true; // Flow ran, no action needed based on prompt
-        message = toolCallOutput?.confirmation || `No update action taken for ${input.entityType} ${input.entityId} based on the prompt.`;
-        console.log(`No update actions required for ${input.entityType} ${input.entityId}.`);
+        message = toolCallOutput?.confirmation || `No backend update action taken for ${input.entityType} ${input.entityId} based on the prompt.`;
+        console.log(`No backend update actions required for ${input.entityType} ${input.entityId}.`);
     }
 
 

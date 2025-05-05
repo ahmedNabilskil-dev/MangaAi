@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
@@ -17,7 +16,8 @@ import { createChapterFromPrompt } from '@/ai/flows/create-chapter-from-prompt';
 import { brainstormCharacterIdeas } from '@/ai/flows/brainstorm-character-ideas';
 import { updateEntity } from '@/ai/flows/update-entity-flow';
 import type { NodeType } from '@/types/nodes';
-import { getDefaultProject } from '@/services/data-service'; // Import from the abstract data service
+// Import function from the abstract data service
+import { getDefaultProject } from '@/services/data-service';
 import { askGeneralAssistant } from '@/ai/assistant'; // Import the abstract assistant function
 
 

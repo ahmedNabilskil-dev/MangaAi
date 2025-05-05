@@ -1,4 +1,3 @@
-
 'use server';
 
 /**
@@ -22,9 +21,9 @@ import {
     createCharacter as createCharacterService,
     assignCharacterToPanel as assignCharacterToPanelService,
     getAllCharacters, // Needed to find characters by name
-    getChapterForContext as getChapter, // Use context getter
-    getSceneForContext as getScene, // Use context getter
-    getPanelForContext as getPanel, // Use context getter
+    getChapterForContext, // Use context getter
+    getSceneForContext, // Use context getter
+    getPanelForContext, // Use context getter
     // No default project ID needed directly from constants
 } from '@/services/data-service'; // Import from the abstract data service
 import type { Scene, Panel, PanelDialogue, Character } from '@/types/entities'; // Import types for context
@@ -56,22 +55,22 @@ export type CreateChapterFromPromptOutput = z.infer<typeof CreateChapterFromProm
 async function getProjectIdForTool(context: { chapterId?: string, sceneId?: string, panelId?: string }): Promise<string | undefined> {
      // Try to infer project ID from context if needed, but ideally it's passed in flow input
      if (context.chapterId) {
-         const chapter = await getChapter(context.chapterId);
+         const chapter = await getChapterForContext(context.chapterId);
          return chapter?.mangaProjectId;
      }
      if (context.sceneId) {
-         const scene = await getScene(context.sceneId);
+         const scene = await getSceneForContext(context.sceneId);
          if (scene) {
-            const chapter = await getChapter(scene.chapterId);
+            const chapter = await getChapterForContext(scene.chapterId);
             return chapter?.mangaProjectId;
          }
      }
       if (context.panelId) {
-         const panel = await getPanel(context.panelId);
+         const panel = await getPanelForContext(context.panelId);
          if (panel) {
-            const scene = await getScene(panel.sceneId);
+            const scene = await getSceneForContext(panel.sceneId);
              if (scene) {
-                const chapter = await getChapter(scene.chapterId);
+                const chapter = await getChapterForContext(scene.chapterId);
                 return chapter?.mangaProjectId;
              }
          }

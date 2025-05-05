@@ -1,7 +1,7 @@
 // src/services/dexie-service.ts
-'use server'; // Keep if Dexie operations are primarily server-side (or remove if used client-side)
+'use server';
 
-import { db } from '@/db/dexie'; // Assuming dexie instance is here
+import { db, getProjectWithRelations, getDefaultProject as getDefaultProjectFromDb } from '@/services/db'; // Use the centralized Dexie instance and helpers
 import type { MangaProject, Chapter, Scene, Panel, PanelDialogue, Character } from '@/types/entities';
 import type { DeepPartial } from '@/types/utils';
 import { v4 as uuidv4 } from 'uuid';
@@ -18,40 +18,8 @@ class DexieDataService implements IDataService {
     }
 
     async getProject(id: string): Promise<MangaProject | null> {
-        console.log(`DexieService: Fetching project ${id} and related data`);
-        const project = await db.projects.get(id);
-        if (!project) return null;
-
-        const [chaptersData, charactersData] = await Promise.all([
-            db.chapters.where('mangaProjectId').equals(id).sortBy('chapterNumber'),
-            db.characters.where('mangaProjectId').equals(id).toArray()
-        ]);
-
-        project.chapters = chaptersData;
-        project.characters = charactersData;
-
-        for (const chapter of project.chapters) {
-            chapter.scenes = await db.scenes.where('chapterId').equals(chapter.id).sortBy('order');
-            for (const scene of chapter.scenes) {
-                scene.panels = await db.panels.where('sceneId').equals(scene.id).sortBy('order');
-                for (const panel of scene.panels) {
-                    const dialoguesData = await db.dialogues.where('panelId').equals(panel.id).sortBy('order');
-                    const speakerIds = dialoguesData.map(d => d.speakerId).filter((id): id is string => !!id);
-                    const speakers = speakerIds.length > 0 ? await db.characters.bulkGet(speakerIds) : [];
-                    const speakerMap = new Map(speakers.filter((s): s is Character => !!s).map(s => [s!.id, s]));
-
-                    panel.dialogues = dialoguesData.map(d => ({
-                        ...d,
-                        speaker: d.speakerId ? speakerMap.get(d.speakerId) ?? null : null
-                    }));
-
-                    panel.characters = panel.characterIds && panel.characterIds.length > 0
-                        ? (await db.characters.bulkGet(panel.characterIds)).filter((c): c is Character => !!c)
-                        : [];
-                }
-            }
-        }
-        return project;
+        // Use the centralized helper function from db.ts
+        return getProjectWithRelations(id);
     }
 
     async createProject(projectData: Omit<MangaProject, 'id' | 'createdAt' | 'updatedAt' | 'chapters' | 'characters'>): Promise<MangaProject> {
@@ -60,13 +28,13 @@ class DexieDataService implements IDataService {
         const newProject: MangaProject = {
             ...projectData,
             id: newId,
-            chapters: [],
-            characters: [],
+            chapters: [], // Initialized empty, relations fetched separately
+            characters: [], // Initialized empty, relations fetched separately
             createdAt: new Date(),
             updatedAt: new Date(),
         };
         await db.projects.add(newProject);
-        return newProject;
+        return newProject; // Return the basic project data
     }
 
     async updateProject(id: string, projectData: DeepPartial<Omit<MangaProject, 'id' | 'createdAt' | 'updatedAt' | 'chapters' | 'characters'>>): Promise<void> {
@@ -79,11 +47,11 @@ class DexieDataService implements IDataService {
         await db.transaction('rw', db.projects, db.chapters, db.scenes, db.panels, db.dialogues, db.characters, async () => {
             const projectChapters = await db.chapters.where('mangaProjectId').equals(id).toArray();
             for (const chapter of projectChapters) {
-                await this.deleteChapter(chapter.id);
+                await this.deleteChapter(chapter.id); // Use service method for cascade
             }
             const projectCharacters = await db.characters.where('mangaProjectId').equals(id).toArray();
             for (const character of projectCharacters) {
-                await this.deleteCharacter(character.id);
+                await this.deleteCharacter(character.id); // Use service method for cascade
             }
             await db.projects.delete(id);
         });
@@ -91,50 +59,8 @@ class DexieDataService implements IDataService {
     }
 
      async getDefaultProject(): Promise<MangaProject | null> {
-         console.log("DexieService: Attempting to fetch default project (proj-initial-1)");
-         let project = await this.getProject('proj-initial-1');
-
-         if (!project) {
-             console.log("DexieService: Initial project not found, fetching first available project...");
-             const allProjects = await this.getAllProjects();
-             if (allProjects.length > 0) {
-                 console.log(`DexieService: Found ${allProjects.length} projects, using the first one: ${allProjects[0].id}`);
-                 project = await this.getProject(allProjects[0].id);
-             } else {
-                 console.log("DexieService: No projects found. Creating initial project.");
-                 try {
-                     project = await this.createProject({
-                         title: 'My First Manga Project',
-                         description: 'Start creating your manga here!',
-                         status: 'draft',
-                         viewCount: 0,
-                         likeCount: 0,
-                         published: false,
-                     });
-                     // Manually set the ID for consistency if needed, though createProject handles it
-                     // Or adjust createProject to allow ID override for this specific case
-                     console.log("DexieService: Initial project created with ID:", project.id);
-
-                     // Now, try to fetch it again to ensure it has the expected ID structure if createProject assigned one
-                     // This part might be tricky if createProject uses UUID. We might need a fixed ID.
-                     // Let's assume createProject assigns the ID 'proj-initial-1' if possible, or adjust getDefaultProject logic
-                     // For simplicity, let's assume createProject worked and returned the new project
-                     project = await this.getProject(project.id); // Fetch again to get relations if any were added
-
-                 } catch (error) {
-                      console.error("DexieService: Error creating initial project:", error);
-                      return null;
-                 }
-             }
-         }
-
-         if (!project) {
-              console.error("DexieService: Failed to get or create a default project.");
-              return null;
-         }
-
-         console.log("DexieService: Default project fetched:", project.id);
-         return project;
+         // Use the centralized helper function from db.ts
+         return getDefaultProjectFromDb();
      }
 
 
@@ -163,7 +89,7 @@ class DexieDataService implements IDataService {
         await db.transaction('rw', db.chapters, db.scenes, db.panels, db.dialogues, async () => {
             const chapterScenes = await db.scenes.where('chapterId').equals(id).toArray();
             for (const scene of chapterScenes) {
-                await this.deleteScene(scene.id);
+                await this.deleteScene(scene.id); // Use service method
             }
             await db.chapters.delete(id);
         });
@@ -200,7 +126,7 @@ class DexieDataService implements IDataService {
         await db.transaction('rw', db.scenes, db.panels, db.dialogues, async () => {
             const scenePanels = await db.panels.where('sceneId').equals(id).toArray();
             for (const panel of scenePanels) {
-                await this.deletePanel(panel.id);
+                await this.deletePanel(panel.id); // Use service method
             }
             await db.scenes.delete(id);
         });
@@ -281,7 +207,7 @@ class DexieDataService implements IDataService {
         const newDialogue: PanelDialogue = {
             ...dialogueData,
             id: newId,
-            speaker: null,
+            speaker: null, // Speaker relation handled separately if needed
             createdAt: new Date(),
             updatedAt: new Date(),
         };
@@ -355,11 +281,16 @@ class DexieDataService implements IDataService {
     }
 
      async initialize(): Promise<void> {
-        // Populate initial data if necessary (optional, Dexie handles this via 'populate' event)
-        // await populateInitialData(); // You might call Dexie's populate manually here if needed
-        console.log("DexieDataService initialized.");
+        // Initialization logic, if any, specific to Dexie service.
+        // Dexie's `db.on('populate')` handles initial data population automatically.
+        console.log("DexieDataService initialized (or initialization handled by db.ts).");
+        // Ensure the db is open (db.open() is called in db.ts)
+        await db.open();
     }
 }
 
 // Export an instance of the Dexie service implementation
 export const dexieDataService = new DexieDataService();
+
+// Initialize service immediately (important for Dexie)
+dexieDataService.initialize();

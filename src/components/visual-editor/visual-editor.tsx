@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -27,8 +26,11 @@ import { useVisualEditorStore } from '@/store/visual-editor-store';
 import { layoutElements } from '@/lib/layout-utils';
 import CustomNode from './custom-node'; // Import the new custom node
 import type { MangaProject, Character, Chapter, Scene, Panel, PanelDialogue } from '@/types/entities'; // Import entity types
-// Import from the abstract data service
+// Import specific function from the abstract data service
 import { getDefaultProject } from '@/services/data-service';
+import { useLiveQuery } from 'dexie-react-hooks'; // Import Dexie hook
+import { db } from '@/db/dexie'; // Import Dexie db instance
+
 
 // Use the new CustomNode for all types
 const nodeTypes: NodeTypes = {
@@ -81,20 +83,6 @@ function transformProjectToFlow(project: MangaProject | null): { nodes: Node<Nod
             position: { x: 0, y: 0 },
             data: { label: character.name, type: 'character', properties: character }
         });
-         // Edge to project (for display only, mark for layout ignore)
-        // Removing this edge to prevent characters from being linked in the main layout
-        /*
-        edges.push({
-             id: `e-${project.id}-char-${character.id}`,
-             source: project.id,
-             target: character.id,
-             type: 'step', // Simple edge type
-             style: { stroke: 'hsl(var(--muted-foreground) / 0.3)', strokeDasharray: '4 4', strokeWidth: 1 },
-             animated: false,
-             markerEnd: undefined,
-             data: { noLayout: true } // Mark edge to ignore in layout
-        });
-        */
     });
 
     // Chapters, Scenes, Panels, Dialogues
@@ -125,24 +113,6 @@ function transformProjectToFlow(project: MangaProject | null): { nodes: Node<Nod
                 });
                 edges.push({ id: `e-${scene.id}-${panel.id}`, source: scene.id, target: panel.id });
 
-                // Edges from panel characters to the panel node (noLayout)
-                // Removing these visual links as well to keep characters separate
-                /*
-                (panel.characterIds ?? []).forEach(charId => {
-                     edges.push({
-                         id: `e-char-${charId}-panel-${panel.id}`,
-                         source: charId, // Character node ID
-                         target: panel.id, // Panel node ID
-                         type: 'step',
-                         style: { stroke: 'hsl(var(--muted-foreground) / 0.3)', strokeDasharray: '4 4', strokeWidth: 1 },
-                         animated: false,
-                         markerEnd: undefined,
-                         data: { noLayout: true }
-                     });
-                });
-                */
-
-
                 (panel.dialogues ?? []).forEach(dialogue => {
                     nodes.push({
                         id: dialogue.id,
@@ -152,22 +122,6 @@ function transformProjectToFlow(project: MangaProject | null): { nodes: Node<Nod
                     });
                     edges.push({ id: `e-${panel.id}-${dialogue.id}`, source: panel.id, target: dialogue.id });
 
-                    // Optional: Edge from speaker to dialogue (noLayout)
-                    // Removing these visual links
-                    /*
-                    if (dialogue.speakerId) {
-                         edges.push({
-                             id: `e-speaker-${dialogue.speakerId}-dialogue-${dialogue.id}`,
-                             source: dialogue.speakerId, // Character node ID
-                             target: dialogue.id, // Dialogue node ID
-                             type: 'step',
-                             style: { stroke: 'hsl(var(--muted-foreground) / 0.2)', strokeDasharray: '2 2', strokeWidth: 1 },
-                             animated: false,
-                             markerEnd: undefined,
-                             data: { noLayout: true }
-                         });
-                     }
-                    */
                 });
             });
         });
@@ -197,41 +151,40 @@ function VisualEditorInternal() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [projectData, setProjectData] = useState<MangaProject | null>(null);
   const isInitialLayoutDone = useRef(false); // Track if initial layout applied
 
-  // --- Fetch Project Data Effect ---
-   useEffect(() => {
-       const fetchData = async () => {
-           console.log("Fetching project data (triggered by refreshCounter:", refreshCounter, ")");
-           setIsLoading(true);
-           setError(null);
-            isInitialLayoutDone.current = false; // Reset layout flag on each refresh
-           try {
-               const project = await getDefaultProject(); // Fetch using abstract service
-               if (!project) {
-                   setError("No project found.");
-                   setProjectData(null);
-               } else {
-                   setProjectData(project);
-               }
-           } catch (err: any) {
-               console.error("Error loading project data:", err);
-               setError(`Error loading project data: ${err.message || 'Failed to fetch'}`);
-               setProjectData(null);
-           } finally {
-               setIsLoading(false);
-           }
-       };
-
-       fetchData();
-   }, [refreshCounter]); // Re-run fetch when refreshCounter changes
+  // --- Use useLiveQuery to observe Dexie data ---
+  // This automatically updates when the underlying Dexie data changes
+  const projectData = useLiveQuery(
+    async () => {
+        console.log("Dexie useLiveQuery: Fetching default project data...");
+        setIsLoading(true); // Set loading state when query starts
+        setError(null);
+         isInitialLayoutDone.current = false; // Reset layout flag on each refresh
+        try {
+            const project = await getDefaultProject(); // Fetch using abstract service (which uses Dexie)
+            if (!project) {
+                setError("No project found or error loading project.");
+                return null;
+            }
+            return project;
+        } catch (err: any) {
+            console.error("Error loading project data via useLiveQuery:", err);
+            setError(`Error loading project data: ${err.message || 'Failed to fetch'}`);
+            return null;
+        } finally {
+            setIsLoading(false); // Reset loading state when query completes/fails
+        }
+    },
+    [refreshCounter] // Dependency array: re-run query when refreshCounter changes
+  );
 
 
    // --- Transform Data and Layout Effect ---
+   // Now triggered when `projectData` from useLiveQuery changes
    useEffect(() => {
        if (projectData && !isLoading) { // Only process if projectData exists and not loading
-           console.log("Project data loaded, transforming to flow elements...");
+           console.log("Project data loaded/updated, transforming to flow elements...");
            const { nodes: initialNodes, edges: initialEdges } = transformProjectToFlow(projectData);
 
            // Apply layout only if nodes exist and initial layout isn't done
@@ -265,19 +218,21 @@ function VisualEditorInternal() {
                 setEdges([]);
            }
 
-       } else if (!isLoading && !error && !projectData) {
+       } else if (!isLoading && !error && projectData === null) {
             // Handle case where data fetching finished but resulted in null project
             setNodes([]);
             setEdges([]);
             isInitialLayoutDone.current = false; // Reset layout flag
        }
    // eslint-disable-next-line react-hooks/exhaustive-deps
-   }, [projectData, isLoading, error, setNodes, setEdges, fitView, setViewportInitialized]);
+   }, [projectData, isLoading, error, setNodes, setEdges, fitView, setViewportInitialized]); // Depend on projectData from useLiveQuery
 
 
    // --- Handlers remain mostly the same, using Zustand store ---
    const onNodesChange: OnNodesChange = useCallback(
      (changes) => {
+         // TODO: Persist node changes to Dexie (e.g., position changes)
+         // For now, just update the Zustand store visually
          setNodes(applyNodeChanges(changes, storeNodes));
      },
      [setNodes, storeNodes]
@@ -285,6 +240,7 @@ function VisualEditorInternal() {
 
    const onEdgesChange: OnEdgesChange = useCallback(
      (changes) => {
+        // TODO: Persist edge changes if needed (e.g., deletion)
         setEdges(applyEdgeChanges(changes, storeEdges));
      },
      [setEdges, storeEdges]
@@ -293,7 +249,7 @@ function VisualEditorInternal() {
    const onConnect: OnConnect = useCallback(
      (connection) => {
          const newEdge = { ...connection, type: 'smoothstep' }; // Ensure edge type
-         // TODO: Persist this new edge connection
+         // TODO: Persist this new edge connection to Dexie if needed
          // For now, just update the store visually
          setEdges(addEdge(newEdge, storeEdges));
          // Trigger layout refresh after connection?
