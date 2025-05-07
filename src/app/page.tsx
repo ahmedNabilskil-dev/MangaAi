@@ -2,40 +2,34 @@
 
 import Chatbox from "@/components/chatbox/chatbox";
 import TopBar from "@/components/layout/top-bar";
-import PropertiesPanel from "@/components/properties-panel/properties-panel"; // Import unified panel
+import FlowPropertiesPanel from "@/components/properties-panel/flow-properties-panel"; // Renamed from PropertiesPanel
 import VisualEditor from "@/components/visual-editor/visual-editor";
-import { useEditorStore } from "@/store/editor-store";
 import { useVisualEditorStore } from "@/store/visual-editor-store";
 import { useEffect, useRef, useState } from "react";
 import Draggable from "react-draggable";
+import { useIsMobile } from "@/hooks/use-mobile"; // Import hook
 
 export default function Home() {
   // Get selected node from visual editor store (React Flow selection)
   const selectedFlowNode = useVisualEditorStore((state) => state.selectedNode);
-  // Get selected shape ID from editor store (for properties panel)
-  const selectedShapeId = useEditorStore((state) => state.selectedShapeId);
-  const shapes = useEditorStore((state) =>
-    getCurrentPageShapes(useEditorStore.getState())
-  ); // Helper to get shapes for current page
-  const selectedShape = shapes.find((s) => s.id === selectedShapeId);
+  const isMobile = useIsMobile(); // Check if mobile
 
-  // Determine the ID and type of the selected item (either Flow node or Fabric shape)
-  const selectedItemId = selectedFlowNode?.id ?? selectedShapeId ?? null;
-  const selectedItemType =
-    selectedFlowNode?.data?.type ?? selectedShape?.type ?? null;
+  // Determine the ID and type of the selected Flow node
+  const selectedItemId = selectedFlowNode?.id ?? null;
+  const selectedItemType = selectedFlowNode?.data?.type ?? null;
 
   // State for default positions, calculated on client-side
-  const [chatboxPos, setChatboxPos] = useState({ x: 0, y: 0 }); // Will be updated in useEffect
-  const [propertiesPanelPos, setPropertiesPanelPos] = useState({ x: 0, y: 0 }); // Will be updated
+  const [chatboxPos, setChatboxPos] = useState({ x: 0, y: 0 }); // Default, updated in useEffect
+  const [propertiesPanelPos, setPropertiesPanelPos] = useState({ x: 0, y: 0 }); // Default, updated
 
-  const projectTitle = "MangaVerse AI"; // Updated Project Title
+  const projectTitle = "MangaVerse AI - Story Flow"; // Updated Project Title for this view
 
   const chatboxNodeRef = useRef(null);
   const propertiesPanelNodeRef = useRef(null); // Ref for draggable properties panel
 
-  // Calculate better default positions on the client-side after mount
+  // Calculate default positions on the client-side after mount
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && !isMobile) { // Only position freely on desktop
       const chatWidth = 500; // Match default chatbox width
       const chatX = Math.max(0, window.innerWidth / 2 - chatWidth / 2); // Centered horizontally
       const chatY = Math.max(50, window.innerHeight - 250); // Near bottom
@@ -45,62 +39,74 @@ export default function Home() {
       const panelX = Math.max(20, window.innerWidth - panelWidth - 20); // Right side with margin
       const panelY = 70; // Below TopBar, adjust as needed
       setPropertiesPanelPos({ x: panelX, y: panelY });
+    } else if (isMobile) {
+        // Reset positions for mobile (they will be stacked or hidden)
+        setChatboxPos({ x: 0, y: 0 });
+        setPropertiesPanelPos({ x: 0, y: 0});
     }
-  }, []);
+  }, [isMobile]); // Rerun when mobile status changes
 
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
       <TopBar projectTitle={projectTitle} />
       <div className="flex-grow relative overflow-hidden">
-        {" "}
-        {/* This container holds the editor and panels */}
         {/* Visual Editor takes full space */}
         <div className="absolute inset-0">
           <VisualEditor />
         </div>
-        {/* Chatbox - Unconditional Render & Draggable */}
+
+        {/* Chatbox - Draggable on Desktop */}
         <Draggable
           nodeRef={chatboxNodeRef}
           handle=".chatbox-drag-handle"
-          defaultPosition={chatboxPos} // Use state for initial position
-          position={chatboxPos} // Control position explicitly if needed later
-          onStop={(_, data) => setChatboxPos({ x: data.x, y: data.y })} // Update position on stop
-          bounds="parent" // Keep draggable within the parent container
+          defaultPosition={chatboxPos}
+          position={!isMobile ? chatboxPos : undefined} // Only control position on desktop
+          onStop={(_, data) => !isMobile && setChatboxPos({ x: data.x, y: data.y })}
+          bounds="parent"
+          disabled={isMobile} // Disable dragging on mobile
         >
-          <div ref={chatboxNodeRef} className="absolute z-10">
-            {/* Position is controlled by Draggable, inline style ensures initial placement */}
+           {/* Apply different styles/positioning based on isMobile */}
+          <div
+            ref={chatboxNodeRef}
+            className={
+              isMobile
+                ? "absolute bottom-4 left-4 right-4 z-20" // Example mobile positioning
+                : "absolute z-10" // Default absolute for desktop Draggable
+            }
+            style={isMobile ? {} : { left: `${chatboxPos.x}px`, top: `${chatboxPos.y}px` }} // Control style on desktop
+          >
             <Chatbox />
           </div>
         </Draggable>
-        {/* Properties Panel - Draggable and Conditional based on selection */}
-        {/* The Panel itself will render based on selectedItemId */}
+
+        {/* Flow Properties Panel - Draggable on Desktop */}
         <Draggable
           nodeRef={propertiesPanelNodeRef}
           handle=".properties-panel-drag-handle" // Add handle class to panel header
           defaultPosition={propertiesPanelPos}
-          position={propertiesPanelPos}
-          onStop={(_, data) => setPropertiesPanelPos({ x: data.x, y: data.y })}
+          position={!isMobile ? propertiesPanelPos : undefined} // Control position on desktop
+          onStop={(_, data) => !isMobile && setPropertiesPanelPos({ x: data.x, y: data.y })}
           bounds="parent"
+          disabled={isMobile} // Disable dragging on mobile
         >
-          <div ref={propertiesPanelNodeRef} className="absolute z-10">
-            {/* Render the panel conditionally WITHIN the draggable container */}
-            {/* Pass selected item info */}
-            <PropertiesPanel
-              selectedItemId={selectedItemId}
-              selectedItemType={selectedItemType}
-            />
+           {/* Apply different styles/positioning based on isMobile */}
+          <div
+             ref={propertiesPanelNodeRef}
+             className={
+               isMobile
+                 ? "absolute top-16 right-4 z-20" // Example mobile positioning (might overlap chat)
+                 : "absolute z-10" // Default absolute for desktop Draggable
+             }
+             style={isMobile ? {} : { left: `${propertiesPanelPos.x}px`, top: `${propertiesPanelPos.y}px` }}
+          >
+             {/* Render the FLOW properties panel conditionally */}
+             <FlowPropertiesPanel
+               selectedItemId={selectedItemId}
+               selectedItemType={selectedItemType}
+             />
           </div>
         </Draggable>
       </div>
     </div>
   );
-}
-
-// Helper function (can be moved to utils or kept here if only used here)
-function getCurrentPageShapes(state: any) {
-  if (!state.currentPageId) return [];
-  const currentPage = state.pages.find(
-    (p: any) => p.id === state.currentPageId
-  );
-  return currentPage ? currentPage.shapes : [];
 }

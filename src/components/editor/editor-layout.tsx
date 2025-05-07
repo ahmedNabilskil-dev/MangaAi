@@ -4,7 +4,7 @@
 import React, { useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import LibraryPanel from './sidebars/library-panel';
-import PropertiesPanel from '@/components/properties-panel/properties-panel'; // Use the unified properties panel
+import FabricPropertiesPanel from '@/components/properties-panel/fabric-properties-panel'; // Import specific Fabric panel
 import TopBar from '@/components/layout/top-bar';
 import { Separator } from '@/components/ui/separator';
 import { useEditorStore } from '@/store/editor-store';
@@ -71,8 +71,8 @@ export default function EditorLayout() {
 
           <Separator orientation="vertical" className="h-full" />
 
-          {/* Pass selected ID and type to the unified PropertiesPanel */}
-          <PropertiesPanel
+          {/* Use the specific FabricPropertiesPanel */}
+          <FabricPropertiesPanel
              selectedItemId={selectedShapeId} // Pass the selected shape ID
              selectedItemType={selectedShape?.type ?? null} // Pass the type if shape found
              // PropertiesPanel now handles its own open/close logic based on selectedItemId

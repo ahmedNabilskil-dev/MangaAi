@@ -3,9 +3,9 @@
 
 import React from 'react';
 import dynamic from 'next/dynamic';
-import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton for loading state
+import { Skeleton } from '@/components/ui/skeleton';
 
-// Dynamically import EditorLayout with ssr: false to ensure client-side rendering
+// Dynamically import EditorLayout (which contains FabricCanvas) with ssr: false
 const EditorLayout = dynamic(() => import('@/components/editor/editor-layout'), {
   ssr: false, // This is crucial to prevent server-side rendering of canvas components
   loading: () => (
@@ -16,7 +16,7 @@ const EditorLayout = dynamic(() => import('@/components/editor/editor-layout'), 
    ),
 });
 
-// This page component will simply render the dynamically loaded EditorLayout
-export default function EditorPage() {
+// This page component is specifically for the Fabric.js manga page editor.
+export default function FabricEditorPage() {
   return <EditorLayout />;
 }
