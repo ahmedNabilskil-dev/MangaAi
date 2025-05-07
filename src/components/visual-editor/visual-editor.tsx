@@ -1,136 +1,165 @@
-'use client';
+"use client";
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { layoutElements } from "@/lib/layout-utils";
+import { useVisualEditorStore } from "@/store/visual-editor-store";
+import type { MangaProject } from "@/types/entities"; // Import entity types
+import { type NodeData } from "@/types/nodes";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import ReactFlow, {
   addEdge,
-  applyNodeChanges,
   applyEdgeChanges,
-  MiniMap,
-  Controls,
+  applyNodeChanges,
   Background,
-  type Node,
-  type Edge,
-  type OnNodesChange,
-  type OnEdgesChange,
-  type OnConnect,
-  type NodeTypes,
+  Controls,
   type DefaultEdgeOptions,
+  type Edge,
   MarkerType,
-  useReactFlow,
+  MiniMap,
+  type Node,
+  type NodeTypes,
+  type OnConnect,
+  type OnEdgesChange,
+  type OnNodesChange,
   ReactFlowProvider,
-  useStoreApi, // Import useStoreApi
-} from 'reactflow';
-import 'reactflow/dist/style.css';
-import { type NodeData, NodeType } from '@/types/nodes';
-import { useVisualEditorStore } from '@/store/visual-editor-store';
-import { layoutElements } from '@/lib/layout-utils';
-import CustomNode from './custom-node'; // Import the new custom node
-import type { MangaProject, Character, Chapter, Scene, Panel, PanelDialogue } from '@/types/entities'; // Import entity types
+  useReactFlow,
+} from "reactflow";
+import "reactflow/dist/style.css";
+import CustomNode from "./custom-node"; // Import the new custom node
 // Import specific function from the abstract data service
-import { getDefaultProject } from '@/services/data-service';
-import { useLiveQuery } from 'dexie-react-hooks'; // Import Dexie hook
-import { db } from '@/db/dexie'; // Import Dexie db instance
-
+import { getDefaultProject } from "@/services/data-service";
+import { useLiveQuery } from "dexie-react-hooks"; // Import Dexie hook
 
 // Use the new CustomNode for all types
 const nodeTypes: NodeTypes = {
-    project: CustomNode,
-    chapter: CustomNode,
-    scene: CustomNode,
-    panel: CustomNode,
-    dialogue: CustomNode,
-    character: CustomNode,
+  project: CustomNode,
+  chapter: CustomNode,
+  scene: CustomNode,
+  panel: CustomNode,
+  dialogue: CustomNode,
+  character: CustomNode,
 };
 
 const defaultEdgeOptions: DefaultEdgeOptions = {
-    animated: false,
-    markerEnd: {
-        type: MarkerType.ArrowClosed,
-        width: 15,
-        height: 15,
-        color: 'hsl(var(--primary) / 0.7)',
-    },
-    style: {
-        strokeWidth: 1.5,
-        stroke: 'hsl(var(--border))',
-    },
-    type: 'smoothstep', // Use smoothstep for potentially better routing visually
+  animated: false,
+  markerEnd: {
+    type: MarkerType.ArrowClosed,
+    width: 15,
+    height: 15,
+    color: "hsl(var(--primary) / 0.7)",
+  },
+  style: {
+    strokeWidth: 1.5,
+    stroke: "hsl(var(--border))",
+  },
+  type: "smoothstep", // Use smoothstep for potentially better routing visually
 };
 
 // --- Function to transform Project data into Flow elements ---
-function transformProjectToFlow(project: MangaProject | null): { nodes: Node<NodeData>[], edges: Edge[] } {
-    if (!project) {
-        console.warn("transformProjectToFlow called with null project.");
-        return { nodes: [], edges: [] };
-    }
-    console.log("Transforming project data to flow elements:", project.id);
-    const nodes: Node<NodeData>[] = [];
-    const edges: Edge[] = [];
+function transformProjectToFlow(project: MangaProject | null): {
+  nodes: Node<NodeData>[];
+  edges: Edge[];
+} {
+  if (!project) {
+    console.warn("transformProjectToFlow called with null project.");
+    return { nodes: [], edges: [] };
+  }
+  console.log("Transforming project data to flow elements:", project.id);
+  const nodes: Node<NodeData>[] = [];
+  const edges: Edge[] = [];
 
-    // Project Node
+  // Project Node
+  nodes.push({
+    id: project.id,
+    type: "project",
+    position: { x: 0, y: 0 }, // Layout will handle final position
+    data: { label: project.title, type: "project", properties: project },
+  });
+
+  // Character Nodes
+  (project.characters ?? []).forEach((character) => {
     nodes.push({
-        id: project.id,
-        type: 'project',
-        position: { x: 0, y: 0 }, // Layout will handle final position
-        data: { label: project.title, type: 'project', properties: project }
+      id: character.id,
+      type: "character",
+      position: { x: 0, y: 0 },
+      data: { label: character.name, type: "character", properties: character },
+    });
+  });
+
+  // Chapters, Scenes, Panels, Dialogues
+  (project.chapters ?? []).forEach((chapter) => {
+    nodes.push({
+      id: chapter.id,
+      type: "chapter",
+      position: { x: 0, y: 0 },
+      data: {
+        label: `Ch. ${chapter.chapterNumber}: ${chapter.title}`,
+        type: "chapter",
+        properties: chapter,
+      },
+    });
+    edges.push({
+      id: `e-${project.id}-${chapter.id}`,
+      source: project.id,
+      target: chapter.id,
     });
 
-    // Character Nodes
-    (project.characters ?? []).forEach(character => {
+    (chapter.scenes ?? []).forEach((scene) => {
+      nodes.push({
+        id: scene.id,
+        type: "scene",
+        position: { x: 0, y: 0 },
+        data: { label: scene.title, type: "scene", properties: scene },
+      });
+      edges.push({
+        id: `e-${chapter.id}-${scene.id}`,
+        source: chapter.id,
+        target: scene.id,
+      });
+
+      (scene.panels ?? []).forEach((panel) => {
         nodes.push({
-            id: character.id,
-            type: 'character',
+          id: panel.id,
+          type: "panel",
+          position: { x: 0, y: 0 },
+          data: {
+            label: `Panel ${panel.order + 1}`,
+            type: "panel",
+            properties: panel,
+          },
+        });
+        edges.push({
+          id: `e-${scene.id}-${panel.id}`,
+          source: scene.id,
+          target: panel.id,
+        });
+
+        (panel.dialogues ?? []).forEach((dialogue) => {
+          nodes.push({
+            id: dialogue.id,
+            type: "dialogue",
             position: { x: 0, y: 0 },
-            data: { label: character.name, type: 'character', properties: character }
+            data: {
+              label: `Dialogue ${dialogue.order + 1}`,
+              type: "dialogue",
+              properties: dialogue,
+            },
+          });
+          edges.push({
+            id: `e-${panel.id}-${dialogue.id}`,
+            source: panel.id,
+            target: dialogue.id,
+          });
         });
+      });
     });
+  });
 
-    // Chapters, Scenes, Panels, Dialogues
-    (project.chapters ?? []).forEach(chapter => {
-        nodes.push({
-            id: chapter.id,
-            type: 'chapter',
-            position: { x: 0, y: 0 },
-            data: { label: `Ch. ${chapter.chapterNumber}: ${chapter.title}`, type: 'chapter', properties: chapter }
-        });
-        edges.push({ id: `e-${project.id}-${chapter.id}`, source: project.id, target: chapter.id });
-
-        (chapter.scenes ?? []).forEach(scene => {
-            nodes.push({
-                id: scene.id,
-                type: 'scene',
-                position: { x: 0, y: 0 },
-                data: { label: scene.title, type: 'scene', properties: scene }
-            });
-            edges.push({ id: `e-${chapter.id}-${scene.id}`, source: chapter.id, target: scene.id });
-
-            (scene.panels ?? []).forEach(panel => {
-                nodes.push({
-                    id: panel.id,
-                    type: 'panel',
-                    position: { x: 0, y: 0 },
-                    data: { label: `Panel ${panel.order + 1}`, type: 'panel', properties: panel }
-                });
-                edges.push({ id: `e-${scene.id}-${panel.id}`, source: scene.id, target: panel.id });
-
-                (panel.dialogues ?? []).forEach(dialogue => {
-                    nodes.push({
-                        id: dialogue.id,
-                        type: 'dialogue',
-                        position: { x: 0, y: 0 },
-                        data: { label: `Dialogue ${dialogue.order + 1}`, type: 'dialogue', properties: dialogue }
-                    });
-                    edges.push({ id: `e-${panel.id}-${dialogue.id}`, source: panel.id, target: dialogue.id });
-
-                });
-            });
-        });
-    });
-
-    console.log("Transformation complete:", { nodes: nodes.length, edges: edges.length });
-    return { nodes, edges };
+  console.log("Transformation complete:", {
+    nodes: nodes.length,
+    edges: edges.length,
+  });
+  return { nodes, edges };
 }
-
 
 // --- Main Component ---
 function VisualEditorInternal() {
@@ -144,7 +173,7 @@ function VisualEditorInternal() {
     refreshCounter, // Use counter to trigger data refresh
     setViewportInitialized,
     viewportInitialized,
-    refreshFlowData // Get the refresh trigger
+    refreshFlowData, // Get the refresh trigger
   } = useVisualEditorStore();
 
   const { fitView } = useReactFlow();
@@ -157,128 +186,156 @@ function VisualEditorInternal() {
   // This automatically updates when the underlying Dexie data changes
   const projectData = useLiveQuery(
     async () => {
-        console.log("Dexie useLiveQuery: Fetching default project data...");
-        setIsLoading(true); // Set loading state when query starts
-        setError(null);
-         isInitialLayoutDone.current = false; // Reset layout flag on each refresh
-        try {
-            const project = await getDefaultProject(); // Fetch using abstract service (which uses Dexie)
-            if (!project) {
-                setError("No project found or error loading project.");
-                return null;
-            }
-            return project;
-        } catch (err: any) {
-            console.error("Error loading project data via useLiveQuery:", err);
-            setError(`Error loading project data: ${err.message || 'Failed to fetch'}`);
-            return null;
-        } finally {
-            setIsLoading(false); // Reset loading state when query completes/fails
+      console.log("Dexie useLiveQuery: Fetching default project data...");
+      setIsLoading(true); // Set loading state when query starts
+      setError(null);
+      isInitialLayoutDone.current = false; // Reset layout flag on each refresh
+      try {
+        const project = await getDefaultProject(); // Fetch using abstract service (which uses Dexie)
+        if (!project) {
+          setError("No project found or error loading project.");
+          return null;
         }
+        return project;
+      } catch (err: any) {
+        console.error("Error loading project data via useLiveQuery:", err);
+        setError(
+          `Error loading project data: ${err.message || "Failed to fetch"}`
+        );
+        return null;
+      } finally {
+        setIsLoading(false); // Reset loading state when query completes/fails
+      }
     },
     [refreshCounter] // Dependency array: re-run query when refreshCounter changes
   );
 
+  // --- Transform Data and Layout Effect ---
+  // Now triggered when `projectData` from useLiveQuery changes
+  useEffect(() => {
+    if (projectData && !isLoading) {
+      // Only process if projectData exists and not loading
+      console.log(
+        "Project data loaded/updated, transforming to flow elements..."
+      );
+      const { nodes: initialNodes, edges: initialEdges } =
+        transformProjectToFlow(projectData);
 
-   // --- Transform Data and Layout Effect ---
-   // Now triggered when `projectData` from useLiveQuery changes
-   useEffect(() => {
-       if (projectData && !isLoading) { // Only process if projectData exists and not loading
-           console.log("Project data loaded/updated, transforming to flow elements...");
-           const { nodes: initialNodes, edges: initialEdges } = transformProjectToFlow(projectData);
+      // Apply layout only if nodes exist and initial layout isn't done
+      if (initialNodes.length > 0 && !isInitialLayoutDone.current) {
+        console.log("Applying initial layout...");
+        const layoutEdges = initialEdges.filter((edge) => !edge.data?.noLayout); // Exclude noLayout edges from layouting
+        const { nodes: layoutedNodes, edges: _ } = layoutElements(
+          initialNodes,
+          layoutEdges
+        ); // Use layout utility
+        setNodes(layoutedNodes);
+        setEdges(initialEdges); // Keep original edges (including noLayout ones) for rendering
+        isInitialLayoutDone.current = true; // Mark initial layout as done
 
-           // Apply layout only if nodes exist and initial layout isn't done
-           if (initialNodes.length > 0 && !isInitialLayoutDone.current) {
-                console.log("Applying initial layout...");
-                const layoutEdges = initialEdges.filter(edge => !edge.data?.noLayout); // Exclude noLayout edges from layouting
-                const { nodes: layoutedNodes, edges: _ } = layoutElements(initialNodes, layoutEdges); // Use layout utility
-                setNodes(layoutedNodes);
-                setEdges(initialEdges); // Keep original edges (including noLayout ones) for rendering
-                isInitialLayoutDone.current = true; // Mark initial layout as done
+        // Fit view after initial layout
+        const timer = setTimeout(() => {
+          if (!viewportInitialized) {
+            console.log("Fitting view after initial layout...");
+            fitView({ padding: 0.2, duration: 600 });
+            setViewportInitialized(true);
+          }
+        }, 200); // Increased delay slightly
+        return () => clearTimeout(timer);
+      } else if (isInitialLayoutDone.current) {
+        // If layout already done, just update store nodes/edges if project data changed
+        // This avoids re-running layout unnecessarily after minor updates triggered by refresh
+        console.log(
+          "Updating store without re-layouting (layout already done)..."
+        );
+        setNodes(initialNodes);
+        setEdges(initialEdges);
+      } else if (initialNodes.length === 0) {
+        // Handle case where transformation results in no nodes
+        setNodes([]);
+        setEdges([]);
+      }
+    } else if (!isLoading && !error && projectData === null) {
+      // Handle case where data fetching finished but resulted in null project
+      setNodes([]);
+      setEdges([]);
+      isInitialLayoutDone.current = false; // Reset layout flag
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    projectData,
+    isLoading,
+    error,
+    setNodes,
+    setEdges,
+    fitView,
+    setViewportInitialized,
+  ]); // Depend on projectData from useLiveQuery
 
-                // Fit view after initial layout
-                 const timer = setTimeout(() => {
-                    if (!viewportInitialized) {
-                       console.log("Fitting view after initial layout...");
-                       fitView({ padding: 0.2, duration: 600 });
-                       setViewportInitialized(true);
-                    }
-                 }, 200); // Increased delay slightly
-                 return () => clearTimeout(timer);
+  // --- Handlers remain mostly the same, using Zustand store ---
+  const onNodesChange: OnNodesChange = useCallback(
+    (changes) => {
+      // TODO: Persist node changes to Dexie (e.g., position changes)
+      // For now, just update the Zustand store visually
+      setNodes(applyNodeChanges(changes, storeNodes));
+    },
+    [setNodes, storeNodes]
+  );
 
-           } else if (isInitialLayoutDone.current) {
-                // If layout already done, just update store nodes/edges if project data changed
-                // This avoids re-running layout unnecessarily after minor updates triggered by refresh
-                console.log("Updating store without re-layouting (layout already done)...");
-                setNodes(initialNodes);
-                setEdges(initialEdges);
-           } else if (initialNodes.length === 0) {
-                // Handle case where transformation results in no nodes
-                setNodes([]);
-                setEdges([]);
-           }
+  const onEdgesChange: OnEdgesChange = useCallback(
+    (changes) => {
+      // TODO: Persist edge changes if needed (e.g., deletion)
+      setEdges(applyEdgeChanges(changes, storeEdges));
+    },
+    [setEdges, storeEdges]
+  );
 
-       } else if (!isLoading && !error && projectData === null) {
-            // Handle case where data fetching finished but resulted in null project
-            setNodes([]);
-            setEdges([]);
-            isInitialLayoutDone.current = false; // Reset layout flag
-       }
-   // eslint-disable-next-line react-hooks/exhaustive-deps
-   }, [projectData, isLoading, error, setNodes, setEdges, fitView, setViewportInitialized]); // Depend on projectData from useLiveQuery
+  const onConnect: OnConnect = useCallback(
+    (connection) => {
+      const newEdge = { ...connection, type: "smoothstep" }; // Ensure edge type
+      // TODO: Persist this new edge connection to Dexie if needed
+      // For now, just update the store visually
+      setEdges(addEdge(newEdge, storeEdges));
+      // Trigger layout refresh after connection?
+      // refreshFlowData(); // Uncomment if layout needs update after connection
+    },
+    [setEdges, storeEdges, refreshFlowData] // Add refreshFlowData if needed
+  );
 
-
-   // --- Handlers remain mostly the same, using Zustand store ---
-   const onNodesChange: OnNodesChange = useCallback(
-     (changes) => {
-         // TODO: Persist node changes to Dexie (e.g., position changes)
-         // For now, just update the Zustand store visually
-         setNodes(applyNodeChanges(changes, storeNodes));
-     },
-     [setNodes, storeNodes]
-   );
-
-   const onEdgesChange: OnEdgesChange = useCallback(
-     (changes) => {
-        // TODO: Persist edge changes if needed (e.g., deletion)
-        setEdges(applyEdgeChanges(changes, storeEdges));
-     },
-     [setEdges, storeEdges]
-   );
-
-   const onConnect: OnConnect = useCallback(
-     (connection) => {
-         const newEdge = { ...connection, type: 'smoothstep' }; // Ensure edge type
-         // TODO: Persist this new edge connection to Dexie if needed
-         // For now, just update the store visually
-         setEdges(addEdge(newEdge, storeEdges));
-         // Trigger layout refresh after connection?
-         // refreshFlowData(); // Uncomment if layout needs update after connection
-     },
-     [setEdges, storeEdges, refreshFlowData] // Add refreshFlowData if needed
-   );
-
-  const handleNodeClick = useCallback((event: React.MouseEvent, node: Node<NodeData>) => {
-    console.log("Node clicked, updating store:", node.id, node.data.type);
-    setSelectedNode(node);
-  }, [setSelectedNode]);
+  const handleNodeClick = useCallback(
+    (event: React.MouseEvent, node: Node<NodeData>) => {
+      console.log("Node clicked, updating store:", node.id, node.data.type);
+      setSelectedNode(node);
+    },
+    [setSelectedNode]
+  );
 
   const handlePaneClick = useCallback(() => {
-      console.log("Pane clicked, clearing selection.");
-      setSelectedNode(null);
+    console.log("Pane clicked, clearing selection.");
+    setSelectedNode(null);
   }, [setSelectedNode]);
 
-
   if (isLoading) {
-    return <div className="flex items-center justify-center h-full">Loading Flow Data...</div>;
+    return (
+      <div className="flex items-center justify-center h-full">
+        Loading Flow Data...
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="flex items-center justify-center h-full text-destructive">{error}</div>;
+    return (
+      <div className="flex items-center justify-center h-full text-destructive">
+        {error}
+      </div>
+    );
   }
 
   return (
-    <div ref={reactFlowWrapper} style={{ height: '100%', width: '100%', position: 'relative' }}>
+    <div
+      ref={reactFlowWrapper}
+      style={{ height: "100%", width: "100%", position: "relative" }}
+    >
       <ReactFlow
         nodes={storeNodes} // Use nodes from Zustand store for rendering
         edges={storeEdges} // Use edges from Zustand store
@@ -304,21 +361,37 @@ function VisualEditorInternal() {
         // Ensure nodes aren't positioned off-screen initially by layout
         minZoom={0.1}
         maxZoom={2}
-        translateExtent={[[-Infinity, -Infinity], [Infinity, Infinity]]} // Allow panning anywhere initially
+        translateExtent={[
+          [-Infinity, -Infinity],
+          [Infinity, Infinity],
+        ]} // Allow panning anywhere initially
       >
         <Controls showInteractive={false} position="bottom-right" />
-        <MiniMap nodeStrokeWidth={3} zoomable pannable position="bottom-left" nodeColor={(node) => {
-                // Match MiniMap colors to the actual node background colors (using HSL from globals.css)
-                 switch (node.type) {
-                    case 'project': return 'hsl(270 50% 90%)'; // Approx purple-100
-                    case 'chapter': return 'hsl(210 50% 90%)'; // Approx blue-100
-                    case 'scene': return 'hsl(140 40% 90%)'; // Approx green-100
-                    case 'panel': return 'hsl(45 70% 90%)'; // Approx yellow-100
-                    case 'dialogue': return 'hsl(330 50% 90%)'; // Approx pink-100
-                    case 'character': return 'hsl(230 50% 90%)'; // Approx indigo-100
-                    default: return 'hsl(var(--muted))';
-                }
-        }}/>
+        <MiniMap
+          nodeStrokeWidth={3}
+          zoomable
+          pannable
+          position="bottom-left"
+          nodeColor={(node) => {
+            // Match MiniMap colors to the actual node background colors (using HSL from globals.css)
+            switch (node.type) {
+              case "project":
+                return "hsl(270 50% 90%)"; // Approx purple-100
+              case "chapter":
+                return "hsl(210 50% 90%)"; // Approx blue-100
+              case "scene":
+                return "hsl(140 40% 90%)"; // Approx green-100
+              case "panel":
+                return "hsl(45 70% 90%)"; // Approx yellow-100
+              case "dialogue":
+                return "hsl(330 50% 90%)"; // Approx pink-100
+              case "character":
+                return "hsl(230 50% 90%)"; // Approx indigo-100
+              default:
+                return "hsl(var(--muted))";
+            }
+          }}
+        />
         <Background color="hsl(var(--border) / 0.3)" gap={24} size={1} />
       </ReactFlow>
     </div>
@@ -327,9 +400,9 @@ function VisualEditorInternal() {
 
 // Wrap the internal component with ReactFlowProvider
 export default function VisualEditor() {
-    return (
-        <ReactFlowProvider>
-            <VisualEditorInternal />
-        </ReactFlowProvider>
-    );
+  return (
+    <ReactFlowProvider>
+      <VisualEditorInternal />
+    </ReactFlowProvider>
+  );
 }

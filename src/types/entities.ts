@@ -1,38 +1,35 @@
+import type { ShapeConfig } from "./editor";
+import type { MangaStatus } from "./enums";
 
-import type { MangaStatus } from './enums';
-import type { Timestamp } from 'firebase/firestore'; // Import Firestore types
-import type { ShapeConfig } from './editor'; // Import ShapeConfig
-
-// --- Simple Interfaces (keep as is) ---
-export interface Location {
+export interface MangaLocation {
+  id: string;
   name: string;
   description: string;
   significance: string;
+  projectId?: string;
 }
 
 export interface KeyEvent {
+  id: string;
   name: string;
   description: string;
   sequence: number;
+  projectId?: string;
 }
 
 export interface VisualAnchor {
   text: string;
-  weight: number; // example: 1.0 = normal, 1.5 = very important
+  weight: number;
 }
 
-// --- Firestore-Compatible Entity Interfaces ---
-
-// User interface might need adjustment based on how you store users in Firestore (e.g., separate collection)
 export interface User {
-  id: string; // Firestore document ID
+  id: string;
   username: string;
   email: string;
-  // Other relevant fields...
 }
 
 export interface MangaProject {
-  id: string; // Firestore document ID
+  id: string;
   title: string;
   description?: string;
   status: MangaStatus;
@@ -40,7 +37,7 @@ export interface MangaProject {
   genre?: string;
   artStyle?: string;
   coverImageUrl?: string;
-  targetAudience?: 'children' | 'teen' | 'young-adult' | 'adult';
+  targetAudience?: "children" | "teen" | "young-adult" | "adult";
   worldDetails?: {
     summary: string;
     history: string;
@@ -48,7 +45,7 @@ export interface MangaProject {
     uniqueSystems: string;
   };
   concept?: string;
-  locations?: Location[];
+  locations?: MangaLocation[];
   plotStructure?: {
     incitingIncident: string;
     plotTwist: string;
@@ -60,25 +57,19 @@ export interface MangaProject {
   motifs?: string[];
   symbols?: string[];
   tags?: string[];
-  creatorId?: string; // Store creator ID instead of full object
+  creatorId?: string;
   messages?: { role: string; parts: { text: string }[] }[];
   viewCount: number;
   likeCount: number;
   published: boolean;
-  createdAt: Date | Timestamp; // Use Date in JS, Timestamp in Firestore
-  updatedAt: Date | Timestamp;
-  // Removed relations that will be fetched separately:
-  // characters?: Character[];
-  // chapters?: Chapter[];
-  // We might add these back temporarily after fetching in getProject
-  chapters?: Chapter[]; // For holding fetched data
-  characters?: Character[]; // For holding fetched data
-
+  createdAt: Date;
+  updatedAt: Date;
+  chapters?: Chapter[];
+  characters?: Character[];
 }
 
-
 export interface Chapter {
-  id: string; // Firestore document ID
+  id: string;
   chapterNumber: number;
   title: string;
   summary?: string;
@@ -86,19 +77,17 @@ export interface Chapter {
   tone?: string;
   keyCharacters?: string[];
   coverImageUrl?: string;
-  mangaProjectId: string; // Foreign Key to MangaProject document ID
+  mangaProjectId: string;
   isAiGenerated: boolean;
   isPublished: boolean;
   viewCount: number;
-  createdAt: Date | Timestamp;
-  updatedAt: Date | Timestamp;
-   // Removed relation that will be fetched separately:
-  // scenes: Scene[];
-  scenes?: Scene[]; // For holding fetched data
+  createdAt: Date;
+  updatedAt: Date;
+  scenes?: Scene[];
 }
 
 export interface Character {
-  id: string; // Firestore document ID
+  id: string;
   name: string;
   age?: number;
   gender?: string;
@@ -148,7 +137,7 @@ export interface Character {
   consistencyPrompt?: string;
   negativePrompt?: string;
   referenceImageUrls?: string[];
-  role?: 'protagonist' | 'antagonist' | 'supporting' | 'minor';
+  role?: "protagonist" | "antagonist" | "supporting" | "minor";
   briefDescription?: string;
   personality?: string;
   abilities?: string;
@@ -159,13 +148,13 @@ export interface Character {
   arcs?: string[];
   isAiGenerated: boolean;
   aiGenerationPrompt?: string;
-  mangaProjectId: string; // Foreign Key to MangaProject document ID
-  createdAt: Date | Timestamp;
-  updatedAt: Date | Timestamp;
+  mangaProjectId: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface Scene {
-  id: string; // Firestore document ID
+  id: string;
   order: number;
   title: string;
   description?: string;
@@ -176,18 +165,16 @@ export interface Scene {
     timeOfDay?: string;
     weather?: string;
   };
-  chapterId: string; // Foreign Key to Chapter document ID
+  chapterId: string;
   dialogueOutline?: any;
   isAiGenerated: boolean;
-  createdAt: Date | Timestamp;
-  updatedAt: Date | Timestamp;
-   // Removed relation that will be fetched separately:
-  // panels: Panel[];
-  panels?: Panel[]; // For holding fetched data
+  createdAt: Date;
+  updatedAt: Date;
+  panels?: Panel[];
 }
 
 export interface Panel {
-  id: string; // Firestore document ID
+  id: string;
   order: number;
   imageUrl?: string;
   panelContext: {
@@ -199,52 +186,44 @@ export interface Panel {
       expression?: string;
     }[];
     emotion?: string;
-    cameraAngle?: 'close-up' | 'medium' | 'wide' | "bird's eye" | 'low angle';
-    shotType?: 'action' | 'reaction' | 'establishing' | 'detail';
+    cameraAngle?: "close-up" | "medium" | "wide" | "bird's eye" | "low angle";
+    shotType?: "action" | "reaction" | "establishing" | "detail";
     backgroundDescription?: string;
-    backgroundImageUrl?: string; // (New) separate background image if needed
+    backgroundImageUrl?: string;
     lighting: string;
-    effects: string[]; // (Updated) multiple effects like ["rain", "fog"]
+    effects: string[];
     dramaticPurpose: string;
     narrativePosition: string;
   };
-  sceneId: string; // Foreign Key to Scene document ID
-  characterIds: string[]; // Store array of character IDs
+  sceneId: string;
+  characterIds: string[];
   isAiGenerated: boolean;
   aiPrompt?: string;
-  createdAt: Date | Timestamp;
-  updatedAt: Date | Timestamp;
-  // Removed relations that will be fetched separately:
-  // dialogues: PanelDialogue[];
-  // characters: Character[]; // Replaced by characterIds
-  dialogues?: PanelDialogue[]; // For holding fetched data
-  characters?: Character[]; // For holding fetched data (derived from characterIds)
+  createdAt: Date;
+  updatedAt: Date;
+  dialogues?: PanelDialogue[];
+  characters?: Character[];
 }
 
-
 export interface PanelDialogue {
-  id: string; // Firestore document ID
+  id: string;
   content: string;
   order: number;
   style?: {
-    bubbleType?: 'normal' | 'thought' | 'scream' | 'whisper' | 'narration'; // Added narration
-    fontSize?: 'x-small' | 'small' | 'medium' | 'large' | 'x-large';
+    bubbleType?: "normal" | "thought" | "scream" | "whisper" | "narration";
+    fontSize?: "x-small" | "small" | "medium" | "large" | "x-large";
     fontType?: string;
     emphasis?: boolean;
     position?: { x: number; y: number };
   };
   emotion?: string;
   subtextNote?: string;
-  panelId: string; // Foreign Key to Panel document ID
-  speakerId?: string | null; // Foreign Key to Character document ID (or null)
+  panelId: string;
+  speakerId?: string | null;
   isAiGenerated: boolean;
-  createdAt: Date | Timestamp;
-  updatedAt: Date | Timestamp;
-  // Removed relation that will be fetched separately:
-  // speaker?: Character;
-  speaker?: Character | null; // For holding fetched data
+  createdAt: Date;
+  updatedAt: Date;
+  speaker?: Character | null;
 }
 
-
-// Export ShapeConfig along with entities
 export type { ShapeConfig };
