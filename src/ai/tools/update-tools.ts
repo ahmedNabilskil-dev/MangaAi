@@ -1,38 +1,29 @@
-"use server";
-
-import ai from "@/ai/ai-instance";
+import { ai } from "@/ai/ai-instance";
 import {
   assignCharacterToPanel as assignCharacterToPanelService,
   getAllCharacters,
-  getChapter as getChapterForContext,
+  getChapterForContext,
   getCharacter as getCharacterForContext,
-  getKeyEvent as getKeyEventForContext,
-  getLocation as getLocationForContext,
-  getPanel as getPanelForContext,
+  getPanelDialogueForContext,
+  getPanelForContext,
   getProject as getProjectForContext,
-  getScene as getSceneForContext,
-  getUser as getUserForContext,
+  getSceneForContext,
   removeCharacterFromPanel as removeCharacterFromPanelService,
   updateChapter as updateChapterService,
   updateCharacter as updateCharacterService,
-  updateKeyEvent as updateKeyEventService,
-  updateLocation as updateLocationService,
   updatePanelDialogue as updatePanelDialogueService,
   updatePanel as updatePanelService,
   updateProject as updateProjectService,
   updateScene as updateSceneService,
-  updateUser as updateUserService,
 } from "@/services/data-service";
+import { Character, MangaProject } from "@/types/entities";
 import {
   chapterSchema,
   characterSchema,
-  keyEventSchema,
-  locationSchema,
   mangaProjectSchema,
   panelDialogueSchema,
   panelSchema,
   sceneSchema,
-  userSchema,
 } from "@/types/schemas";
 import { z } from "zod";
 
@@ -75,10 +66,11 @@ async function getProjectIdForContext(context: {
 const UpdateProjectDataSchema = mangaProjectSchema
   .omit({
     id: true,
-    createdAt: true,
-    updatedAt: true,
     chapters: true,
     characters: true,
+    coverImageUrl: true,
+    initialPrompt: true,
+    status: true,
   })
   .partial();
 
@@ -89,6 +81,10 @@ const UpdateChapterDataSchema = chapterSchema
     updatedAt: true,
     scenes: true,
     mangaProjectId: true,
+    coverImageUrl: true,
+    isAiGenerated: true,
+    isPublished: true,
+    viewCount: true,
   })
   .partial();
 
@@ -99,6 +95,7 @@ const UpdateSceneDataSchema = sceneSchema
     updatedAt: true,
     panels: true,
     chapterId: true,
+    isAiGenerated: true,
   })
   .partial();
 
@@ -111,6 +108,9 @@ const UpdatePanelDataSchema = panelSchema
     characters: true,
     sceneId: true,
     characterIds: true,
+    aiPrompt: true,
+    imageUrl: true,
+    isAiGenerated: true,
   })
   .partial();
 
@@ -121,6 +121,7 @@ const UpdatePanelDialogueDataSchema = panelDialogueSchema
     updatedAt: true,
     speaker: true,
     panelId: true,
+    isAiGenerated: true,
   })
   .partial();
 
@@ -130,24 +131,11 @@ const UpdateCharacterDataSchema = characterSchema
     createdAt: true,
     updatedAt: true,
     mangaProjectId: true,
-  })
-  .partial();
-
-const UpdateLocationDataSchema = locationSchema
-  .omit({
-    id: true,
-  })
-  .partial();
-
-const UpdateKeyEventDataSchema = keyEventSchema
-  .omit({
-    id: true,
-  })
-  .partial();
-
-const UpdateUserDataSchema = userSchema
-  .omit({
-    id: true,
+    isAiGenerated: true,
+    aiGenerationPrompt: true,
+    imgUrl: true,
+    expressionImages: true,
+    referenceImageUrls: true,
   })
   .partial();
 
@@ -172,35 +160,32 @@ export const updateProjectTool = ai.defineTool(
       if (typeof updates.worldDetails === "string") {
         processedUpdates.worldDetails = JSON.parse(updates.worldDetails);
       }
-      if (typeof updates.locations === "string") {
-        processedUpdates.locations = JSON.parse(updates.locations);
-      }
       if (typeof updates.plotStructure === "string") {
         processedUpdates.plotStructure = JSON.parse(updates.plotStructure);
       }
-      if (typeof updates.keyEvents === "string") {
-        processedUpdates.keyEvents = JSON.parse(updates.keyEvents);
-      }
+
       if (typeof updates.themes === "string") {
-        processedUpdates.themes = updates.themes
+        processedUpdates.themes = (updates.themes as string)
           .split(",")
           .map((t) => t.trim());
       }
       if (typeof updates.motifs === "string") {
-        processedUpdates.motifs = updates.motifs
+        processedUpdates.motifs = (updates.motifs as string)
           .split(",")
           .map((t) => t.trim());
       }
       if (typeof updates.symbols === "string") {
-        processedUpdates.symbols = updates.symbols
+        processedUpdates.symbols = (updates.symbols as string)
           .split(",")
           .map((t) => t.trim());
       }
       if (typeof updates.tags === "string") {
-        processedUpdates.tags = updates.tags.split(",").map((t) => t.trim());
+        processedUpdates.tags = (updates.tags as string)
+          .split(",")
+          .map((t) => t.trim());
       }
 
-      await updateProjectService(projectId, processedUpdates);
+      await updateProjectService(projectId, processedUpdates as MangaProject);
       return true;
     } catch (error) {
       console.error(`Error in updateProjectTool: ${error}`);
@@ -226,7 +211,7 @@ export const updateChapterTool = ai.defineTool(
 
       const processedUpdates = { ...updates };
       if (typeof updates.keyCharacters === "string") {
-        processedUpdates.keyCharacters = updates.keyCharacters
+        processedUpdates.keyCharacters = (updates.keyCharacters as string)
           .split(",")
           .map((t) => t.trim());
       }
@@ -315,7 +300,7 @@ export const updatePanelDialogueTool = ai.defineTool(
   },
   async ({ dialogueId, updates, speakerName }) => {
     try {
-      const exists = await getPanelDialogueService(dialogueId);
+      const exists = await getPanelDialogueForContext(dialogueId);
       if (!exists) throw new Error("Dialogue not found");
 
       let speakerIdToSet: string | null | undefined = undefined;
@@ -394,116 +379,43 @@ export const updateCharacterTool = ai.defineTool(
       if (typeof updates.styleGuide === "string") {
         processedUpdates.styleGuide = JSON.parse(updates.styleGuide);
       }
-      if (typeof updates.visualIdentityAnchors === "string") {
-        processedUpdates.visualIdentityAnchors = JSON.parse(
-          updates.visualIdentityAnchors
-        );
-      }
-      if (typeof updates.expressionImages === "string") {
-        processedUpdates.expressionImages = JSON.parse(
-          updates.expressionImages
-        );
-      }
+
       if (typeof updates.distinctiveFeatures === "string") {
-        processedUpdates.distinctiveFeatures = updates.distinctiveFeatures
+        processedUpdates.distinctiveFeatures = (
+          updates.distinctiveFeatures as string
+        )
           .split(",")
           .map((t) => t.trim());
       }
       if (typeof updates.physicalMannerisms === "string") {
-        processedUpdates.physicalMannerisms = updates.physicalMannerisms
+        processedUpdates.physicalMannerisms = (
+          updates.physicalMannerisms as string
+        )
           .split(",")
           .map((t) => t.trim());
       }
       if (typeof updates.referenceImageUrls === "string") {
-        processedUpdates.referenceImageUrls = updates.referenceImageUrls
+        processedUpdates.referenceImageUrls = (
+          updates.referenceImageUrls as string
+        )
           .split(",")
           .map((t) => t.trim());
       }
       if (typeof updates.traits === "string") {
-        processedUpdates.traits = updates.traits
+        processedUpdates.traits = (updates.traits as string)
           .split(",")
           .map((t) => t.trim());
       }
       if (typeof updates.arcs === "string") {
-        processedUpdates.arcs = updates.arcs.split(",").map((t) => t.trim());
+        processedUpdates.arcs = (updates.arcs as string)
+          .split(",")
+          .map((t) => t.trim());
       }
 
-      await updateCharacterService(characterId, processedUpdates);
+      await updateCharacterService(characterId, processedUpdates as Character);
       return true;
     } catch (error) {
       console.error(`Error in updateCharacterTool: ${error}`);
-      return false;
-    }
-  }
-);
-
-export const updateLocationTool = ai.defineTool(
-  {
-    name: "updateLocation",
-    description: "Updates fields of an existing location.",
-    inputSchema: z.object({
-      locationId: z.string().describe("ID of the location to update"),
-      updates: UpdateLocationDataSchema.describe("Fields to update"),
-    }),
-    outputSchema: z.boolean().describe("True if update succeeded"),
-  },
-  async ({ locationId, updates }) => {
-    try {
-      const exists = await getLocationForContext(locationId);
-      if (!exists) throw new Error("Location not found");
-
-      await updateLocationService(locationId, updates);
-      return true;
-    } catch (error) {
-      console.error(`Error in updateLocationTool: ${error}`);
-      return false;
-    }
-  }
-);
-
-export const updateKeyEventTool = ai.defineTool(
-  {
-    name: "updateKeyEvent",
-    description: "Updates fields of an existing key event.",
-    inputSchema: z.object({
-      eventId: z.string().describe("ID of the key event to update"),
-      updates: UpdateKeyEventDataSchema.describe("Fields to update"),
-    }),
-    outputSchema: z.boolean().describe("True if update succeeded"),
-  },
-  async ({ eventId, updates }) => {
-    try {
-      const exists = await getKeyEventForContext(eventId);
-      if (!exists) throw new Error("Key event not found");
-
-      await updateKeyEventService(eventId, updates);
-      return true;
-    } catch (error) {
-      console.error(`Error in updateKeyEventTool: ${error}`);
-      return false;
-    }
-  }
-);
-
-export const updateUserTool = ai.defineTool(
-  {
-    name: "updateUser",
-    description: "Updates fields of an existing user.",
-    inputSchema: z.object({
-      userId: z.string().describe("ID of the user to update"),
-      updates: UpdateUserDataSchema.describe("Fields to update"),
-    }),
-    outputSchema: z.boolean().describe("True if update succeeded"),
-  },
-  async ({ userId, updates }) => {
-    try {
-      const exists = await getUserForContext(userId);
-      if (!exists) throw new Error("User not found");
-
-      await updateUserService(userId, updates);
-      return true;
-    } catch (error) {
-      console.error(`Error in updateUserTool: ${error}`);
       return false;
     }
   }

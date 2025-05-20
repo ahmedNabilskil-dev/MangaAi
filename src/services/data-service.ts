@@ -1,8 +1,6 @@
 import type {
   Chapter,
   Character,
-  KeyEvent,
-  MangaLocation,
   MangaProject,
   Panel,
   PanelDialogue,
@@ -12,16 +10,10 @@ import type {
 import type { DeepPartial } from "@/types/utils";
 import type { IDataService } from "./data-service.interface";
 import { dexieDataService } from "./dexie-service";
-import { inMemoryDataService } from "./in-memory-service";
 
-const ACTIVE_SERVICE_TYPE: "dexie" | "in-memory" = "dexie";
 let activeDataService: IDataService;
 
-if (ACTIVE_SERVICE_TYPE === "dexie") {
-  activeDataService = dexieDataService;
-} else {
-  activeDataService = inMemoryDataService;
-}
+activeDataService = dexieDataService;
 
 // --- Project ---
 export async function getAllProjects(): Promise<MangaProject[]> {
@@ -33,10 +25,7 @@ export async function getProject(id: string): Promise<MangaProject | null> {
 }
 
 export async function createProject(
-  projectData: Omit<
-    MangaProject,
-    "id" | "createdAt" | "updatedAt" | "chapters" | "characters"
-  >
+  projectData: Partial<MangaProject>
 ): Promise<MangaProject> {
   return activeDataService.createProject(projectData);
 }
@@ -215,76 +204,7 @@ export async function getCharacterForContext(
   return activeDataService.getCharacterForContext(id);
 }
 
-// --- Location ---
-export async function getAllLocations(
-  projectId?: string
-): Promise<MangaLocation[]> {
-  return activeDataService.getAllLocations(projectId);
-}
-
-export async function getLocation(id: string): Promise<MangaLocation | null> {
-  return activeDataService.getLocation(id);
-}
-
-export async function createLocation(
-  locationData: Omit<MangaLocation, "id">
-): Promise<MangaLocation> {
-  return activeDataService.createLocation(locationData);
-}
-
-export async function updateLocation(
-  id: string,
-  locationData: DeepPartial<Omit<MangaLocation, "id">>
-): Promise<void> {
-  return activeDataService.updateLocation(id, locationData);
-}
-
-export async function deleteLocation(id: string): Promise<void> {
-  return activeDataService.deleteLocation(id);
-}
-
-export async function getLocationForContext(
-  id: string
-): Promise<MangaLocation | null> {
-  return activeDataService.getLocationForContext(id);
-}
-
-// --- Key Event ---
-export async function getAllKeyEvents(projectId?: string): Promise<KeyEvent[]> {
-  return activeDataService.getAllKeyEvents(projectId);
-}
-
-export async function getKeyEvent(id: string): Promise<KeyEvent | null> {
-  return activeDataService.getKeyEvent(id);
-}
-
-export async function createKeyEvent(
-  eventData: Omit<KeyEvent, "id">
-): Promise<KeyEvent> {
-  return activeDataService.createKeyEvent(eventData);
-}
-
-export async function updateKeyEvent(
-  id: string,
-  eventData: DeepPartial<Omit<KeyEvent, "id">>
-): Promise<void> {
-  return activeDataService.updateKeyEvent(id, eventData);
-}
-
-export async function deleteKeyEvent(id: string): Promise<void> {
-  return activeDataService.deleteKeyEvent(id);
-}
-
-export async function getKeyEventForContext(
-  id: string
-): Promise<KeyEvent | null> {
-  return activeDataService.getKeyEventForContext(id);
-}
-
 // --- User ---
-export async function getAllUsers(): Promise<User[]> {
-  return activeDataService.getAllUsers();
-}
 
 export async function getUser(id: string): Promise<User | null> {
   return activeDataService.getUser(id);
@@ -301,12 +221,26 @@ export async function updateUser(
   return activeDataService.updateUser(id, userData);
 }
 
-export async function deleteUser(id: string): Promise<void> {
-  return activeDataService.deleteUser(id);
+export async function getMangaProjects(): Promise<MangaProject[]> {
+  return await activeDataService.listMangaProjects();
 }
 
-export async function getUserForContext(id: string): Promise<User | null> {
-  return activeDataService.getUserForContext(id);
+export async function getChapters(projectId: string): Promise<Chapter[]> {
+  return await activeDataService.listChapters(projectId);
+}
+
+export async function getScenes(chapterId: string): Promise<Scene[]> {
+  return await activeDataService.listScenes(chapterId);
+}
+
+export async function getPanels(sceneId: string): Promise<Panel[]> {
+  return await activeDataService.listPanels(sceneId);
+}
+
+export async function getPanelDialogues(
+  panelId: string
+): Promise<PanelDialogue[]> {
+  return await activeDataService.listPanelDialogues(panelId);
 }
 
 // --- Initialization ---

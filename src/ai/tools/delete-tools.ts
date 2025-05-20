@@ -1,25 +1,17 @@
-"use server";
-
-import ai from "@/ai/ai-instance";
+import { ai } from "@/ai/ai-instance";
 import {
   deleteChapter as deleteChapterService,
   deleteCharacter as deleteCharacterService,
-  deleteKeyEvent as deleteKeyEventService,
-  deleteLocation as deleteLocationService,
   deletePanelDialogue as deletePanelDialogueService,
   deletePanel as deletePanelService,
   deleteProject as deleteProjectService,
   deleteScene as deleteSceneService,
-  deleteUser as deleteUserService,
   getChapterForContext,
   getCharacter as getCharacterForContext,
-  getKeyEvent as getKeyEventForContext,
-  getLocation as getLocationForContext,
   getPanelDialogueForContext,
   getPanelForContext,
   getProject as getProjectForContext,
   getSceneForContext,
-  getUser as getUserForContext,
 } from "@/services/data-service";
 import { z } from "zod";
 
@@ -183,90 +175,6 @@ export const deleteCharacterTool = ai.defineTool(
       return true;
     } catch (error) {
       console.error(`Error in deleteCharacterTool: ${error}`);
-      return false;
-    }
-  }
-);
-
-export const deleteLocationTool = ai.defineTool(
-  {
-    name: "deleteLocation",
-    description: "Deletes a location from the project.",
-    inputSchema: z.object({
-      locationId: z.string().describe("ID of the location to delete"),
-    }),
-    outputSchema: z.boolean().describe("True if deletion succeeded"),
-  },
-  async ({ locationId }) => {
-    try {
-      const exists = await getLocationForContext(locationId);
-      if (!exists) {
-        console.warn(`Location ${locationId} not found`);
-        return false;
-      }
-
-      await deleteLocationService(locationId);
-      return true;
-    } catch (error) {
-      console.error(`Error in deleteLocationTool: ${error}`);
-      return false;
-    }
-  }
-);
-
-export const deleteKeyEventTool = ai.defineTool(
-  {
-    name: "deleteKeyEvent",
-    description: "Deletes a key event from the project.",
-    inputSchema: z.object({
-      eventId: z.string().describe("ID of the key event to delete"),
-    }),
-    outputSchema: z.boolean().describe("True if deletion succeeded"),
-  },
-  async ({ eventId }) => {
-    try {
-      const exists = await getKeyEventForContext(eventId);
-      if (!exists) {
-        console.warn(`Key event ${eventId} not found`);
-        return false;
-      }
-
-      await deleteKeyEventService(eventId);
-      return true;
-    } catch (error) {
-      console.error(`Error in deleteKeyEventTool: ${error}`);
-      return false;
-    }
-  }
-);
-
-export const deleteUserTool = ai.defineTool(
-  {
-    name: "deleteUser",
-    description: "Deletes a user account.",
-    inputSchema: z.object({
-      userId: z.string().describe("ID of the user to delete"),
-      confirmation: z.boolean().describe("Must be true to confirm deletion"),
-    }),
-    outputSchema: z.boolean().describe("True if deletion succeeded"),
-  },
-  async ({ userId, confirmation }) => {
-    if (!confirmation) {
-      console.warn("User deletion requires explicit confirmation");
-      return false;
-    }
-
-    try {
-      const exists = await getUserForContext(userId);
-      if (!exists) {
-        console.warn(`User ${userId} not found`);
-        return false;
-      }
-
-      await deleteUserService(userId);
-      return true;
-    } catch (error) {
-      console.error(`Error in deleteUserTool: ${error}`);
       return false;
     }
   }

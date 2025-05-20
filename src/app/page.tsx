@@ -1,112 +1,426 @@
 "use client";
 
-import Chatbox from "@/components/chatbox/chatbox";
-import TopBar from "@/components/layout/top-bar";
-import FlowPropertiesPanel from "@/components/properties-panel/flow-properties-panel"; // Renamed from PropertiesPanel
-import VisualEditor from "@/components/visual-editor/visual-editor";
-import { useVisualEditorStore } from "@/store/visual-editor-store";
-import { useEffect, useRef, useState } from "react";
-import Draggable from "react-draggable";
-import { useIsMobile } from "@/hooks/use-mobile"; // Import hook
+import { CreateMangaFlow } from "@/ai/flows/generation-flows";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  BookMarked,
+  Home,
+  Info,
+  Key,
+  Menu,
+  Send,
+  Settings,
+  Shield,
+  Sparkles,
+  X,
+} from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useRef, useState } from "react";
 
-export default function Home() {
-  // Get selected node from visual editor store (React Flow selection)
-  const selectedFlowNode = useVisualEditorStore((state) => state.selectedNode);
-  const isMobile = useIsMobile(); // Check if mobile
+const HomePage = () => {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [mangaIdea, setMangaIdea] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const router = useRouter();
 
-  // Determine the ID and type of the selected Flow node
-  const selectedItemId = selectedFlowNode?.id ?? null;
-  const selectedItemType = selectedFlowNode?.data?.type ?? null;
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
 
-  // State for default positions, calculated on client-side
-  const [chatboxPos, setChatboxPos] = useState({ x: 0, y: 0 }); // Default, updated in useEffect
-  const [propertiesPanelPos, setPropertiesPanelPos] = useState({ x: 0, y: 0 }); // Default, updated
+  const openDialog = () => {
+    setIsDialogOpen(true);
+    setTimeout(() => inputRef.current?.focus(), 100);
+  };
 
-  const projectTitle = "MangaVerse AI - Story Flow"; // Updated Project Title for this view
+  const closeDialog = () => {
+    setIsDialogOpen(false);
+    setMangaIdea("");
+  };
 
-  const chatboxNodeRef = useRef(null);
-  const propertiesPanelNodeRef = useRef(null); // Ref for draggable properties panel
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mangaIdea.trim()) return;
 
-  // Calculate default positions on the client-side after mount
-  useEffect(() => {
-    if (typeof window !== "undefined" && !isMobile) { // Only position freely on desktop
-      const chatWidth = 500; // Match default chatbox width
-      const chatX = Math.max(0, window.innerWidth / 2 - chatWidth / 2); // Centered horizontally
-      const chatY = Math.max(50, window.innerHeight - 250); // Near bottom
-      setChatboxPos({ x: chatX, y: chatY });
-
-      const panelWidth = 384; // Match panel width
-      const panelX = Math.max(20, window.innerWidth - panelWidth - 20); // Right side with margin
-      const panelY = 70; // Below TopBar, adjust as needed
-      setPropertiesPanelPos({ x: panelX, y: panelY });
-    } else if (isMobile) {
-        // Reset positions for mobile (they will be stacked or hidden)
-        setChatboxPos({ x: 0, y: 0 });
-        setPropertiesPanelPos({ x: 0, y: 0});
+    setIsGenerating(true);
+    try {
+      // Here you would call your AI manga generation function
+      const { projectId, initialMessages } = await CreateMangaFlow({
+        userPrompt: mangaIdea,
+      });
+      localStorage.setItem("messages", JSON.stringify(initialMessages));
+      router.push(`/manga-flow/${projectId}`);
+    } finally {
+      setIsGenerating(false);
+      closeDialog();
     }
-  }, [isMobile]); // Rerun when mobile status changes
+  };
 
   return (
-    <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
-      <TopBar projectTitle={projectTitle} />
-      <div className="flex-grow relative overflow-hidden">
-        {/* Visual Editor takes full space */}
-        <div className="absolute inset-0">
-          <VisualEditor />
+    <div className="flex h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-800 overflow-hidden">
+      {/* Sidebar */}
+      <motion.div
+        initial={{ width: isSidebarOpen ? 240 : 80 }}
+        animate={{ width: isSidebarOpen ? 240 : 80 }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        className="h-full bg-gray-900/80 backdrop-blur-md flex flex-col border-r border-gray-700"
+      >
+        <div className="p-4 flex items-center justify-between">
+          {isSidebarOpen && (
+            <h1 className="text-xl font-bold text-white flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-pink-400" />
+              Manga AI
+            </h1>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleSidebar}
+            className="text-white hover:bg-gray-700"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
         </div>
 
-        {/* Chatbox - Draggable on Desktop */}
-        <Draggable
-          nodeRef={chatboxNodeRef}
-          handle=".chatbox-drag-handle"
-          defaultPosition={chatboxPos}
-          position={!isMobile ? chatboxPos : undefined} // Only control position on desktop
-          onStop={(_, data) => !isMobile && setChatboxPos({ x: data.x, y: data.y })}
-          bounds="parent"
-          disabled={isMobile} // Disable dragging on mobile
-        >
-           {/* Apply different styles/positioning based on isMobile */}
-          <div
-            ref={chatboxNodeRef}
-            className={
-              isMobile
-                ? "absolute bottom-4 left-4 right-4 z-20" // Example mobile positioning
-                : "absolute z-10" // Default absolute for desktop Draggable
-            }
-            style={isMobile ? {} : { left: `${chatboxPos.x}px`, top: `${chatboxPos.y}px` }} // Control style on desktop
-          >
-            <Chatbox />
-          </div>
-        </Draggable>
+        <nav className="flex-1 mt-6">
+          <SidebarItem
+            icon={<Home className="h-5 w-5" />}
+            text="Home"
+            isActive={true}
+            isSidebarOpen={isSidebarOpen}
+            href="/"
+          />
+          <SidebarItem
+            icon={<BookMarked className="h-5 w-5" />}
+            text="Projects"
+            isActive={false}
+            isSidebarOpen={isSidebarOpen}
+            href="/projects"
+          />
+          <SidebarItem
+            icon={<Settings className="h-5 w-5" />}
+            text="Settings"
+            isActive={false}
+            isSidebarOpen={isSidebarOpen}
+            href="/settings"
+          />
+          <SidebarItem
+            icon={<Shield className="h-5 w-5" />}
+            text="Terms"
+            isActive={false}
+            isSidebarOpen={isSidebarOpen}
+            href="/terms"
+          />
+        </nav>
 
-        {/* Flow Properties Panel - Draggable on Desktop */}
-        <Draggable
-          nodeRef={propertiesPanelNodeRef}
-          handle=".properties-panel-drag-handle" // Add handle class to panel header
-          defaultPosition={propertiesPanelPos}
-          position={!isMobile ? propertiesPanelPos : undefined} // Control position on desktop
-          onStop={(_, data) => !isMobile && setPropertiesPanelPos({ x: data.x, y: data.y })}
-          bounds="parent"
-          disabled={isMobile} // Disable dragging on mobile
-        >
-           {/* Apply different styles/positioning based on isMobile */}
-          <div
-             ref={propertiesPanelNodeRef}
-             className={
-               isMobile
-                 ? "absolute top-16 right-4 z-20" // Example mobile positioning (might overlap chat)
-                 : "absolute z-10" // Default absolute for desktop Draggable
-             }
-             style={isMobile ? {} : { left: `${propertiesPanelPos.x}px`, top: `${propertiesPanelPos.y}px` }}
-          >
-             {/* Render the FLOW properties panel conditionally */}
-             <FlowPropertiesPanel
-               selectedItemId={selectedItemId}
-               selectedItemType={selectedItemType}
-             />
+        {isSidebarOpen && (
+          <div className="p-4 text-sm text-gray-400">
+            <p>AI Manga Generator</p>
+            <p className="text-xs mt-1">v1.0.0</p>
           </div>
-        </Draggable>
+        )}
+      </motion.div>
+      {/* Main Content */}
+
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* API Key Notice */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-blue-900/50 border-b border-blue-800/50 p-3"
+        >
+          <div className="flex items-center justify-center gap-2 text-blue-100 text-sm">
+            <Key className="h-4 w-4" />
+            <span>
+              This app uses your own API keys (Gemini, OpenAI, etc.) for AI
+              generation.{" "}
+              <Link href="/settings" className="underline hover:text-blue-300">
+                Configure in Settings
+              </Link>
+            </span>
+          </div>
+        </motion.div>
+
+        {/* Main Hero Section */}
+        <div className="flex-1 flex items-center justify-center p-8 relative overflow-hidden">
+          {/* Background Image with dark overlay */}
+          <div className="absolute inset-0 z-0">
+            <Image
+              src="/images/hero-bg.png"
+              alt="Manga creation background"
+              fill
+              priority
+              className="object-cover object-center"
+            />
+            <div className="absolute inset-0 bg-black/50" />{" "}
+            {/* Dark overlay */}
+          </div>
+
+          {/* Animated background elements */}
+          <div className="absolute inset-0 overflow-hidden z-10">
+            {[...Array(10)].map((_, i) => (
+              <motion.div
+                key={i}
+                className="absolute rounded-full bg-white/5"
+                style={{
+                  width: Math.random() * 200 + 50,
+                  height: Math.random() * 200 + 50,
+                  left: `${Math.random() * 100}%`,
+                  top: `${Math.random() * 100}%`,
+                }}
+                animate={{
+                  x: [0, Math.random() * 100 - 50],
+                  y: [0, Math.random() * 100 - 50],
+                }}
+                transition={{
+                  duration: Math.random() * 20 + 10,
+                  repeat: Infinity,
+                  repeatType: "reverse",
+                }}
+              />
+            ))}
+          </div>
+
+          {/* Main Text Content with improved contrast */}
+          <div className="relative z-20 text-center max-w-3xl px-4">
+            <motion.h1
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="text-5xl font-bold text-white mb-6 drop-shadow-lg"
+            >
+              Bring Your <span className="text-pink-400">Manga</span> to Life
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="text-xl text-gray-100 mb-6 drop-shadow-md"
+            >
+              Transform your ideas into stunning manga with AI. Just describe
+              your vision and watch it become reality.
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="bg-gray-900/50 backdrop-blur-sm rounded-lg p-4 mb-8 border border-gray-700"
+            >
+              <div className="flex items-center justify-center gap-2 text-yellow-200 text-sm mb-2">
+                <Info className="h-4 w-4" />
+                <span className="font-semibold">How It Works</span>
+              </div>
+              <p className="text-gray-300 text-sm">
+                Create your manga using an interactive flow where each node
+                represents a story element:
+                <br />
+                <span className="text-pink-300">
+                  Chapters → Scenes → Panels → Dialogs
+                </span>
+                <br />
+                Chat with AI to generate content for each element and build your
+                story step by step.
+              </p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.6 }}
+            >
+              <Button
+                onClick={openDialog}
+                size="lg"
+                className="bg-pink-600 hover:bg-pink-700 text-white font-semibold py-6 px-8 rounded-full text-lg shadow-lg hover:shadow-xl transition-all"
+              >
+                <Sparkles className="mr-2 h-5 w-5" />
+                Create Your Manga
+              </Button>
+            </motion.div>
+          </div>
+        </div>
       </div>
+      {/* Creation Dialog */}
+      <AnimatePresence>
+        {isDialogOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50"
+            onClick={(e) => e.target === e.currentTarget && closeDialog()}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-gray-800 rounded-xl max-w-2xl w-full p-6 shadow-2xl border border-gray-700"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-pink-400" />
+                  Start Your Manga
+                </h2>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={closeDialog}
+                  className="text-gray-400 hover:text-white hover:bg-gray-700"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+
+              {/* API Key Reminder */}
+              <div className="bg-amber-900/30 border border-amber-700 rounded-lg p-3 mb-4">
+                <div className="flex items-center gap-2 text-amber-200 text-sm">
+                  <Key className="h-4 w-4" />
+                  <span>
+                    Make sure you've configured your API key in{" "}
+                    <Link href="/settings" className="underline font-semibold">
+                      Settings
+                    </Link>
+                  </span>
+                </div>
+              </div>
+
+              <form onSubmit={handleSubmit}>
+                <div className="mb-6">
+                  <Label htmlFor="manga-idea" className="text-gray-300 mb-2">
+                    Describe your manga idea
+                  </Label>
+                  <Textarea
+                    ref={inputRef}
+                    id="manga-idea"
+                    rows={5}
+                    className="w-full bg-gray-700 border-gray-600 text-white focus-visible:ring-pink-500 my-4"
+                    placeholder="Example: A cyberpunk world where emotions are traded as currency, following a smuggler who accidentally gets infected with the rarest emotion..."
+                    value={mangaIdea}
+                    onChange={(e) => setMangaIdea(e.target.value)}
+                    disabled={isGenerating}
+                  />
+                </div>
+
+                <div className="flex justify-end">
+                  <Button
+                    type="submit"
+                    size="lg"
+                    className="bg-pink-600 hover:bg-pink-700 gap-2"
+                    disabled={!mangaIdea.trim() || isGenerating}
+                  >
+                    {isGenerating ? (
+                      <>
+                        <svg
+                          className="animate-spin h-5 w-5 text-white"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
+                        </svg>
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-5 w-5" />
+                        Generate Manga
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
-}
+};
+
+export const SidebarItem = ({
+  icon,
+  text,
+  href,
+  isActive,
+  isSidebarOpen,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  text: string;
+  href?: string;
+  isActive: boolean;
+  isSidebarOpen: boolean;
+  onClick?: () => void;
+}) => {
+  // Component to render based on whether we have an href or onClick handler
+  const ComponentToRender = href
+    ? ({ children }: { children: React.ReactNode }) => (
+        <Link href={href} className="w-full">
+          {children}
+        </Link>
+      )
+    : ({ children }: { children: React.ReactNode }) => (
+        <button onClick={onClick} className="w-full text-left">
+          {children}
+        </button>
+      );
+
+  return (
+    <ComponentToRender>
+      <div
+        className={`
+          flex items-center p-3 my-1 rounded-lg cursor-pointer
+          transition-all duration-200 ease-in-out
+          ${isActive ? "bg-blue-100" : "hover:bg-gray-700"}
+        `}
+      >
+        <div
+          className={`flex items-center ${
+            isSidebarOpen ? "justify-start" : "justify-center"
+          } w-full`}
+        >
+          <div
+            className={`text-xl text-white ${
+              isActive ? "text-blue-800" : "text-white"
+            }`}
+          >
+            {icon}
+          </div>
+
+          {isSidebarOpen && (
+            <span
+              className={`ml-3 font-medium text-white ${
+                isActive ? "font-semibold text-blue-800" : "text-white"
+              }`}
+            >
+              {text}
+            </span>
+          )}
+        </div>
+      </div>
+    </ComponentToRender>
+  );
+};
+
+export default HomePage;

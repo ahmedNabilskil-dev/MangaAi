@@ -1,19 +1,17 @@
-"use server";
-
-import ai from "@/ai/ai-instance";
+import { ai } from "@/ai/ai-instance";
 import {
   getAllCharacters,
-  getAllKeyEvents,
-  getAllLocations,
   getAllProjects,
   getChapterForContext,
+  getChapters,
   getCharacter as getCharacterService,
-  getKeyEvent as getKeyEventService,
-  getLocation as getLocationService,
   getPanelDialogueForContext,
+  getPanelDialogues,
   getPanelForContext,
+  getPanels,
   getProject as getProjectService,
   getSceneForContext,
+  getScenes,
   getUser as getUserService,
 } from "@/services/data-service";
 import {
@@ -161,50 +159,6 @@ export const getCharacterTool = ai.defineTool(
   }
 );
 
-export const getLocationTool = ai.defineTool(
-  {
-    name: "getLocation",
-    description: "Retrieves complete details of a location by ID.",
-    inputSchema: z.object({
-      locationId: z.string().describe("ID of the location to retrieve"),
-    }),
-    outputSchema: schemas.location
-      .nullable()
-      .describe("Full location details or null if not found"),
-  },
-  async ({ locationId }) => {
-    try {
-      const location = await getLocationService(locationId);
-      return schemas.location.nullable().parse(location);
-    } catch (error) {
-      console.error(`Error in getLocationTool: ${error}`);
-      return null;
-    }
-  }
-);
-
-export const getKeyEventTool = ai.defineTool(
-  {
-    name: "getKeyEvent",
-    description: "Retrieves complete details of a key event by ID.",
-    inputSchema: z.object({
-      eventId: z.string().describe("ID of the key event to retrieve"),
-    }),
-    outputSchema: schemas.keyEvent
-      .nullable()
-      .describe("Full event details or null if not found"),
-  },
-  async ({ eventId }) => {
-    try {
-      const event = await getKeyEventService(eventId);
-      return schemas.keyEvent.nullable().parse(event);
-    } catch (error) {
-      console.error(`Error in getKeyEventTool: ${error}`);
-      return null;
-    }
-  }
-);
-
 export const getUserTool = ai.defineTool(
   {
     name: "getUser",
@@ -308,7 +262,7 @@ export const listChaptersForProjectTool = ai.defineTool(
   },
   async ({ projectId, publishedOnly }) => {
     try {
-      const chapters = await getAllChapters(projectId);
+      const chapters = await getChapters(projectId);
       return chapters
         .filter((chapter) => !publishedOnly || chapter.isPublished)
         .map((chapter) =>
@@ -350,7 +304,7 @@ export const listScenesForChapterTool = ai.defineTool(
   },
   async ({ chapterId }) => {
     try {
-      const scenes = await getAllScenes(chapterId);
+      const scenes = await getScenes(chapterId);
       return scenes.map((scene) =>
         sceneSchema
           .pick({
@@ -388,7 +342,7 @@ export const listPanelsForSceneTool = ai.defineTool(
   },
   async ({ sceneId }) => {
     try {
-      const panels = await getAllPanels(sceneId);
+      const panels = await getPanels(sceneId);
       return panels.map((panel) =>
         panelSchema
           .pick({
@@ -427,7 +381,7 @@ export const listDialoguesForPanelTool = ai.defineTool(
   },
   async ({ panelId }) => {
     try {
-      const dialogues = await getAllPanelDialogues(panelId);
+      const dialogues = await getPanelDialogues(panelId);
       return dialogues.map((dialogue) =>
         panelDialogueSchema
           .pick({
@@ -538,86 +492,6 @@ export const findCharacterByNameTool = ai.defineTool(
     } catch (error) {
       console.error(`Error in findCharacterByNameTool: ${error}`);
       return null;
-    }
-  }
-);
-
-export const listLocationsForProjectTool = ai.defineTool(
-  {
-    name: "listLocationsForProject",
-    description: "Retrieves all locations belonging to a specific project.",
-    inputSchema: z.object({
-      projectId: z.string().describe("ID of the parent project"),
-    }),
-    outputSchema: z
-      .array(
-        schemas.location.pick({
-          name: true,
-          description: true,
-          significance: true,
-        })
-      )
-      .describe("Array of location summaries"),
-  },
-  async ({ projectId }) => {
-    try {
-      const locations = await getAllLocations(projectId);
-      return locations.map((location) =>
-        schemas.location
-          .pick({
-            name: true,
-            description: true,
-            significance: true,
-          })
-          .parse(location)
-      );
-    } catch (error) {
-      console.error(`Error in listLocationsForProjectTool: ${error}`);
-      return [];
-    }
-  }
-);
-
-export const listKeyEventsForProjectTool = ai.defineTool(
-  {
-    name: "listKeyEventsForProject",
-    description: "Retrieves all key events belonging to a specific project.",
-    inputSchema: z.object({
-      projectId: z.string().describe("ID of the parent project"),
-      sortBySequence: z
-        .boolean()
-        .optional()
-        .default(true)
-        .describe("Sort events by sequence number"),
-    }),
-    outputSchema: z
-      .array(
-        schemas.keyEvent.pick({
-          name: true,
-          description: true,
-          sequence: true,
-        })
-      )
-      .describe("Array of key event summaries"),
-  },
-  async ({ projectId, sortBySequence }) => {
-    try {
-      let events = await getAllKeyEvents(projectId);
-      if (sortBySequence) {
-        events = events.sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0));
-      }
-      return events.map((event) =>
-        schemas.keyEvent
-          .pick({
-            name: true,
-            description: true,
-            sequence: true,
-          })
-          .parse(event)
-      );
-    } catch (error) {
-      console.error(`Error in listKeyEventsForProjectTool: ${error}`);
-      return [];
     }
   }
 );

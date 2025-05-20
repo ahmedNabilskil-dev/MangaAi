@@ -3,7 +3,8 @@
 import { layoutElements } from "@/lib/layout-utils";
 import { useVisualEditorStore } from "@/store/visual-editor-store";
 import type { MangaProject } from "@/types/entities"; // Import entity types
-import { type NodeData } from "@/types/nodes";
+import { type NodeData, NodeType } from "@/types/nodes";
+import * as d3 from "d3";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import ReactFlow, {
   addEdge,
@@ -14,7 +15,6 @@ import ReactFlow, {
   type DefaultEdgeOptions,
   type Edge,
   MarkerType,
-  MiniMap,
   type Node,
   type NodeTypes,
   type OnConnect,
@@ -24,10 +24,12 @@ import ReactFlow, {
   useReactFlow,
 } from "reactflow";
 import "reactflow/dist/style.css";
-import CustomNode from "./custom-node"; // Import the new custom node
+import { CustomNode } from "./custom-node"; // Import the new custom node
 // Import specific function from the abstract data service
-import { getDefaultProject } from "@/services/data-service";
+import { SideNav } from "@/components/sidenav/SideNav";
+import { getProjectWithRelations } from "@/services/db";
 import { useLiveQuery } from "dexie-react-hooks"; // Import Dexie hook
+import { useParams } from "next/navigation";
 
 // Use the new CustomNode for all types
 const nodeTypes: NodeTypes = {
@@ -54,8 +56,7 @@ const defaultEdgeOptions: DefaultEdgeOptions = {
   type: "smoothstep", // Use smoothstep for potentially better routing visually
 };
 
-// --- Function to transform Project data into Flow elements ---
-function transformProjectToFlow(project: MangaProject | null): {
+export function transformProjectToFlow(project: MangaProject | null): {
   nodes: Node<NodeData>[];
   edges: Edge[];
 } {
@@ -63,110 +64,234 @@ function transformProjectToFlow(project: MangaProject | null): {
     console.warn("transformProjectToFlow called with null project.");
     return { nodes: [], edges: [] };
   }
-  console.log("Transforming project data to flow elements:", project.id);
-  const nodes: Node<NodeData>[] = [];
-  const edges: Edge[] = [];
 
-  // Project Node
-  nodes.push({
+  // Define dynamic node dimensions based on node type
+  const nodeDimensions: Record<NodeType, { width: number; height: number }> = {
+    project: { width: 320, height: 350 },
+    chapter: { width: 300, height: 320 },
+    scene: { width: 300, height: 280 },
+    panel: { width: 280, height: 260 },
+    dialogue: { width: 260, height: 220 },
+    character: { width: 280, height: 380 }, // Characters often have images
+  };
+
+  // First create a flat list of all nodes with hierarchy information
+  const hierarchyNodes: Array<{
+    id: string;
+    parentId: string | null;
+    type: NodeData["type"];
+    label: string;
+    properties: any;
+    depth: number;
+  }> = [];
+
+  // Add project node
+  hierarchyNodes.push({
     id: project.id,
+    parentId: null,
     type: "project",
-    position: { x: 0, y: 0 }, // Layout will handle final position
-    data: { label: project.title, type: "project", properties: project },
+    label: project.title,
+    properties: project,
+    depth: 0,
   });
 
-  // Character Nodes
+  // Add characters (positioned separately)
   (project.characters ?? []).forEach((character) => {
-    nodes.push({
+    hierarchyNodes.push({
       id: character.id,
+      parentId: null, // Characters will be positioned separately
       type: "character",
-      position: { x: 0, y: 0 },
-      data: { label: character.name, type: "character", properties: character },
+      label: character.name,
+      properties: character,
+      depth: 1,
     });
   });
 
-  // Chapters, Scenes, Panels, Dialogues
+  // Add chapters and their children
   (project.chapters ?? []).forEach((chapter) => {
-    nodes.push({
+    hierarchyNodes.push({
       id: chapter.id,
+      parentId: project.id,
       type: "chapter",
-      position: { x: 0, y: 0 },
-      data: {
-        label: `Ch. ${chapter.chapterNumber}: ${chapter.title}`,
-        type: "chapter",
-        properties: chapter,
-      },
-    });
-    edges.push({
-      id: `e-${project.id}-${chapter.id}`,
-      source: project.id,
-      target: chapter.id,
+      label: `Ch. ${chapter.chapterNumber}: ${chapter.title}`,
+      properties: chapter,
+      depth: 1,
     });
 
     (chapter.scenes ?? []).forEach((scene) => {
-      nodes.push({
+      hierarchyNodes.push({
         id: scene.id,
+        parentId: chapter.id,
         type: "scene",
-        position: { x: 0, y: 0 },
-        data: { label: scene.title, type: "scene", properties: scene },
-      });
-      edges.push({
-        id: `e-${chapter.id}-${scene.id}`,
-        source: chapter.id,
-        target: scene.id,
+        label: scene.title,
+        properties: scene,
+        depth: 2,
       });
 
       (scene.panels ?? []).forEach((panel) => {
-        nodes.push({
+        hierarchyNodes.push({
           id: panel.id,
+          parentId: scene.id,
           type: "panel",
-          position: { x: 0, y: 0 },
-          data: {
-            label: `Panel ${panel.order + 1}`,
-            type: "panel",
-            properties: panel,
-          },
-        });
-        edges.push({
-          id: `e-${scene.id}-${panel.id}`,
-          source: scene.id,
-          target: panel.id,
+          label: `Panel ${panel.order + 1}`,
+          properties: panel,
+          depth: 3,
         });
 
         (panel.dialogues ?? []).forEach((dialogue) => {
-          nodes.push({
+          hierarchyNodes.push({
             id: dialogue.id,
+            parentId: panel.id,
             type: "dialogue",
-            position: { x: 0, y: 0 },
-            data: {
-              label: `Dialogue ${dialogue.order + 1}`,
-              type: "dialogue",
-              properties: dialogue,
-            },
-          });
-          edges.push({
-            id: `e-${panel.id}-${dialogue.id}`,
-            source: panel.id,
-            target: dialogue.id,
+            label: `Dialogue ${dialogue.order + 1}`,
+            properties: dialogue,
+            depth: 4,
           });
         });
       });
     });
   });
 
-  console.log("Transformation complete:", {
-    nodes: nodes.length,
-    edges: edges.length,
+  // Create D3 hierarchy for the main story tree (excluding characters)
+  const storyNodes = hierarchyNodes.filter((n) => n.type !== "character");
+  const root = d3
+    .stratify<(typeof storyNodes)[0]>()
+    .id((d) => d.id)
+    .parentId((d) => d.parentId)(storyNodes);
+
+  // Calculate tree layout with proper spacing
+  const margin = { top: 50, right: 120, bottom: 150, left: 120 };
+
+  const treeLayout = d3
+    .tree<(typeof storyNodes)[0]>()
+    .nodeSize([400, 350]) // [width, height] spacing between nodes - swapped for vertical layout
+    .separation((a, b) => {
+      const baseSeparation = a.depth === b.depth ? 1.2 : 1.5;
+      if (a.data.type === "project" || b.data.type === "project") {
+        return baseSeparation * 1.4;
+      }
+      if (a.data.type === "chapter" && b.data.type === "chapter") {
+        return baseSeparation * 1.3;
+      }
+      return baseSeparation;
+    });
+
+  // Get the tree data
+  const treeData = treeLayout(root);
+
+  // For top-to-bottom layout, we keep x and y as they are
+  // No coordinate swapping needed for vertical layout
+
+  // Position characters in a row at the top
+  const characterNodes = hierarchyNodes.filter((n) => n.type === "character");
+
+  // Calculate the top position for characters
+  const characterStartX = margin.left;
+  const characterStartY = margin.top;
+  const characterColumnWidth = nodeDimensions.character.width + 80;
+  const charactersPerRow = 3;
+
+  // Convert to ReactFlow nodes with calculated positions
+  const nodes: Node<NodeData>[] = [];
+  const edges: Edge[] = [];
+
+  // Add story nodes with dynamic sizing based on node type
+  treeData.descendants().forEach((d) => {
+    const nodeType = d.data.type as NodeType;
+    const { width, height } = nodeDimensions[nodeType];
+
+    nodes.push({
+      id: d.id!,
+      type: d.data.type,
+      position: {
+        x: d.x - width / 2, // Center node horizontally
+        y: d.y,
+      },
+      data: {
+        label: d.data.label,
+        type: d.data.type,
+        properties: d.data.properties,
+      },
+      style: {
+        width,
+        height,
+      },
+    });
+
+    if (d.parent && d.data.type !== "character") {
+      // Skip character connections
+      edges.push({
+        id: `e-${d.parent.id}-${d.id}`,
+        source: d.parent.id!,
+        target: d.id!,
+        animated: d.data.type === "character",
+        type: "smoothstep",
+      });
+    }
   });
+
+  // Add character nodes in a horizontal row at the top
+  characterNodes.forEach((char, i) => {
+    const row = Math.floor(i / charactersPerRow);
+    const col = i % charactersPerRow;
+    const { width, height } = nodeDimensions.character;
+
+    nodes.push({
+      id: char.id,
+      type: char.type,
+      position: {
+        x: characterStartX + col * characterColumnWidth,
+        y: characterStartY + row * (height + 50),
+      },
+      data: {
+        label: char.label,
+        type: char.type,
+        properties: char.properties,
+      },
+      style: {
+        width,
+        height,
+      },
+    });
+  });
+
+  // Calculate the bounding box to center the layout (excluding characters)
+  const storyNodeX = nodes
+    .filter((n) => n.type !== "character")
+    .map((n) => n.position.x);
+  const storyNodeY = nodes
+    .filter((n) => n.type !== "character")
+    .map((n) => n.position.y);
+  const minX = Math.min(...storyNodeX);
+  const maxX = Math.max(...storyNodeX);
+  const minY = Math.min(...storyNodeY);
+
+  // Calculate character grid height
+  const characterRowCount = Math.ceil(characterNodes.length / charactersPerRow);
+  const characterAreaHeight =
+    characterRowCount * (nodeDimensions.character.height + 50);
+
+  // Apply offset for centered layout with more space between character grid and project nodes
+  const offsetX = -minX + margin.left;
+  const offsetY = -minY + margin.top + characterAreaHeight + 150; // Extra gap between characters and project
+
+  // Apply final positioning (only to story nodes)
+  nodes.forEach((node) => {
+    if (node.type !== "character") {
+      node.position.x += offsetX;
+      node.position.y += offsetY;
+    }
+  });
+
   return { nodes, edges };
 }
 
 // --- Main Component ---
 function VisualEditorInternal() {
+  const { id } = useParams();
   const {
     nodes: storeNodes, // Rename store state to avoid conflict
     edges: storeEdges,
-    selectedNode,
     setNodes,
     setEdges,
     setSelectedNode,
@@ -184,47 +309,35 @@ function VisualEditorInternal() {
 
   // --- Use useLiveQuery to observe Dexie data ---
   // This automatically updates when the underlying Dexie data changes
-  const projectData = useLiveQuery(
-    async () => {
-      console.log("Dexie useLiveQuery: Fetching default project data...");
-      setIsLoading(true); // Set loading state when query starts
-      setError(null);
-      isInitialLayoutDone.current = false; // Reset layout flag on each refresh
-      try {
-        const project = await getDefaultProject(); // Fetch using abstract service (which uses Dexie)
-        if (!project) {
-          setError("No project found or error loading project.");
-          return null;
-        }
-        return project;
-      } catch (err: any) {
-        console.error("Error loading project data via useLiveQuery:", err);
-        setError(
-          `Error loading project data: ${err.message || "Failed to fetch"}`
-        );
+  const projectData = useLiveQuery(async () => {
+    setIsLoading(true); // Set loading state when query starts
+    setError(null);
+    isInitialLayoutDone.current = false; // Reset layout flag on each refresh
+    try {
+      const project = await getProjectWithRelations(id as string); // Fetch using abstract service (which uses Dexie)
+      if (!project) {
+        setError("No project found or error loading project.");
         return null;
-      } finally {
-        setIsLoading(false); // Reset loading state when query completes/fails
       }
-    },
-    [refreshCounter] // Dependency array: re-run query when refreshCounter changes
-  );
+      return project;
+    } catch (err: any) {
+      setError(
+        `Error loading project data: ${err.message || "Failed to fetch"}`
+      );
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
-  // --- Transform Data and Layout Effect ---
-  // Now triggered when `projectData` from useLiveQuery changes
   useEffect(() => {
     if (projectData && !isLoading) {
-      // Only process if projectData exists and not loading
-      console.log(
-        "Project data loaded/updated, transforming to flow elements..."
-      );
       const { nodes: initialNodes, edges: initialEdges } =
         transformProjectToFlow(projectData);
 
       // Apply layout only if nodes exist and initial layout isn't done
       if (initialNodes.length > 0 && !isInitialLayoutDone.current) {
-        console.log("Applying initial layout...");
-        const layoutEdges = initialEdges.filter((edge) => !edge.data?.noLayout); // Exclude noLayout edges from layouting
+        const layoutEdges = initialEdges.filter((edge) => !edge.data?.noLayout);
         const { nodes: layoutedNodes, edges: _ } = layoutElements(
           initialNodes,
           layoutEdges
@@ -236,7 +349,6 @@ function VisualEditorInternal() {
         // Fit view after initial layout
         const timer = setTimeout(() => {
           if (!viewportInitialized) {
-            console.log("Fitting view after initial layout...");
             fitView({ padding: 0.2, duration: 600 });
             setViewportInitialized(true);
           }
@@ -245,23 +357,18 @@ function VisualEditorInternal() {
       } else if (isInitialLayoutDone.current) {
         // If layout already done, just update store nodes/edges if project data changed
         // This avoids re-running layout unnecessarily after minor updates triggered by refresh
-        console.log(
-          "Updating store without re-layouting (layout already done)..."
-        );
+
         setNodes(initialNodes);
         setEdges(initialEdges);
       } else if (initialNodes.length === 0) {
-        // Handle case where transformation results in no nodes
         setNodes([]);
         setEdges([]);
       }
     } else if (!isLoading && !error && projectData === null) {
-      // Handle case where data fetching finished but resulted in null project
       setNodes([]);
       setEdges([]);
-      isInitialLayoutDone.current = false; // Reset layout flag
+      isInitialLayoutDone.current = false;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     projectData,
     isLoading,
@@ -270,7 +377,7 @@ function VisualEditorInternal() {
     setEdges,
     fitView,
     setViewportInitialized,
-  ]); // Depend on projectData from useLiveQuery
+  ]);
 
   // --- Handlers remain mostly the same, using Zustand store ---
   const onNodesChange: OnNodesChange = useCallback(
@@ -304,14 +411,12 @@ function VisualEditorInternal() {
 
   const handleNodeClick = useCallback(
     (event: React.MouseEvent, node: Node<NodeData>) => {
-      console.log("Node clicked, updating store:", node.id, node.data.type);
       setSelectedNode(node);
     },
     [setSelectedNode]
   );
 
   const handlePaneClick = useCallback(() => {
-    console.log("Pane clicked, clearing selection.");
     setSelectedNode(null);
   }, [setSelectedNode]);
 
@@ -367,31 +472,6 @@ function VisualEditorInternal() {
         ]} // Allow panning anywhere initially
       >
         <Controls showInteractive={false} position="bottom-right" />
-        <MiniMap
-          nodeStrokeWidth={3}
-          zoomable
-          pannable
-          position="bottom-left"
-          nodeColor={(node) => {
-            // Match MiniMap colors to the actual node background colors (using HSL from globals.css)
-            switch (node.type) {
-              case "project":
-                return "hsl(270 50% 90%)"; // Approx purple-100
-              case "chapter":
-                return "hsl(210 50% 90%)"; // Approx blue-100
-              case "scene":
-                return "hsl(140 40% 90%)"; // Approx green-100
-              case "panel":
-                return "hsl(45 70% 90%)"; // Approx yellow-100
-              case "dialogue":
-                return "hsl(330 50% 90%)"; // Approx pink-100
-              case "character":
-                return "hsl(230 50% 90%)"; // Approx indigo-100
-              default:
-                return "hsl(var(--muted))";
-            }
-          }}
-        />
         <Background color="hsl(var(--border) / 0.3)" gap={24} size={1} />
       </ReactFlow>
     </div>
@@ -402,7 +482,10 @@ function VisualEditorInternal() {
 export default function VisualEditor() {
   return (
     <ReactFlowProvider>
-      <VisualEditorInternal />
+      <div className="relative h-full w-full">
+        <SideNav />
+        <VisualEditorInternal />
+      </div>
     </ReactFlowProvider>
   );
 }

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { MangaStatus } from "./enums";
 
 // Base Location Schema
-const locationSchema = z
+export const locationSchema = z
   .object({
     name: z
       .string()
@@ -24,7 +24,7 @@ const locationSchema = z
   .describe("A physical setting where scenes take place in the manga");
 
 // Key Event Schema
-const keyEventSchema = z
+export const keyEventSchema = z
   .object({
     name: z
       .string()
@@ -45,7 +45,7 @@ const keyEventSchema = z
   .describe("A significant moment that advances the main storyline");
 
 // Visual Anchor Schema
-const visualAnchorSchema = z
+export const visualAnchorSchema = z
   .object({
     text: z
       .string()
@@ -148,10 +148,6 @@ export const mangaProjectSchema = z
       .string()
       .optional()
       .describe("Core thematic idea or central conflict"),
-    locations: z
-      .array(locationSchema)
-      .optional()
-      .describe("Notable places that appear in the story"),
     plotStructure: z
       .object({
         incitingIncident: z
@@ -174,11 +170,6 @@ export const mangaProjectSchema = z
       .optional()
       .describe("Key structural elements of the narrative"),
 
-    // Content Metadata
-    keyEvents: z
-      .array(keyEventSchema)
-      .optional()
-      .describe("Significant plot moments in chronological order"),
     themes: z
       .array(z.string())
       .optional()
@@ -202,37 +193,6 @@ export const mangaProjectSchema = z
       .uuid()
       .optional()
       .describe("ID of the user who created this project"),
-
-    // Engagement Metrics
-    viewCount: z
-      .number()
-      .int()
-      .nonnegative()
-      .default(0)
-      .describe("Total number of times viewed"),
-    likeCount: z
-      .number()
-      .int()
-      .nonnegative()
-      .default(0)
-      .describe("Total number of user likes"),
-    published: z
-      .boolean()
-      .default(false)
-      .describe("Whether the project is publicly available"),
-
-    // Timestamps
-    createdAt: z
-      .date()
-      .or(z.string().datetime())
-      .optional()
-      .describe("When the project was initially created"),
-    updatedAt: z
-      .date()
-      .or(z.string().datetime())
-      .optional()
-      .describe("When the project was last modified"),
-
     // Relationships
     chapters: z
       .array(z.lazy(() => chapterSchema))
@@ -262,10 +222,10 @@ export const chapterSchema = z
       .string()
       .min(1, "Chapter title is required")
       .describe("Official title of the chapter"),
-    summary: z
+    narrative: z
       .string()
       .optional()
-      .describe("Brief overview of the chapter's content"),
+      .describe("Complete literary prose narrative"),
     purpose: z
       .string()
       .optional()
@@ -327,12 +287,7 @@ export const characterSchema = z
       .string()
       .min(1, "Character name is required")
       .describe("Full name of the character"),
-    age: z
-      .number()
-      .int()
-      .positive()
-      .optional()
-      .describe("Age in years (if applicable)"),
+    age: z.number().int().optional().describe("Age in years (if applicable)"),
     gender: z.string().optional().describe("Gender identity"),
 
     // Physical Attributes
@@ -435,12 +390,6 @@ export const characterSchema = z
       .describe("Characteristic body movements"),
     posture: z.string().optional().describe("Typical stance or bearing"),
 
-    // Visual Identity
-    visualIdentityAnchors: z
-      .array(visualAnchorSchema)
-      .optional()
-      .describe("Consistent visual elements for recognition"),
-
     // Art Direction
     styleGuide: z
       .object({
@@ -521,10 +470,10 @@ export const sceneSchema = z
       .string()
       .min(1, "Scene title is required")
       .describe("Descriptive title of the scene"),
-    description: z
+    narrative: z
       .string()
       .optional()
-      .describe("Detailed explanation of scene content"),
+      .describe("Complete literary prose narrative"),
 
     // Context
     sceneContext: z
@@ -622,7 +571,6 @@ export const panelSchema = z
           .describe("Backdrop details"),
         backgroundImageUrl: z
           .string()
-          .url()
           .optional()
           .describe("Reference background image"),
         lighting: z.string().optional().describe("Illumination style"),
@@ -642,7 +590,7 @@ export const panelSchema = z
     // Relationships
     sceneId: z.string().uuid().describe("ID of the parent scene"),
     characterIds: z
-      .array(z.string().uuid())
+      .array(z.string())
       .optional()
       .describe("IDs of characters featured"),
 
@@ -726,8 +674,6 @@ export const panelDialogueSchema = z
     panelId: z.string().uuid().describe("ID of the containing panel"),
     speakerId: z
       .string()
-      .uuid()
-      .nullable()
       .optional()
       .describe("ID of the speaking character if applicable"),
 

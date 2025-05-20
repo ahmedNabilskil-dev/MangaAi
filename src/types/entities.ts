@@ -1,26 +1,4 @@
-import type { ShapeConfig } from "./editor";
-import type { MangaStatus } from "./enums";
-
-export interface MangaLocation {
-  id: string;
-  name: string;
-  description: string;
-  significance: string;
-  projectId?: string;
-}
-
-export interface KeyEvent {
-  id: string;
-  name: string;
-  description: string;
-  sequence: number;
-  projectId?: string;
-}
-
-export interface VisualAnchor {
-  text: string;
-  weight: number;
-}
+import { MangaStatus } from "@/types/enums";
 
 export interface User {
   id: string;
@@ -45,14 +23,14 @@ export interface MangaProject {
     uniqueSystems: string;
   };
   concept?: string;
-  locations?: MangaLocation[];
+  // Locations now directly part of project
   plotStructure?: {
     incitingIncident: string;
     plotTwist: string;
     climax: string;
     resolution: string;
   };
-  keyEvents?: KeyEvent[];
+  // Key events now directly part of project
   themes?: string[];
   motifs?: string[];
   symbols?: string[];
@@ -72,7 +50,7 @@ export interface Chapter {
   id: string;
   chapterNumber: number;
   title: string;
-  summary?: string;
+  narrative: string;
   purpose?: string;
   tone?: string;
   keyCharacters?: string[];
@@ -127,7 +105,6 @@ export interface Character {
   };
   physicalMannerisms?: string[];
   posture?: string;
-  visualIdentityAnchors?: VisualAnchor[];
   styleGuide?: {
     artStyle: string;
     lineweight: string;
@@ -157,7 +134,7 @@ export interface Scene {
   id: string;
   order: number;
   title: string;
-  description?: string;
+  narrative?: string;
   sceneContext: {
     setting: string;
     mood: string;
@@ -225,5 +202,3 @@ export interface PanelDialogue {
   updatedAt: Date;
   speaker?: Character | null;
 }
-
-export type { ShapeConfig };

@@ -21,12 +21,7 @@ export interface IDataService {
   // --- Project ---
   getAllProjects(): Promise<MangaProject[]>;
   getProject(id: string): Promise<MangaProject | null>;
-  createProject(
-    projectData: Omit<
-      MangaProject,
-      "id" | "createdAt" | "updatedAt" | "chapters" | "characters"
-    >
-  ): Promise<MangaProject>;
+  createProject(projectData: Partial<MangaProject>): Promise<MangaProject>;
   updateProject(
     id: string,
     projectData: DeepPartial<
@@ -37,17 +32,15 @@ export interface IDataService {
     >
   ): Promise<void>;
   deleteProject(id: string): Promise<void>;
-  getDefaultProject(): Promise<MangaProject | null>; // Keep default project logic
+  getDefaultProject(): Promise<MangaProject | null>;
 
   // --- Location ---
   getAllLocations(projectId?: string): Promise<MangaLocation[]>;
   getLocation(id: string): Promise<MangaLocation | null>;
-  createLocation(
-    locationData: Omit<MangaLocation, "id">
-  ): Promise<MangaLocation>;
+  createLocation(locationData: MangaLocation): Promise<MangaLocation>;
   updateLocation(
     id: string,
-    locationData: DeepPartial<Omit<MangaLocation, "id">>
+    locationData: DeepPartial<MangaLocation>
   ): Promise<void>;
   deleteLocation(id: string): Promise<void>;
   getLocationForContext(id: string): Promise<MangaLocation | null>;
@@ -55,7 +48,7 @@ export interface IDataService {
   // --- Key Event ---
   getAllKeyEvents(projectId?: string): Promise<KeyEvent[]>;
   getKeyEvent(id: string): Promise<KeyEvent | null>;
-  createKeyEvent(eventData: Omit<KeyEvent, "id">): Promise<KeyEvent>;
+  createKeyEvent(eventData: KeyEvent): Promise<KeyEvent>;
   updateKeyEvent(
     id: string,
     eventData: DeepPartial<Omit<KeyEvent, "id">>
@@ -85,7 +78,7 @@ export interface IDataService {
     >
   ): Promise<void>;
   deleteChapter(id: string): Promise<void>;
-  getChapterForContext(id: string): Promise<Chapter | null>; // Needed for flows
+  getChapterForContext(id: string): Promise<Chapter | null>;
 
   // --- Scene ---
   createScene(
@@ -148,6 +141,24 @@ export interface IDataService {
   ): Promise<void>;
   deleteCharacter(id: string): Promise<void>;
   getCharacterForContext(id: string): Promise<Character | null>; // Alias
+
+  // ---- Manga Projects ----
+  listMangaProjects(): Promise<MangaProject[]>;
+
+  // ---- Chapters ----
+  listChapters(projectId: string): Promise<Chapter[]>;
+
+  // ---- Scenes ----
+  listScenes(chapterId: string): Promise<Scene[]>;
+
+  // ---- Panels ----
+  listPanels(sceneId: string): Promise<Panel[]>;
+
+  // ---- Panel Dialogues ----
+  listPanelDialogues(panelId: string): Promise<PanelDialogue[]>;
+
+  // ---- Characters ----
+  listCharacters(projectId: string): Promise<Character[]>;
 
   // --- Utility/Initialization (Optional but good practice) ---
   initialize?(): Promise<void>; // For any setup needed

@@ -2,6 +2,7 @@ import {
   db,
   getDefaultProject as getDefaultProjectFromDb,
   getProjectWithRelations,
+  populateDatabase,
 } from "@/services/db";
 import type {
   Chapter,
@@ -19,6 +20,60 @@ import { v4 as uuidv4 } from "uuid";
 import type { IDataService } from "./data-service.interface";
 
 class DexieDataService implements IDataService {
+  listCharacters(projectId: string): Promise<Character[]> {
+    throw new Error("Method not implemented.");
+  }
+  getAllUsers(): Promise<User[]> {
+    throw new Error("Method not implemented.");
+  }
+  deleteUser(id: string): Promise<void> {
+    throw new Error("Method not implemented.");
+  }
+  getUserForContext(id: string): Promise<User | null> {
+    throw new Error("Method not implemented.");
+  }
+  getAllLocations(projectId?: string): Promise<MangaLocation[]> {
+    throw new Error("Method not implemented.");
+  }
+  getLocation(id: string): Promise<MangaLocation | null> {
+    throw new Error("Method not implemented.");
+  }
+  createLocation(locationData: MangaLocation): Promise<MangaLocation> {
+    throw new Error("Method not implemented.");
+  }
+  updateLocation(
+    id: string,
+    locationData: DeepPartial<MangaLocation>
+  ): Promise<void> {
+    throw new Error("Method not implemented.");
+  }
+  deleteLocation(id: string): Promise<void> {
+    throw new Error("Method not implemented.");
+  }
+  getLocationForContext(id: string): Promise<MangaLocation | null> {
+    throw new Error("Method not implemented.");
+  }
+  getAllKeyEvents(projectId?: string): Promise<KeyEvent[]> {
+    throw new Error("Method not implemented.");
+  }
+  getKeyEvent(id: string): Promise<KeyEvent | null> {
+    throw new Error("Method not implemented.");
+  }
+  createKeyEvent(eventData: KeyEvent): Promise<KeyEvent> {
+    throw new Error("Method not implemented.");
+  }
+  updateKeyEvent(
+    id: string,
+    eventData: DeepPartial<Omit<KeyEvent, "id">>
+  ): Promise<void> {
+    throw new Error("Method not implemented.");
+  }
+  deleteKeyEvent(id: string): Promise<void> {
+    throw new Error("Method not implemented.");
+  }
+  getKeyEventForContext(id: string): Promise<KeyEvent | null> {
+    throw new Error("Method not implemented.");
+  }
   deleteProject(id: string): Promise<void> {
     throw new Error("Method not implemented.");
   }
@@ -353,89 +408,7 @@ class DexieDataService implements IDataService {
 
   getCharacterForContext = this.getCharacter;
 
-  // --- Location ---
-  async getAllLocations(projectId?: string): Promise<MangaLocation[]> {
-    if (projectId) {
-      return (
-        (await db.locations.where("projectId").equals(projectId).toArray()) ||
-        []
-      );
-    }
-    return (await db.locations.toArray()) || [];
-  }
-
-  async getLocation(id: string): Promise<MangaLocation | null> {
-    return (await db.locations.get(id)) || null;
-  }
-
-  async createLocation(
-    locationData: Omit<MangaLocation, "id">
-  ): Promise<MangaLocation> {
-    const newId = uuidv4();
-    const newLocation: MangaLocation = {
-      ...locationData,
-      id: newId,
-    };
-    await db.locations.add(newLocation);
-    return newLocation;
-  }
-
-  async updateLocation(
-    id: string,
-    locationData: DeepPartial<Omit<MangaLocation, "id">>
-  ): Promise<void> {
-    await db.locations.update(id, locationData);
-  }
-
-  async deleteLocation(id: string): Promise<void> {
-    await db.locations.delete(id);
-  }
-
-  async getLocationForContext(id: string): Promise<MangaLocation | null> {
-    return (await db.locations.get(id)) || null;
-  }
-
-  // --- Key Event ---
-  async getAllKeyEvents(projectId?: string): Promise<KeyEvent[]> {
-    if (projectId) {
-      return await db.keyEvents.where("projectId").equals(projectId).toArray();
-    }
-    return await db.keyEvents.toArray();
-  }
-
-  async getKeyEvent(id: string): Promise<KeyEvent | null> {
-    return (await db.keyEvents.get(id)) || null;
-  }
-
-  async createKeyEvent(eventData: Omit<KeyEvent, "id">): Promise<KeyEvent> {
-    const newId = uuidv4();
-    const newEvent: KeyEvent = {
-      ...eventData,
-      id: newId,
-    };
-    await db.keyEvents.add(newEvent);
-    return newEvent;
-  }
-
-  async updateKeyEvent(
-    id: string,
-    eventData: DeepPartial<Omit<KeyEvent, "id">>
-  ): Promise<void> {
-    await db.keyEvents.update(id, eventData);
-  }
-
-  async deleteKeyEvent(id: string): Promise<void> {
-    await db.keyEvents.delete(id);
-  }
-
-  async getKeyEventForContext(id: string): Promise<KeyEvent | null> {
-    return (await db.keyEvents.get(id)) || null;
-  }
-
   // --- User ---
-  async getAllUsers(): Promise<User[]> {
-    return await db.users.toArray();
-  }
 
   async getUser(id: string): Promise<User | null> {
     return (await db.users.get(id)) || null;
@@ -458,19 +431,39 @@ class DexieDataService implements IDataService {
     await db.users.update(id, userData);
   }
 
-  async deleteUser(id: string): Promise<void> {
-    await db.users.delete(id);
+  // MangaProject
+  async listMangaProjects(): Promise<MangaProject[]> {
+    return await db.projects.toArray();
   }
 
-  async getUserForContext(id: string): Promise<User | null> {
-    return (await db.users.get(id)) || null;
+  // Chapters by Project ID
+  async listChapters(projectId: string): Promise<Chapter[]> {
+    return await db.chapters
+      .where("mangaProjectId")
+      .equals(projectId)
+      .toArray();
+  }
+
+  // Scenes by Chapter ID
+  async listScenes(chapterId: string): Promise<Scene[]> {
+    return await db.scenes.where("chapterId").equals(chapterId).toArray();
+  }
+
+  // Panels by Scene ID
+  async listPanels(sceneId: string): Promise<Panel[]> {
+    return await db.panels.where("sceneId").equals(sceneId).toArray();
+  }
+
+  // Dialogues by Panel ID
+  async listPanelDialogues(panelId: string): Promise<PanelDialogue[]> {
+    return await db.dialogues.where("panelId").equals(panelId).toArray();
   }
 
   // --- Initialization ---
   async initialize(): Promise<void> {
     try {
       await db.open();
-      console.log("Dexie database initialized");
+      await populateDatabase(db);
     } catch (error) {
       console.error("Failed to initialize Dexie database:", error);
       throw error;

@@ -2,16 +2,14 @@
 const nextConfig = {
   // Your existing Next.js config options here...
   images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'picsum.photos',
-        port: '',
-        pathname: '/**', // Allow any path under this hostname
-      },
-    ],
+    domains: ["images.unsplash.com", "res.cloudinary.com", "cdn.example.com"],
   },
   webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.externals.push({
+        handlebars: "commonjs handlebars",
+      });
+    }
     // Important: return the modified config
     return config;
   },
