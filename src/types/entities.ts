@@ -176,6 +176,7 @@ export interface Panel {
   characterIds: string[];
   isAiGenerated: boolean;
   aiPrompt?: string;
+  negativePrompt: string;
   createdAt: Date;
   updatedAt: Date;
   dialogues?: PanelDialogue[];

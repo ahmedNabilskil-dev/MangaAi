@@ -437,6 +437,15 @@ export const characterSchema = z
       .optional()
       .describe("Prompt used for generation if applicable"),
 
+    consistencyPrompt: z
+      .string()
+      .describe(
+        "the prompt that will feed to image ai generation it must be consistent"
+      ),
+    negativePrompt: z
+      .string()
+      .describe("the negative prompt that will feed to image ai generation"),
+
     // Relationships
     mangaProjectId: z
       .string()
@@ -603,6 +612,10 @@ export const panelSchema = z
       .string()
       .optional()
       .describe("Prompt used for generation if applicable"),
+
+    negativePrompt: z
+      .string()
+      .describe("the negative prompt that will feed to image ai generation"),
 
     // Timestamps
     createdAt: z

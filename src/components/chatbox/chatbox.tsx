@@ -1,532 +1,236 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
-import {
-  Bot,
-  ChevronUp,
-  GripVertical,
-  Loader2,
-  Minus,
-  Pencil,
-  SendHorizonal,
-  User,
-  X,
-} from "lucide-react";
-import React, { useCallback, useEffect, useRef, useState } from "react";
-
-// UI Components
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { useToast } from "@/hooks/use-toast";
-
-// Utilities and stores
-import { cn } from "@/lib/utils";
-import { useVisualEditorStore } from "@/store/visual-editor-store";
-
-// Services and types
 import { ProcessMangaRequestFlow } from "@/ai/flows/planner";
-import { NodeData } from "@/types/nodes";
+import { useToast } from "@/hooks/use-toast";
+import { useVisualEditorStore } from "@/store/visual-editor-store";
+import { AnimatePresence, motion } from "framer-motion";
+import { Bot, Send, Sparkles, User, X } from "lucide-react";
 import { useParams } from "next/navigation";
-import { Edge, Node } from "reactflow";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-// Constants
-const HEADER_HEIGHT = 52;
-const DEFAULT_WIDTH = 500;
-const MIN_HEIGHT = 300;
-const THINKING_MESSAGE = "Thinking...";
-
-// Types
-export type Message = {
-  role: "user" | "assistant" | "function";
-  content: any;
-  imageUrl?: string;
-  isThinking?: boolean;
-};
-
-/**
- * ChatboxHeader component
- */
-interface ChatboxHeaderProps {
-  isMinimized: boolean;
-  onToggleMinimize: () => void;
-}
-
-const ChatboxHeader: React.FC<ChatboxHeaderProps> = ({
-  isMinimized,
-  onToggleMinimize,
-}) => (
-  <div
-    className="chatbox-drag-handle flex items-center justify-between px-3 py-1.5 border-b border-border bg-background/80 shrink-0 cursor-grab active:cursor-grabbing"
-    style={{ height: `${HEADER_HEIGHT}px` }}
-  >
-    <div className="flex items-center gap-1 text-muted-foreground">
-      <GripVertical size={14} />
-      <h3 className="text-sm font-medium">AI Assistant</h3>
-    </div>
-    <Button
-      variant="ghost"
-      size="icon"
-      className="h-6 w-6"
-      onClick={onToggleMinimize}
-      aria-label={isMinimized ? "Maximize Chat" : "Minimize Chat"}
-    >
-      {isMinimized ? <ChevronUp size={16} /> : <Minus size={16} />}
-    </Button>
-  </div>
-);
-
-/**
- * Message component
- */
-interface MessageItemProps {
-  message: Message;
-}
-
-const MessageItem: React.FC<MessageItemProps> = ({ message }) => (
-  <motion.div
-    key={`${message.role}-${Date.now()}`}
-    layout
-    initial={{ opacity: 0, y: 10 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, x: message.role === "assistant" ? -10 : 10 }}
-    transition={{ duration: 0.2 }}
-    className={`flex gap-3 my-3 ${
-      message.role === "user" ? "justify-end" : "justify-start"
-    }`}
-  >
-    {message.role === "assistant" && (
-      <Avatar className="h-8 w-8 border border-primary/20 shrink-0">
-        <AvatarFallback className="bg-primary/10 text-primary">
-          <Bot size={18} />
-        </AvatarFallback>
-      </Avatar>
-    )}
-
-    <div
-      className={cn(
-        "rounded-lg p-2.5 max-w-[80%] text-sm shadow-sm break-words",
-        message.role === "user"
-          ? "bg-primary text-primary-foreground"
-          : "bg-secondary text-secondary-foreground",
-        message.isThinking && "italic text-muted-foreground"
-      )}
-    >
-      {message.isThinking ? (
-        <div className="flex items-center gap-2">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          {typeof message.content === "string"
-            ? message.content
-            : "Processing..."}
-        </div>
-      ) : typeof message.content === "string" ? (
-        message.content
-      ) : (
-        JSON.stringify(message.content)
-      )}
-
-      {message.imageUrl && (
-        <img
-          src={message.imageUrl}
-          alt="Message attachment"
-          className="mt-2 rounded-md max-w-full h-auto"
-        />
-      )}
-    </div>
-
-    {message.role === "user" && (
-      <Avatar className="h-8 w-8 shrink-0">
-        <AvatarFallback>
-          <User size={18} />
-        </AvatarFallback>
-      </Avatar>
-    )}
-  </motion.div>
-);
-
-/**
- * SelectedItemIndicator component
- */
-interface SelectedItemIndicatorProps {
-  itemId: string | null;
-  itemType: string | null;
-  itemLabel: string | null;
-  onClearSelection: () => void;
-}
-
-const SelectedItemIndicator: React.FC<SelectedItemIndicatorProps> = ({
-  itemId,
-  itemType,
-  itemLabel,
-  onClearSelection,
-}) => {
-  if (!itemId) return null;
-
-  return (
-    <div className="p-2 border-t border-border bg-background/80 text-xs text-muted-foreground flex items-center gap-2 justify-center shrink-0">
-      <Pencil size={14} className="text-primary shrink-0" />
-      <span>
-        Editing:{" "}
-        <span className="font-medium text-foreground">
-          {(itemLabel || "Item")?.substring(0, 20)}
-        </span>{" "}
-        ({itemType})
-      </span>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-5 w-5 ml-auto"
-        onClick={onClearSelection}
-        title="Clear selection"
-      >
-        <X size={14} />
-        <span className="sr-only">Clear Selection</span>
-      </Button>
-    </div>
-  );
-};
-
-/**
- * InputForm component
- */
-interface InputFormProps {
-  input: string;
-  setInput: (input: string) => void;
-  isLoading: boolean;
-  isProjectLoading: boolean;
-  placeholderText: string;
-  onSubmit: (e: React.FormEvent) => void;
-}
-
-const InputForm: React.FC<InputFormProps> = ({
-  input,
-  setInput,
-  isLoading,
-  isProjectLoading,
-  placeholderText,
-  onSubmit,
-}) => (
-  <form
-    onSubmit={onSubmit}
-    className="p-3 border-t border-border bg-background/80 flex items-center gap-2 shrink-0"
-  >
-    <Input
-      value={input}
-      onChange={(e) => setInput(e.target.value)}
-      placeholder={placeholderText}
-      className="flex-grow bg-input focus-visible:ring-primary text-sm"
-      disabled={isLoading || isProjectLoading}
-      aria-label="Chat input"
-    />
-    <Button
-      type="submit"
-      size="icon"
-      disabled={isLoading || isProjectLoading || !input.trim()}
-      className="bg-primary hover:bg-primary/90 shrink-0"
-    >
-      {isLoading || isProjectLoading ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
-      ) : (
-        <SendHorizonal className="h-4 w-4" />
-      )}
-      <span className="sr-only">Send</span>
-    </Button>
-  </form>
-);
-/**
- * Main Chatbox component
- */
-export default function Chatbox() {
-  // Store hooks
+export default function EnhancedChatbox() {
   const { id } = useParams();
-  const { nodes } = useVisualEditorStore();
-  const [messages, setMessages] = useState<Message[]>([]);
-  const projectLoading = !nodes.length;
-  const selectedFlowNode = useVisualEditorStore((state) => state.selectedNode);
-  const clearFlowNodeSelection = useVisualEditorStore(
-    (state) => state.setSelectedNode
-  );
-
-  // State
+  const { toast } = useToast();
+  const { nodes, selectedNode, setSelectedNode } = useVisualEditorStore();
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [isMinimized, setIsMinimized] = useState(false);
-  const [dimensions, setDimensions] = useState({
-    width: DEFAULT_WIDTH,
-    height: MIN_HEIGHT,
-  });
+  const messagesEndRef = useRef(null);
+  const projectLoading = !nodes.length;
 
-  // Refs
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const chatboxRef = useRef<HTMLDivElement>(null);
-
-  // Utilities
-  const { toast } = useToast();
-
-  // Derived state
-  const selectedItemId = selectedFlowNode?.id ?? null;
-  const selectedItemType = selectedFlowNode?.data?.type ?? null;
-  const selectedItemLabel = selectedFlowNode?.data?.label || null;
-
+  // Load messages from localStorage
   useEffect(() => {
-    const storedMessages =
-      (JSON.parse(
-        localStorage.getItem("messages") || JSON.stringify([])
-      ) as Message[]) || [];
-    setMessages(storedMessages);
+    const savedMessages = localStorage.getItem("manga-chat-messages");
+    if (savedMessages) {
+      setMessages(JSON.parse(savedMessages));
+    } else {
+      setMessages([
+        {
+          id: Date.now(),
+          role: "assistant",
+          content:
+            "Hello! I'm your AI manga assistant. How can I help with your project today?",
+          timestamp: new Date().toISOString(),
+        },
+      ]);
+    }
   }, []);
 
-  /**
-   * Handle scrolling to bottom of chat
-   */
+  // Auto-scroll to bottom
   const scrollToBottom = useCallback(() => {
-    setTimeout(() => {
-      if (scrollAreaRef.current) {
-        scrollAreaRef.current.scrollTo({
-          top: scrollAreaRef.current.scrollHeight,
-          behavior: "smooth",
-        });
-      }
-    }, 50);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
-  /**
-   * Scroll to bottom when messages change
-   */
   useEffect(() => {
-    if (!isMinimized && messages.length > 0) {
-      scrollToBottom();
-    }
-  }, [messages, isMinimized, scrollToBottom]);
-
-  const processUserInput = async (userInput: string) => {
-    setIsLoading(true);
-
     scrollToBottom();
-    let finalResponse: Message | null = null;
+  }, [messages, scrollToBottom]);
 
-    try {
-      const res = await ProcessMangaRequestFlow({
-        userInput,
-        selectedNode: selectedFlowNode
-          ? {
-              id: selectedItemId,
-              type: selectedItemType,
-              date: selectedFlowNode.data,
-            }
-          : undefined,
-        projectId: id as string,
-      });
-      finalResponse = {
-        role: "assistant",
-        content: res.message,
-      };
-    } catch (error: any) {
-      console.error("Chatbox: Error calling processUserPrompt flow:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : "An unknown error occurred.";
-
-      toast({
-        title: "AI Error",
-        description: `Failed to process request: ${errorMessage}`,
-        variant: "destructive",
-      });
-
-      finalResponse = {
-        role: "assistant",
-        content: `Sorry, I encountered an error: ${errorMessage}`,
-      };
-    } finally {
-      if (finalResponse) {
-        localStorage.setItem(
-          "messages",
-          JSON.stringify([...messages, finalResponse as Message])
-        );
-        setMessages((prev) => [...prev, finalResponse as Message]);
-      }
-      setIsLoading(false);
-      scrollToBottom();
-    }
-  };
-
-  const handleSend = async (e: React.FormEvent) => {
+  // Handle sending messages
+  const handleSend = async (e) => {
     e.preventDefault();
     if (!input.trim() || isLoading || projectLoading) return;
 
-    // Maximize chat if minimized
-    if (isMinimized) {
-      setIsMinimized(false);
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    }
-
     // Add user message
-    const userMessage: Message = {
+    const userMessage = {
+      id: Date.now(),
       role: "user",
       content: input,
+      timestamp: new Date().toISOString(),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     setInput("");
-    scrollToBottom();
+    setIsLoading(true);
 
-    // Process the input
-    await processUserInput(input);
-  };
+    try {
+      // Process AI response
+      const response = await ProcessMangaRequestFlow({
+        userInput: input,
+        selectedNode: selectedNode
+          ? {
+              id: selectedNode.id,
+              type: selectedNode.data.type,
+              date: selectedNode.data,
+            }
+          : undefined,
+        projectId: id,
+      });
 
-  const handleClearSelection = () => {
-    clearFlowNodeSelection(null);
-  };
+      // Add AI response
+      const aiMessage = {
+        id: Date.now() + 1,
+        role: "assistant",
+        content: response.message,
+        timestamp: new Date().toISOString(),
+      };
 
-  const getPlaceholderText = () => {
-    if (projectLoading) {
-      return "Loading project context...";
+      const finalMessages = [...updatedMessages, aiMessage];
+      setMessages(finalMessages);
+      localStorage.setItem(
+        "manga-chat-messages",
+        JSON.stringify(finalMessages)
+      );
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to get AI response",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
-
-    if (selectedItemId) {
-      return `Editing ${selectedItemType} "${selectedItemLabel?.substring(
-        0,
-        20
-      )}..."`;
-    }
-
-    return "Ask AI to create, edit, or describe manga elements...";
   };
 
-  const placeholderText = getPlaceholderText();
+  // Clear selected node
+  const clearSelection = () => {
+    setSelectedNode(null);
+  };
+
   return (
-    <TooltipProvider>
-      <motion.div
-        ref={chatboxRef}
-        className={cn(
-          "bg-card border border-border rounded-lg shadow-xl overflow-hidden flex flex-col backdrop-blur-sm bg-opacity-95 dark:bg-opacity-80",
-          "resizable-chat",
-          "max-h-[80vh]"
-        )}
-        style={{
-          width: `${dimensions.width}px`,
-          height: isMinimized ? `${HEADER_HEIGHT}px` : `${dimensions.height}px`,
-          minWidth: "300px",
-          minHeight: `${HEADER_HEIGHT}px`,
-          position: "absolute",
-          resize: isMinimized ? "none" : "both",
-          overflow: "hidden",
-        }}
-        animate={{
-          height: isMinimized ? HEADER_HEIGHT : dimensions.height,
-          transition: { type: "spring", stiffness: 300, damping: 30 },
-        }}
-      >
-        {/* Header */}
-        <ChatboxHeader
-          isMinimized={isMinimized}
-          onToggleMinimize={() => setIsMinimized(!isMinimized)}
-        />
-
-        {/* Content Area */}
-        {!isMinimized && (
-          <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-            {/* Message Area */}
-            <ScrollArea
-              className="flex-1 p-4 overflow-y-auto"
-              ref={scrollAreaRef}
-            >
-              <AnimatePresence>
-                {messages.map((message, i) => (
-                  <MessageItem key={i} message={message} />
-                ))}
-                {isLoading && (
-                  <MessageItem
-                    message={{
-                      role: "assistant",
-                      isThinking: true,
-                      content: THINKING_MESSAGE,
-                    }}
-                  />
-                )}
-              </AnimatePresence>
-            </ScrollArea>
-
-            {/* Selected Item Indicator */}
-            <SelectedItemIndicator
-              itemId={selectedItemId}
-              itemType={selectedItemType}
-              itemLabel={selectedItemLabel}
-              onClearSelection={handleClearSelection}
-            />
-
-            {/* Input Area */}
-            <InputForm
-              input={input}
-              setInput={setInput}
-              isLoading={isLoading}
-              isProjectLoading={projectLoading}
-              placeholderText={placeholderText}
-              onSubmit={handleSend}
-            />
+    <div className="flex flex-col h-full bg-white dark:bg-gray-900">
+      {/* Header */}
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm">
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+              <Bot className="w-5 h-5 text-white" />
+            </div>
+            <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white dark:border-gray-900"></div>
           </div>
+          <div>
+            <h2 className="font-semibold text-gray-900 dark:text-white">
+              Manga AI Assistant
+            </h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Ready to help with your project
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Selected Node Indicator */}
+      {selectedNode && (
+        <div className="px-4 py-2 bg-blue-50 dark:bg-blue-900/30 border-b border-blue-100 dark:border-blue-800 flex items-center gap-2">
+          <div className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-800 flex items-center justify-center">
+            <Sparkles className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+          </div>
+          <span className="text-sm text-blue-800 dark:text-blue-200 truncate flex-1">
+            Editing: {selectedNode.data.label}
+          </span>
+          <button
+            onClick={clearSelection}
+            className="p-1 rounded-full hover:bg-blue-100 dark:hover:bg-blue-800/50"
+          >
+            <X className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+          </button>
+        </div>
+      )}
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <AnimatePresence>
+          {messages.map((message) => (
+            <motion.div
+              key={message.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
+              className={`flex gap-3 ${
+                message.role === "user" ? "justify-end" : "justify-start"
+              }`}
+            >
+              {message.role === "assistant" && (
+                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex-shrink-0 flex items-center justify-center">
+                  <Bot className="w-4 h-4 text-white" />
+                </div>
+              )}
+
+              <div
+                className={`max-w-[80%] rounded-xl p-3 ${
+                  message.role === "user"
+                    ? "bg-blue-600 text-white"
+                    : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm"
+                }`}
+              >
+                <p className="text-sm dark:text-gray-100">{message.content}</p>
+              </div>
+
+              {message.role === "user" && (
+                <div className="w-8 h-8 rounded-full bg-gray-700 flex-shrink-0 flex items-center justify-center">
+                  <User className="w-4 h-4 text-white" />
+                </div>
+              )}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+
+        {isLoading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex gap-3 justify-start"
+          >
+            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex-shrink-0 flex items-center justify-center">
+              <Bot className="w-4 h-4 text-white" />
+            </div>
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 shadow-sm">
+              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                <div className="w-3 h-3 rounded-full border-2 border-blue-500 dark:border-blue-400 border-t-transparent animate-spin"></div>
+                Thinking...
+              </div>
+            </div>
+          </motion.div>
         )}
-      </motion.div>
-    </TooltipProvider>
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input */}
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm">
+        <form onSubmit={handleSend} className="flex gap-2">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder={
+              projectLoading
+                ? "Loading project..."
+                : selectedNode
+                ? `Ask about ${selectedNode.data.label}...`
+                : "Ask about your manga project..."
+            }
+            className="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-500 dark:focus:border-blue-500 outline-none transition-all bg-white dark:bg-gray-800 dark:text-white"
+            disabled={isLoading || projectLoading}
+          />
+          <button
+            type="submit"
+            disabled={!input.trim() || isLoading || projectLoading}
+            className="w-10 h-10 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 text-white flex items-center justify-center disabled:opacity-50 transition-all hover:shadow-md"
+          >
+            <Send className="w-4 h-4" />
+          </button>
+        </form>
+      </div>
+    </div>
   );
-}
-
-/**
- * Utility function to build a manga context tree from flow nodes and edges
- */
-type TreeNode = Node<NodeData> & { children: TreeNode[] };
-
-export function buildMangaContextTree(nodes: Node<NodeData>[], edges: Edge[]) {
-  const nodeMap = new Map<string, TreeNode>();
-
-  // Initialize map with empty children arrays
-  for (const node of nodes) {
-    nodeMap.set(node.id, { ...node, children: [] });
-  }
-
-  // Populate parent → child relationships
-  for (const edge of edges) {
-    const parent = nodeMap.get(edge.source);
-    const child = nodeMap.get(edge.target);
-    if (parent && child) {
-      parent.children.push(child);
-    }
-  }
-
-  // Find root project node (not a target of any edge)
-  const allTargetIds = new Set(edges.map((e) => e.target));
-  const root = nodes.find(
-    (n) => !allTargetIds.has(n.id) && n.data.type === "project"
-  );
-
-  if (!root) throw new Error("No root project node found");
-
-  const buildTree = (node: TreeNode): any => {
-    const base = {
-      id: node.id,
-      type: node.data.type,
-      label: node.data.label,
-      properties: node.data.properties,
-    };
-
-    switch (node.data.type) {
-      case "project":
-        return { ...base, chapters: node.children.map(buildTree) };
-      case "chapter":
-        return { ...base, scenes: node.children.map(buildTree) };
-      case "scene":
-        return { ...base, panels: node.children.map(buildTree) };
-      case "panel":
-        return { ...base, dialogues: node.children.map(buildTree) };
-      case "dialogue":
-        return base;
-      case "character":
-        return null; // Optional handling
-      default:
-        return base;
-    }
-  };
-
-  return buildTree(nodeMap.get(root.id)!);
 }

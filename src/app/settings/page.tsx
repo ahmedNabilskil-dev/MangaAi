@@ -23,6 +23,7 @@ import {
   Save,
   Settings,
   Settings2,
+  Shield,
   Sparkles,
   Text,
 } from "lucide-react";
@@ -97,6 +98,13 @@ const SettingsPage = () => {
             isActive={true}
             isSidebarOpen={isSidebarOpen}
             href="/settings"
+          />
+          <SidebarItem
+            icon={<Shield className="h-5 w-5" />}
+            text="Terms"
+            isActive={false}
+            isSidebarOpen={isSidebarOpen}
+            href="/terms"
           />
         </nav>
 

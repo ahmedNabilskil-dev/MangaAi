@@ -1,10 +1,13 @@
 "use client";
 
 import { layoutElements } from "@/lib/layout-utils";
+import { getProjectWithRelations } from "@/services/db";
 import { useVisualEditorStore } from "@/store/visual-editor-store";
-import type { MangaProject } from "@/types/entities"; // Import entity types
+import type { MangaProject } from "@/types/entities";
 import { type NodeData, NodeType } from "@/types/nodes";
 import * as d3 from "d3";
+import { useLiveQuery } from "dexie-react-hooks";
+import { useParams } from "next/navigation";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import ReactFlow, {
   addEdge,
@@ -20,18 +23,11 @@ import ReactFlow, {
   type OnConnect,
   type OnEdgesChange,
   type OnNodesChange,
-  ReactFlowProvider,
   useReactFlow,
 } from "reactflow";
 import "reactflow/dist/style.css";
-import { CustomNode } from "./custom-node"; // Import the new custom node
-// Import specific function from the abstract data service
-import { SideNav } from "@/components/sidenav/SideNav";
-import { getProjectWithRelations } from "@/services/db";
-import { useLiveQuery } from "dexie-react-hooks"; // Import Dexie hook
-import { useParams } from "next/navigation";
+import { CustomNode } from "./custom-node";
 
-// Use the new CustomNode for all types
 const nodeTypes: NodeTypes = {
   project: CustomNode,
   chapter: CustomNode,
@@ -53,29 +49,71 @@ const defaultEdgeOptions: DefaultEdgeOptions = {
     strokeWidth: 1.5,
     stroke: "hsl(var(--border))",
   },
-  type: "smoothstep", // Use smoothstep for potentially better routing visually
+  type: "smoothstep",
 };
 
-export function transformProjectToFlow(project: MangaProject | null): {
+// Helper function to create a unique key for comparison
+function createNodeKey(node: any, type: NodeType): string {
+  switch (type) {
+    case "project":
+      return `project-${node.id}-${node.title}-${node.updatedAt || ""}`;
+    case "chapter":
+      return `chapter-${node.id}-${node.title}-${node.chapterNumber}-${
+        node.updatedAt || ""
+      }`;
+    case "scene":
+      return `scene-${node.id}-${node.title}-${node.updatedAt || ""}`;
+    case "panel":
+      return `panel-${node.id}-${node.order}-${node.updatedAt || ""}`;
+    case "dialogue":
+      return `dialogue-${node.id}-${node.order}-${node.text || ""}-${
+        node.updatedAt || ""
+      }`;
+    case "character":
+      return `character-${node.id}-${node.name}-${node.updatedAt || ""}`;
+    default:
+      return `${type}-${node.id}`;
+  }
+}
+
+// Enhanced transformation function that preserves positions
+export function transformProjectToFlowOptimized(
+  project: MangaProject | null,
+  existingNodes: Node<NodeData>[] = []
+): {
   nodes: Node<NodeData>[];
   edges: Edge[];
+  hasStructuralChanges: boolean;
 } {
   if (!project) {
-    console.warn("transformProjectToFlow called with null project.");
-    return { nodes: [], edges: [] };
+    return { nodes: [], edges: [], hasStructuralChanges: true };
   }
 
-  // Define dynamic node dimensions based on node type
+  // Create a map of existing positions and data
+  const existingPositions = new Map<
+    string,
+    { x: number; y: number; key: string }
+  >();
+  const existingNodeKeys = new Map<string, string>();
+
+  existingNodes.forEach((node) => {
+    existingPositions.set(node.id, {
+      x: node.position.x,
+      y: node.position.y,
+      key: node.data.dataKey || "",
+    });
+    existingNodeKeys.set(node.id, node.data.dataKey || "");
+  });
+
   const nodeDimensions: Record<NodeType, { width: number; height: number }> = {
     project: { width: 320, height: 350 },
     chapter: { width: 300, height: 320 },
     scene: { width: 300, height: 280 },
     panel: { width: 280, height: 260 },
     dialogue: { width: 260, height: 220 },
-    character: { width: 280, height: 380 }, // Characters often have images
+    character: { width: 280, height: 380 },
   };
 
-  // First create a flat list of all nodes with hierarchy information
   const hierarchyNodes: Array<{
     id: string;
     parentId: string | null;
@@ -83,9 +121,11 @@ export function transformProjectToFlow(project: MangaProject | null): {
     label: string;
     properties: any;
     depth: number;
+    dataKey: string;
   }> = [];
 
-  // Add project node
+  // Build hierarchy with data keys for change detection
+  const projectKey = createNodeKey(project, "project");
   hierarchyNodes.push({
     id: project.id,
     parentId: null,
@@ -93,22 +133,26 @@ export function transformProjectToFlow(project: MangaProject | null): {
     label: project.title,
     properties: project,
     depth: 0,
+    dataKey: projectKey,
   });
 
-  // Add characters (positioned separately)
+  // Add characters
   (project.characters ?? []).forEach((character) => {
+    const charKey = createNodeKey(character, "character");
     hierarchyNodes.push({
       id: character.id,
-      parentId: null, // Characters will be positioned separately
+      parentId: null,
       type: "character",
       label: character.name,
       properties: character,
       depth: 1,
+      dataKey: charKey,
     });
   });
 
   // Add chapters and their children
   (project.chapters ?? []).forEach((chapter) => {
+    const chapterKey = createNodeKey(chapter, "chapter");
     hierarchyNodes.push({
       id: chapter.id,
       parentId: project.id,
@@ -116,9 +160,11 @@ export function transformProjectToFlow(project: MangaProject | null): {
       label: `Ch. ${chapter.chapterNumber}: ${chapter.title}`,
       properties: chapter,
       depth: 1,
+      dataKey: chapterKey,
     });
 
     (chapter.scenes ?? []).forEach((scene) => {
+      const sceneKey = createNodeKey(scene, "scene");
       hierarchyNodes.push({
         id: scene.id,
         parentId: chapter.id,
@@ -126,9 +172,11 @@ export function transformProjectToFlow(project: MangaProject | null): {
         label: scene.title,
         properties: scene,
         depth: 2,
+        dataKey: sceneKey,
       });
 
       (scene.panels ?? []).forEach((panel) => {
+        const panelKey = createNodeKey(panel, "panel");
         hierarchyNodes.push({
           id: panel.id,
           parentId: scene.id,
@@ -136,9 +184,11 @@ export function transformProjectToFlow(project: MangaProject | null): {
           label: `Panel ${panel.order + 1}`,
           properties: panel,
           depth: 3,
+          dataKey: panelKey,
         });
 
         (panel.dialogues ?? []).forEach((dialogue) => {
+          const dialogueKey = createNodeKey(dialogue, "dialogue");
           hierarchyNodes.push({
             id: dialogue.id,
             parentId: panel.id,
@@ -146,25 +196,42 @@ export function transformProjectToFlow(project: MangaProject | null): {
             label: `Dialogue ${dialogue.order + 1}`,
             properties: dialogue,
             depth: 4,
+            dataKey: dialogueKey,
           });
         });
       });
     });
   });
 
-  // Create D3 hierarchy for the main story tree (excluding characters)
+  // Check for structural changes
+  const currentNodeIds = new Set(hierarchyNodes.map((n) => n.id));
+  const existingNodeIds = new Set(existingNodes.map((n) => n.id));
+
+  // Check if we have new nodes, deleted nodes, or data changes
+  const hasNewNodes = hierarchyNodes.some((n) => !existingNodeIds.has(n.id));
+  const hasDeletedNodes = existingNodes.some((n) => !currentNodeIds.has(n.id));
+  const hasDataChanges = hierarchyNodes.some((n) => {
+    const existingKey = existingNodeKeys.get(n.id);
+    return existingKey && existingKey !== n.dataKey;
+  });
+
+  const hasStructuralChanges = hasNewNodes || hasDeletedNodes || hasDataChanges;
+
+  // Only recalculate layout if there are structural changes or no existing positions
+  let shouldRecalculateLayout =
+    hasStructuralChanges || existingNodes.length === 0;
+
+  // Generate initial positions using D3 layout
   const storyNodes = hierarchyNodes.filter((n) => n.type !== "character");
   const root = d3
     .stratify<(typeof storyNodes)[0]>()
     .id((d) => d.id)
     .parentId((d) => d.parentId)(storyNodes);
 
-  // Calculate tree layout with proper spacing
   const margin = { top: 50, right: 120, bottom: 150, left: 120 };
-
   const treeLayout = d3
     .tree<(typeof storyNodes)[0]>()
-    .nodeSize([400, 350]) // [width, height] spacing between nodes - swapped for vertical layout
+    .nodeSize([400, 350])
     .separation((a, b) => {
       const baseSeparation = a.depth === b.depth ? 1.2 : 1.5;
       if (a.data.type === "project" || b.data.type === "project") {
@@ -176,41 +243,44 @@ export function transformProjectToFlow(project: MangaProject | null): {
       return baseSeparation;
     });
 
-  // Get the tree data
   const treeData = treeLayout(root);
 
-  // For top-to-bottom layout, we keep x and y as they are
-  // No coordinate swapping needed for vertical layout
-
-  // Position characters in a row at the top
+  // Character positioning
   const characterNodes = hierarchyNodes.filter((n) => n.type === "character");
-
-  // Calculate the top position for characters
   const characterStartX = margin.left;
   const characterStartY = margin.top;
   const characterColumnWidth = nodeDimensions.character.width + 80;
   const charactersPerRow = 3;
 
-  // Convert to ReactFlow nodes with calculated positions
   const nodes: Node<NodeData>[] = [];
   const edges: Edge[] = [];
 
-  // Add story nodes with dynamic sizing based on node type
+  // Create nodes, preserving existing positions when possible
   treeData.descendants().forEach((d) => {
     const nodeType = d.data.type as NodeType;
     const { width, height } = nodeDimensions[nodeType];
+    const existingPos = existingPositions.get(d.id!);
+    const currentDataKey = d.data.dataKey;
+
+    // Use existing position if node exists and data hasn't changed, otherwise use calculated position
+    const shouldUseExistingPos =
+      existingPos &&
+      existingPos.key === currentDataKey &&
+      !shouldRecalculateLayout;
+
+    const position = shouldUseExistingPos
+      ? { x: existingPos.x, y: existingPos.y }
+      : { x: d.x - width / 2, y: d.y };
 
     nodes.push({
       id: d.id!,
       type: d.data.type,
-      position: {
-        x: d.x - width / 2, // Center node horizontally
-        y: d.y,
-      },
+      position,
       data: {
         label: d.data.label,
         type: d.data.type,
         properties: d.data.properties,
+        dataKey: currentDataKey, // Store the data key for future comparisons
       },
       style: {
         width,
@@ -219,7 +289,6 @@ export function transformProjectToFlow(project: MangaProject | null): {
     });
 
     if (d.parent && d.data.type !== "character") {
-      // Skip character connections
       edges.push({
         id: `e-${d.parent.id}-${d.id}`,
         source: d.parent.id!,
@@ -230,23 +299,35 @@ export function transformProjectToFlow(project: MangaProject | null): {
     }
   });
 
-  // Add character nodes in a horizontal row at the top
+  // Add character nodes
   characterNodes.forEach((char, i) => {
     const row = Math.floor(i / charactersPerRow);
     const col = i % charactersPerRow;
     const { width, height } = nodeDimensions.character;
+    const existingPos = existingPositions.get(char.id);
+    const currentDataKey = char.dataKey;
+
+    const shouldUseExistingPos =
+      existingPos &&
+      existingPos.key === currentDataKey &&
+      !shouldRecalculateLayout;
+
+    const position = shouldUseExistingPos
+      ? { x: existingPos.x, y: existingPos.y }
+      : {
+          x: characterStartX + col * characterColumnWidth,
+          y: characterStartY + row * (height + 50),
+        };
 
     nodes.push({
       id: char.id,
       type: char.type,
-      position: {
-        x: characterStartX + col * characterColumnWidth,
-        y: characterStartY + row * (height + 50),
-      },
+      position,
       data: {
         label: char.label,
         type: char.type,
         properties: char.properties,
+        dataKey: currentDataKey,
       },
       style: {
         width,
@@ -255,66 +336,60 @@ export function transformProjectToFlow(project: MangaProject | null): {
     });
   });
 
-  // Calculate the bounding box to center the layout (excluding characters)
-  const storyNodeX = nodes
-    .filter((n) => n.type !== "character")
-    .map((n) => n.position.x);
-  const storyNodeY = nodes
-    .filter((n) => n.type !== "character")
-    .map((n) => n.position.y);
-  const minX = Math.min(...storyNodeX);
-  const maxX = Math.max(...storyNodeX);
-  const minY = Math.min(...storyNodeY);
+  // Only apply layout offset if we're recalculating layout
+  if (shouldRecalculateLayout) {
+    const storyNodePositions = nodes
+      .filter((n) => n.type !== "character")
+      .map((n) => n.position);
 
-  // Calculate character grid height
-  const characterRowCount = Math.ceil(characterNodes.length / charactersPerRow);
-  const characterAreaHeight =
-    characterRowCount * (nodeDimensions.character.height + 50);
+    if (storyNodePositions.length > 0) {
+      const minX = Math.min(...storyNodePositions.map((p) => p.x));
+      const minY = Math.min(...storyNodePositions.map((p) => p.y));
 
-  // Apply offset for centered layout with more space between character grid and project nodes
-  const offsetX = -minX + margin.left;
-  const offsetY = -minY + margin.top + characterAreaHeight + 150; // Extra gap between characters and project
+      const characterRowCount = Math.ceil(
+        characterNodes.length / charactersPerRow
+      );
+      const characterAreaHeight =
+        characterRowCount * (nodeDimensions.character.height + 50);
 
-  // Apply final positioning (only to story nodes)
-  nodes.forEach((node) => {
-    if (node.type !== "character") {
-      node.position.x += offsetX;
-      node.position.y += offsetY;
+      const offsetX = -minX + margin.left;
+      const offsetY = -minY + margin.top + characterAreaHeight + 150;
+
+      // Apply offset only to story nodes
+      nodes.forEach((node) => {
+        if (node.type !== "character") {
+          node.position.x += offsetX;
+          node.position.y += offsetY;
+        }
+      });
     }
-  });
+  }
 
-  return { nodes, edges };
+  return { nodes, edges, hasStructuralChanges };
 }
 
-// --- Main Component ---
 function VisualEditorInternal() {
   const { id } = useParams();
   const {
-    nodes: storeNodes, // Rename store state to avoid conflict
+    nodes: storeNodes,
     edges: storeEdges,
     setNodes,
     setEdges,
     setSelectedNode,
-    refreshCounter, // Use counter to trigger data refresh
     setViewportInitialized,
     viewportInitialized,
-    refreshFlowData, // Get the refresh trigger
   } = useVisualEditorStore();
 
   const { fitView } = useReactFlow();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const isInitialLayoutDone = useRef(false); // Track if initial layout applied
+  const isInitialLayoutDone = useRef(false);
+  const lastProjectDataRef = useRef<MangaProject | null>(null);
 
-  // --- Use useLiveQuery to observe Dexie data ---
-  // This automatically updates when the underlying Dexie data changes
   const projectData = useLiveQuery(async () => {
-    setIsLoading(true); // Set loading state when query starts
-    setError(null);
-    isInitialLayoutDone.current = false; // Reset layout flag on each refresh
     try {
-      const project = await getProjectWithRelations(id as string); // Fetch using abstract service (which uses Dexie)
+      const project = await getProjectWithRelations(id as string);
       if (!project) {
         setError("No project found or error loading project.");
         return null;
@@ -325,73 +400,93 @@ function VisualEditorInternal() {
         `Error loading project data: ${err.message || "Failed to fetch"}`
       );
       return null;
-    } finally {
-      setIsLoading(false);
     }
-  }, []);
+  }, [id]);
 
   useEffect(() => {
-    if (projectData && !isLoading) {
-      const { nodes: initialNodes, edges: initialEdges } =
-        transformProjectToFlow(projectData);
-
-      // Apply layout only if nodes exist and initial layout isn't done
-      if (initialNodes.length > 0 && !isInitialLayoutDone.current) {
-        const layoutEdges = initialEdges.filter((edge) => !edge.data?.noLayout);
-        const { nodes: layoutedNodes, edges: _ } = layoutElements(
-          initialNodes,
-          layoutEdges
-        ); // Use layout utility
-        setNodes(layoutedNodes);
-        setEdges(initialEdges); // Keep original edges (including noLayout ones) for rendering
-        isInitialLayoutDone.current = true; // Mark initial layout as done
-
-        // Fit view after initial layout
-        const timer = setTimeout(() => {
-          if (!viewportInitialized) {
-            fitView({ padding: 0.2, duration: 600 });
-            setViewportInitialized(true);
-          }
-        }, 200); // Increased delay slightly
-        return () => clearTimeout(timer);
-      } else if (isInitialLayoutDone.current) {
-        // If layout already done, just update store nodes/edges if project data changed
-        // This avoids re-running layout unnecessarily after minor updates triggered by refresh
-
-        setNodes(initialNodes);
-        setEdges(initialEdges);
-      } else if (initialNodes.length === 0) {
-        setNodes([]);
-        setEdges([]);
-      }
-    } else if (!isLoading && !error && projectData === null) {
-      setNodes([]);
-      setEdges([]);
-      isInitialLayoutDone.current = false;
+    if (!projectData) {
+      setIsLoading(!error);
+      return;
     }
+
+    setIsLoading(false);
+    setError(null);
+
+    // Transform project data with position preservation
+    const {
+      nodes: newNodes,
+      edges: newEdges,
+      hasStructuralChanges,
+    } = transformProjectToFlowOptimized(projectData, storeNodes);
+
+    // Only update if there are actual changes
+    if (hasStructuralChanges || storeNodes.length === 0) {
+      // Apply layout only to new nodes if needed
+      if (
+        newNodes.length > 0 &&
+        (!isInitialLayoutDone.current || hasStructuralChanges)
+      ) {
+        const layoutEdges = newEdges.filter((edge) => !edge.data?.noLayout);
+
+        // Only apply layout to nodes that don't have preserved positions
+        const needsLayout =
+          hasStructuralChanges || !isInitialLayoutDone.current;
+
+        if (needsLayout) {
+          const { nodes: layoutedNodes } = layoutElements(
+            newNodes,
+            layoutEdges
+          );
+          setNodes(layoutedNodes);
+        } else {
+          setNodes(newNodes);
+        }
+
+        setEdges(newEdges);
+
+        if (!isInitialLayoutDone.current) {
+          isInitialLayoutDone.current = true;
+
+          // Fit view only on initial load
+          const timer = setTimeout(() => {
+            if (!viewportInitialized) {
+              fitView({ padding: 0.2, duration: 600 });
+              setViewportInitialized(true);
+            }
+          }, 200);
+          return () => clearTimeout(timer);
+        }
+      }
+    }
+
+    lastProjectDataRef.current = projectData;
   }, [
     projectData,
-    isLoading,
     error,
+    storeNodes,
     setNodes,
     setEdges,
     fitView,
     setViewportInitialized,
+    viewportInitialized,
   ]);
 
-  // --- Handlers remain mostly the same, using Zustand store ---
   const onNodesChange: OnNodesChange = useCallback(
     (changes) => {
-      // TODO: Persist node changes to Dexie (e.g., position changes)
-      // For now, just update the Zustand store visually
+      // Update positions immediately for smooth interaction
       setNodes(applyNodeChanges(changes, storeNodes));
+
+      // TODO: Debounce and persist position changes to backend
+      // const positionChanges = changes.filter(change => change.type === 'position');
+      // if (positionChanges.length > 0) {
+      //   debouncedSavePositions(positionChanges);
+      // }
     },
     [setNodes, storeNodes]
   );
 
   const onEdgesChange: OnEdgesChange = useCallback(
     (changes) => {
-      // TODO: Persist edge changes if needed (e.g., deletion)
       setEdges(applyEdgeChanges(changes, storeEdges));
     },
     [setEdges, storeEdges]
@@ -399,14 +494,10 @@ function VisualEditorInternal() {
 
   const onConnect: OnConnect = useCallback(
     (connection) => {
-      const newEdge = { ...connection, type: "smoothstep" }; // Ensure edge type
-      // TODO: Persist this new edge connection to Dexie if needed
-      // For now, just update the store visually
+      const newEdge = { ...connection, type: "smoothstep" };
       setEdges(addEdge(newEdge, storeEdges));
-      // Trigger layout refresh after connection?
-      // refreshFlowData(); // Uncomment if layout needs update after connection
     },
-    [setEdges, storeEdges, refreshFlowData] // Add refreshFlowData if needed
+    [setEdges, storeEdges]
   );
 
   const handleNodeClick = useCallback(
@@ -442,34 +533,32 @@ function VisualEditorInternal() {
       style={{ height: "100%", width: "100%", position: "relative" }}
     >
       <ReactFlow
-        nodes={storeNodes} // Use nodes from Zustand store for rendering
-        edges={storeEdges} // Use edges from Zustand store
+        nodes={storeNodes}
+        edges={storeEdges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        nodeTypes={nodeTypes} // Use custom nodes
+        nodeTypes={nodeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
-        fitView={false} // Fit view is handled by useEffect
+        fitView={false}
         fitViewOptions={{ padding: 0.2 }}
-        className="bg-gradient-to-br from-background to-blue-50/30 dark:to-blue-950/30" // Adjusted gradient for dark mode
+        className="bg-gradient-to-br from-background to-blue-50/30 dark:to-blue-950/30"
         onNodeClick={handleNodeClick}
         onPaneClick={handlePaneClick}
         selectNodesOnDrag={false}
-        // Improve performance slightly
-        nodesDraggable={true} // Allow dragging for manual adjustments
+        nodesDraggable={true}
         nodesConnectable={true}
         elementsSelectable={true}
         zoomOnScroll={true}
         panOnScroll={false}
         zoomOnDoubleClick={false}
         panOnDrag={true}
-        // Ensure nodes aren't positioned off-screen initially by layout
         minZoom={0.1}
         maxZoom={2}
         translateExtent={[
           [-Infinity, -Infinity],
           [Infinity, Infinity],
-        ]} // Allow panning anywhere initially
+        ]}
       >
         <Controls showInteractive={false} position="bottom-right" />
         <Background color="hsl(var(--border) / 0.3)" gap={24} size={1} />
@@ -478,14 +567,10 @@ function VisualEditorInternal() {
   );
 }
 
-// Wrap the internal component with ReactFlowProvider
 export default function VisualEditor() {
   return (
-    <ReactFlowProvider>
-      <div className="relative h-full w-full">
-        <SideNav />
-        <VisualEditorInternal />
-      </div>
-    </ReactFlowProvider>
+    <div className="relative h-full w-full">
+      <VisualEditorInternal />
+    </div>
   );
 }

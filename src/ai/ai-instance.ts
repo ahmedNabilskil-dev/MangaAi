@@ -5,6 +5,7 @@ import {
   TextGenerationParams,
   Tool,
 } from "@/ai/adapters/type";
+import { Content } from "@google/genai";
 
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
@@ -216,17 +217,14 @@ export class ChatEngine {
             })
           : undefined;
 
-        const outputSchemaWithout = removeProperty(
-          outputSchema,
-          "additionalProperties"
-        );
-
         // Merge contexts with priority: flowContext > config.context > global context
         const promptContext = {
           ...this.contextStore.getAll(),
           ...config.context,
           ...flowContext,
-          outputSchema: outputSchemaWithout,
+          outputSchema: outputSchema
+            ? removeProperty(outputSchema, "additionalProperties")
+            : undefined,
         };
 
         const prompt = renderTemplate(definition.prompt, {
@@ -250,7 +248,7 @@ export class ChatEngine {
 
         const result = output.at(-1)?.content;
 
-        return { output: result };
+        return { output: outputSchema ? JSON.parse(result) : result };
       } catch (error: any) {
         console.error(`Error in prompt ${definition.name}:`, error);
         return { output: null };
@@ -309,6 +307,16 @@ export class ChatEngine {
   ): Promise<Message[]> {
     return (await this.adapter?.send(messages, tools, params, toolCall)) || [];
   }
+
+  async generateImage({
+    prompt,
+    history,
+  }: {
+    prompt: string;
+    history: Content[];
+  }) {
+    return await this.adapter?.generateImage({ prompt, history });
+  }
 }
 
 /**
@@ -323,13 +331,68 @@ export function renderTemplate(
   template: string,
   data: Record<string, any>
 ): string {
-  // First, handle conditional blocks
-  let processedTemplate = processConditionalBlocks(template, data);
+  // First, handle each blocks (loops)
+  let processedTemplate = processEachBlocks(template, data);
 
-  // Then handle simple variable substitutions
+  // Then, handle conditional blocks
+  processedTemplate = processConditionalBlocks(processedTemplate, data);
+
+  // Finally, handle simple variable substitutions
   processedTemplate = processSimpleVariables(processedTemplate, data);
 
   return processedTemplate;
+}
+
+/**
+ * Process each blocks in the format {{#each array}}...{{/each}}
+ * Supports accessing array item properties and provides @index
+ */
+function processEachBlocks(
+  template: string,
+  data: Record<string, any>
+): string {
+  const eachRegex = /\{\{#each\s+([^\s}]+)\}\}([\s\S]*?)\{\{\/each\}\}/g;
+
+  return template.replace(eachRegex, (match, arrayPath, content) => {
+    const arrayValue = getNestedProperty(data, arrayPath.trim());
+
+    // If not an array or empty, return empty string
+    if (!Array.isArray(arrayValue) || arrayValue.length === 0) {
+      return "";
+    }
+
+    // Process each item in the array
+    return arrayValue
+      .map((item, index) => {
+        let itemContent = content;
+
+        // Create context data for this iteration
+        const itemContext = {
+          ...data, // Include parent context
+          ...item, // Include current item properties (for objects)
+          "@index": index, // Special @index variable
+          "@first": index === 0, // Special @first variable
+          "@last": index === arrayValue.length - 1, // Special @last variable
+        };
+
+        // If item is not an object, make it available as 'this'
+        if (typeof item !== "object" || item === null) {
+          itemContext["this"] = item;
+        }
+
+        // Process any nested each blocks first
+        itemContent = processEachBlocks(itemContent, itemContext);
+
+        // Process conditionals within this iteration
+        itemContent = processConditionalBlocks(itemContent, itemContext);
+
+        // Process variables within this iteration
+        itemContent = processSimpleVariables(itemContent, itemContext);
+
+        return itemContent;
+      })
+      .join("");
+  });
 }
 
 /**

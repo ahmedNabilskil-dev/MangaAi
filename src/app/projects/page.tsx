@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { getAllProjects } from "@/services/data-service";
+import { MangaProject } from "@/types/entities";
+import { MangaStatus } from "@/types/enums";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   BookMarked,
@@ -16,19 +19,22 @@ import {
   Search,
   Send,
   Settings,
+  Shield,
   Sparkles,
   X,
 } from "lucide-react";
 import Image from "next/image";
-import { useRef, useState } from "react";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 
 const ProjectsPage = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [mangaIdea, setMangaIdea] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [projects, setProjects] = useState<MangaProject[]>([]);
   const [activeFilters, setActiveFilters] = useState({
     genre: "",
     status: "",
@@ -40,81 +46,16 @@ const ProjectsPage = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
-  // Sample project data - replace with your actual data
-  const projects = [
-    {
-      id: "1",
-      title: "Cyberpunk Emotions",
-      description:
-        "A dystopian world where emotions are traded as black market commodities",
-      coverImage: "/images/projects/1.jpg",
-      genre: "Sci-Fi",
-      status: "In Progress",
-      likes: 124,
-      views: 856,
-      updatedAt: "2023-11-15",
-    },
-    {
-      id: "2",
-      title: "Samurai's Redemption",
-      description:
-        "A fallen warrior seeks redemption in a world of spirits and demons",
-      coverImage: "/images/projects/2.jpg",
-      genre: "Historical",
-      status: "Published",
-      likes: 342,
-      views: 2103,
-      updatedAt: "2023-10-28",
-    },
-    {
-      id: "3",
-      title: "Neon Yokai",
-      description:
-        "Modern Tokyo haunted by traditional spirits in neon-lit alleyways",
-      coverImage: "/images/projects/3.jpg",
-      genre: "Supernatural",
-      status: "Draft",
-      likes: 87,
-      views: 432,
-      updatedAt: "2023-11-05",
-    },
-    {
-      id: "4",
-      title: "Mecha High",
-      description:
-        "Teenagers pilot giant robots in competitive school tournaments",
-      coverImage: "/images/projects/4.avif",
-      genre: "Mecha",
-      status: "In Progress",
-      likes: 215,
-      views: 1201,
-      updatedAt: "2023-11-12",
-    },
-    {
-      id: "5",
-      title: "Spirit Chef",
-      description:
-        "A chef who can see food spirits creates dishes that heal souls",
-      coverImage: "/images/projects/5.jpg",
-      genre: "Slice of Life",
-      status: "Published",
-      likes: 178,
-      views: 943,
-      updatedAt: "2023-09-20",
-    },
-    {
-      id: "6",
-      title: "Quantum Ronin",
-      description:
-        "A time-displaced samurai navigates multiple historical periods",
-      coverImage: "/images/projects/6.jpg",
-      genre: "Historical",
-      status: "Draft",
-      likes: 63,
-      views: 301,
-      updatedAt: "2023-11-18",
-    },
-  ];
+  const fetchProjects = async () => {
+    setIsLoading(true);
+    const data = await getAllProjects();
+    setProjects(data);
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    fetchProjects();
+  }, []);
 
   // Extract unique genres and statuses for filters
   const genres = [...new Set(projects.map((project) => project.genre))];
@@ -229,6 +170,13 @@ const ProjectsPage = () => {
             isActive={false}
             isSidebarOpen={isSidebarOpen}
             href="/settings"
+          />
+          <SidebarItem
+            icon={<Shield className="h-5 w-5" />}
+            text="Terms"
+            isActive={false}
+            isSidebarOpen={isSidebarOpen}
+            href="/terms"
           />
         </nav>
 
@@ -418,22 +366,22 @@ const ProjectsPage = () => {
                     <Card className="bg-gray-900/80 backdrop-blur-md border-gray-700 overflow-hidden hover:shadow-lg hover:shadow-pink-500/20 transition-all h-full flex flex-col">
                       <div className="relative h-48 overflow-hidden">
                         <Image
-                          src={project.coverImage}
+                          src={project.coverImageUrl || "/images/hero-bg.png"}
                           alt={project.title}
                           fill
                           className="object-cover transition-transform duration-500 hover:scale-105"
                         />
                         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-4">
                           <div className="flex justify-between items-end">
-                            <h3 className="text-xl font-bold text-white">
-                              {project.title}
-                            </h3>
+                            <Link href={`/manga-flow/${project.id}`}>
+                              <h3 className="text-xl font-bold text-white">
+                                {project.title}
+                              </h3>
+                            </Link>
                             <span
                               className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                project.status === "Published"
+                                project.status === MangaStatus.PUBLISHED
                                   ? "bg-green-500/20 text-green-400"
-                                  : project.status === "In Progress"
-                                  ? "bg-blue-500/20 text-blue-400"
                                   : "bg-gray-500/20 text-gray-400"
                               }`}
                             >
@@ -458,12 +406,12 @@ const ProjectsPage = () => {
                         <div className="flex items-center gap-4 text-sm text-gray-400">
                           <span className="flex items-center gap-1">
                             <Sparkles className="h-3 w-3 text-pink-400" />
-                            {project.likes} likes
+                            {project.likeCount} likes
                           </span>
-                          <span>{project.views} views</span>
+                          <span>{project.viewCount} views</span>
                         </div>
                         <div className="text-xs text-gray-500">
-                          Updated: {project.updatedAt}
+                          Updated: {new Date(project.updatedAt)?.toDateString()}
                         </div>
                       </CardFooter>
                     </Card>

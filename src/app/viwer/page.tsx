@@ -1672,4 +1672,4 @@ const DetailBlockWithTags = ({
   </div>
 );
 
-export default SceneViewerDialog;
+export default PanelViewerDialog;

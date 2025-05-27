@@ -6,17 +6,22 @@ import {
   SceneGenerationPrompt,
 } from "@/ai/flows/generation-flows";
 import {
+  GenerateCharacterImage,
+  GeneratePanelImage,
+} from "@/ai/flows/image-genration";
+import {
   ChapterUpdatePrompt,
   CharacterUpdatePrompt,
   DialogueUpdatePrompt,
   PanelUpdatePrompt,
   SceneUpdatePrompt,
 } from "@/ai/flows/update-flows";
+import { getSceneForContext } from "@/services/data-service";
 
 import { getProjectWithRelations } from "@/services/db";
 import { MangaProject } from "@/types/entities";
+import axios from "axios";
 import { z } from "zod";
-
 /**
  * Interface for the content planning result
  * Maps directly to the output schema of ContentPlannerPrompt
@@ -368,6 +373,7 @@ export const extractFullContexts = (project: MangaProject) => {
     concept: project.concept,
     genre: project.genre,
     themes: project.themes,
+    artStyle: project.artStyle,
     plotStructure: project.plotStructure,
     worldDetails: project.worldDetails,
   };
@@ -384,6 +390,9 @@ export const extractFullContexts = (project: MangaProject) => {
     hairAttributes: ch.hairAttributes,
     posture: ch.posture,
     abilities: ch.abilities,
+    consistencyPrompt: ch.consistencyPrompt,
+    negativePrompt: ch.negativePrompt,
+    imgUrl: ch.imgUrl,
   }));
 
   const chaptersContext = project.chapters?.map((ch) => ({
@@ -427,6 +436,27 @@ export const extractFullContexts = (project: MangaProject) => {
     return null; // Scene not found
   };
 
+  const extractPanelContext = (panelId: string) => {
+    for (const chapter of project.chapters || []) {
+      for (const scene of chapter.scenes || []) {
+        const panel = scene.panels?.find((p) => p.id == panelId);
+        if (panel) {
+          return {
+            id: panel.id,
+            order: panel.order,
+            panelContext: panel.panelContext,
+            characterIds: panel.characterIds,
+            aiPrompt: panel.aiPrompt,
+            negativePrompt: panel.negativePrompt,
+            characterNames: panel.characterNames,
+            sceneId: scene.id,
+          };
+        }
+      }
+    }
+    return null; // Scene not found
+  };
+
   // Extract a specific chapter context
   const extractChapterContext = (chapterId: string) => {
     const chapter = project.chapters?.find((ch) => ch.id === chapterId);
@@ -455,6 +485,7 @@ export const extractFullContexts = (project: MangaProject) => {
     chaptersContext,
     extractSceneContext,
     extractChapterContext,
+    extractPanelContext,
   };
 };
 
@@ -468,6 +499,9 @@ export const extractUpdateContexts = (project: MangaProject) => {
     id: project.id,
     title: project.title,
     concept: project.concept,
+    artStyle: project.artStyle,
+    genre: project.genre,
+    themes: project.themes,
   };
 
   // Get a specific character with full details
@@ -885,9 +919,10 @@ const handleUpdateContent = async (
 /**
  * Handles image generation requests
  */
-const handleGenerateImage = (
-  result: ContentPlannerResult
-): ProcessingResult => {
+const handleGenerateImage = async (
+  result: ContentPlannerResult,
+  project: MangaProject
+): Promise<ProcessingResult> => {
   if (!result.generateImageContext) {
     return {
       type: "error",
@@ -895,10 +930,60 @@ const handleGenerateImage = (
     };
   }
 
-  // Placeholder for future implementation
+  const imageContext = result.generateImageContext!;
+
+  const {
+    charactersContext,
+    extractPanelContext,
+    projectContext,
+    extractSceneContext,
+  } = extractFullContexts(project);
+
+  let res;
+  switch (imageContext.contentType) {
+    case "character":
+      const characterContext = charactersContext?.find(
+        (el) => el.id == imageContext.contentId
+      );
+      res = await GenerateCharacterImage({
+        character: characterContext,
+      });
+      break;
+
+    case "panel":
+      const panelContext = extractPanelContext(imageContext.contentId);
+      const charactersInPanel = charactersContext?.filter((ch) =>
+        panelContext?.characterNames.includes(ch.name)
+      );
+
+      const charactersInPanelWithImage = await Promise.all(
+        charactersInPanel?.map(async (ch) => {
+          const image = await imageUrlToBase64WithMime(ch.imgUrl!);
+          return {
+            ...ch,
+            imageData: {
+              data: image.base64,
+              mimeType: image.mimeType,
+            },
+          };
+        }) ?? []
+      );
+
+      (projectContext as any).characters = charactersInPanelWithImage;
+
+      const scene = await getSceneForContext(panelContext?.sceneId!);
+
+      res = await GeneratePanelImage({
+        panel: panelContext,
+        projectContext: projectContext,
+        scene,
+      });
+      break;
+  }
+
   return {
-    type: "notImplemented",
-    message: "Image generation is not yet implemented",
+    type: "imageGenerated",
+    message: res || "generate image successfully",
     data: {
       contentType: result.generateImageContext.contentType,
       contentId: result.generateImageContext.contentId,
@@ -989,9 +1074,7 @@ export const ProcessMangaRequestFlow = ai.defineFlow(
       });
 
       // Parse the result
-      const plannerResult = JSON.parse(
-        planningResponse.output as unknown as string
-      ) as ContentPlannerResult;
+      const plannerResult = planningResponse.output!;
 
       // Execute the appropriate handler based on action type
       switch (plannerResult.action) {
@@ -1005,7 +1088,7 @@ export const ProcessMangaRequestFlow = ai.defineFlow(
           return await handleUpdateContent(plannerResult, project, userInput);
 
         case "generateImage":
-          return handleGenerateImage(plannerResult);
+          return handleGenerateImage(plannerResult, project);
 
         default:
           return {
@@ -1021,3 +1104,22 @@ export const ProcessMangaRequestFlow = ai.defineFlow(
     }
   }
 );
+
+async function imageUrlToBase64WithMime(url: string) {
+  const response = await axios.get(url, {
+    responseType: "arraybuffer",
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36",
+      Referer: "https://i.ibb.co/",
+    },
+  });
+
+  const mimeType = response.headers["content-type"];
+  const base64 = Buffer.from(response.data, "binary").toString("base64");
+
+  return {
+    mimeType,
+    base64, // No "data:mime;base64," prefix
+  };
+}

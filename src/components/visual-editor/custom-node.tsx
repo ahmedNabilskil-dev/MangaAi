@@ -3,6 +3,7 @@
 import {
   BookOpen,
   Clock,
+  Eye,
   Film,
   Heart,
   LayoutPanelTop,
@@ -17,7 +18,7 @@ import { Handle, Position } from "reactflow";
 import "reactflow/dist/style.css";
 
 // Type definitions
-type NodeType =
+export type NodeType =
   | "project"
   | "chapter"
   | "scene"
@@ -25,7 +26,7 @@ type NodeType =
   | "dialogue"
   | "character";
 
-interface NodeProperties {
+export interface NodeProperties {
   description?: string;
   imageUrl?: string;
   imgUrl?: string;
@@ -47,21 +48,24 @@ interface NodeProperties {
   };
   briefDescription?: string;
   role?: string;
+  purpose?: string;
 }
 
-interface NodeData {
+export interface NodeData {
   type: NodeType;
   label: string;
   properties: NodeProperties;
+  id?: string;
 }
 
-interface CustomNodeProps {
+export interface CustomNodeProps {
   data: NodeData;
   selected?: boolean;
   isConnectable?: boolean;
+  onViewDetails?: (nodeId: string) => void;
 }
 
-interface NodeColors {
+export interface NodeColors {
   primary: string;
   secondary: string;
   text: string;
@@ -75,8 +79,10 @@ interface NodeColors {
   shimmer: string;
 }
 
+// Shared helpers and components
+
 // Animated shimmer effect component
-const ShimmerEffect = ({ color }: { color: string }) => (
+export const ShimmerEffect = ({ color }: { color: string }) => (
   <div className={`absolute inset-0 overflow-hidden`}>
     <div
       className={`absolute -inset-12 opacity-30 ${color} animate-shimmer`}
@@ -88,133 +94,122 @@ const ShimmerEffect = ({ color }: { color: string }) => (
   </div>
 );
 
-// Define the custom node component with premium styling
-export const CustomNode = ({
+// Helper function to truncate text
+export const truncate = (str: string = "", length: number) => {
+  return str.length > length ? str.substring(0, length) + "..." : str;
+};
+
+// Icons for each node type
+export const nodeIconMap: Record<NodeType, React.ComponentType<any>> = {
+  project: BookOpen,
+  chapter: Clock,
+  scene: Film,
+  panel: LayoutPanelTop,
+  dialogue: MessageCircle,
+  character: User,
+};
+
+// Premium color schemes for both light and dark modes
+export const nodeColors: Record<NodeType, NodeColors> = {
+  project: {
+    primary:
+      "from-violet-600 to-purple-700 dark:from-violet-700 dark:to-purple-800",
+    secondary:
+      "from-violet-400 to-purple-500 dark:from-violet-500 dark:to-purple-600",
+    text: "text-purple-50 dark:text-purple-100",
+    accent: "bg-purple-500 dark:bg-purple-600",
+    ring: "ring-purple-500 dark:ring-purple-600",
+    light: "bg-purple-50/80 dark:bg-purple-900/30",
+    dark: "bg-purple-900/10 dark:bg-purple-950/70",
+    border: "border-purple-200 dark:border-purple-800",
+    progress: "bg-purple-400 dark:bg-purple-500",
+    glow: "shadow-[0_0_15px_rgba(168,85,247,0.6)] dark:shadow-[0_0_20px_rgba(192,132,252,0.7)]",
+    shimmer: "via-violet-500",
+  },
+  chapter: {
+    primary:
+      "from-blue-600 to-indigo-700 dark:from-blue-700 dark:to-indigo-800",
+    secondary:
+      "from-blue-400 to-indigo-500 dark:from-blue-500 dark:to-indigo-600",
+    text: "text-blue-50 dark:text-blue-100",
+    accent: "bg-blue-500 dark:bg-blue-600",
+    ring: "ring-blue-500 dark:ring-blue-600",
+    light: "bg-blue-50/80 dark:bg-blue-900/30",
+    dark: "bg-blue-900/10 dark:bg-blue-950/70",
+    border: "border-blue-200 dark:border-blue-800",
+    progress: "bg-blue-400 dark:bg-blue-500",
+    glow: "shadow-[0_0_15px_rgba(59,130,246,0.6)] dark:shadow-[0_0_20px_rgba(96,165,250,0.7)]",
+    shimmer: "via-blue-500",
+  },
+  scene: {
+    primary:
+      "from-emerald-600 to-green-700 dark:from-emerald-700 dark:to-green-800",
+    secondary:
+      "from-emerald-400 to-green-500 dark:from-emerald-500 dark:to-green-600",
+    text: "text-emerald-50 dark:text-emerald-100",
+    accent: "bg-emerald-500 dark:bg-emerald-600",
+    ring: "ring-emerald-500 dark:ring-emerald-600",
+    light: "bg-emerald-50/80 dark:bg-emerald-900/30",
+    dark: "bg-emerald-900/10 dark:bg-emerald-950/70",
+    border: "border-emerald-200 dark:border-emerald-800",
+    progress: "bg-emerald-400 dark:bg-emerald-500",
+    glow: "shadow-[0_0_15px_rgba(16,185,129,0.6)] dark:shadow-[0_0_20px_rgba(52,211,153,0.7)]",
+    shimmer: "via-emerald-500",
+  },
+  panel: {
+    primary:
+      "from-amber-600 to-yellow-700 dark:from-amber-700 dark:to-yellow-800",
+    secondary:
+      "from-amber-400 to-yellow-500 dark:from-amber-500 dark:to-yellow-600",
+    text: "text-amber-50 dark:text-amber-100",
+    accent: "bg-amber-500 dark:bg-amber-600",
+    ring: "ring-amber-500 dark:ring-amber-600",
+    light: "bg-amber-50/80 dark:bg-amber-900/30",
+    dark: "bg-amber-900/10 dark:bg-amber-950/70",
+    border: "border-amber-200 dark:border-amber-800",
+    progress: "bg-amber-400 dark:bg-amber-500",
+    glow: "shadow-[0_0_15px_rgba(245,158,11,0.6)] dark:shadow-[0_0_20px_rgba(251,191,36,0.7)]",
+    shimmer: "via-amber-500",
+  },
+  dialogue: {
+    primary: "from-rose-600 to-pink-700 dark:from-rose-700 dark:to-pink-800",
+    secondary: "from-rose-400 to-pink-500 dark:from-rose-500 dark:to-pink-600",
+    text: "text-rose-50 dark:text-rose-100",
+    accent: "bg-rose-500 dark:bg-rose-600",
+    ring: "ring-rose-500 dark:ring-rose-600",
+    light: "bg-rose-50/80 dark:bg-rose-900/30",
+    dark: "bg-rose-900/10 dark:bg-rose-950/70",
+    border: "border-rose-200 dark:border-rose-800",
+    progress: "bg-rose-400 dark:bg-rose-500",
+    glow: "shadow-[0_0_15px_rgba(244,63,94,0.6)] dark:shadow-[0_0_20px_rgba(251,113,133,0.7)]",
+    shimmer: "via-rose-500",
+  },
+  character: {
+    primary: "from-cyan-600 to-teal-700 dark:from-cyan-700 dark:to-teal-800",
+    secondary: "from-cyan-400 to-teal-500 dark:from-cyan-500 dark:to-teal-600",
+    text: "text-cyan-50 dark:text-cyan-100",
+    accent: "bg-cyan-500 dark:bg-cyan-600",
+    ring: "ring-cyan-500 dark:ring-cyan-600",
+    light: "bg-cyan-50/80 dark:bg-cyan-900/30",
+    dark: "bg-cyan-900/10 dark:bg-cyan-950/70",
+    border: "border-cyan-200 dark:border-cyan-800",
+    progress: "bg-cyan-400 dark:bg-cyan-500",
+    glow: "shadow-[0_0_15px_rgba(6,182,212,0.6)] dark:shadow-[0_0_20px_rgba(103,232,249,0.7)]",
+    shimmer: "via-cyan-500",
+  },
+};
+
+// Base Node component - common functionality for all node types
+export const BaseNode = ({
   data,
   selected = false,
   isConnectable = true,
-}: CustomNodeProps) => {
-  // Icons for each node type
-  const nodeIconMap: Record<NodeType, React.ComponentType<any>> = {
-    project: BookOpen,
-    chapter: Clock,
-    scene: Film,
-    panel: LayoutPanelTop,
-    dialogue: MessageCircle,
-    character: User,
-  };
-
-  // Premium color schemes for both light and dark modes
-  const nodeColors: Record<NodeType, NodeColors> = {
-    project: {
-      primary:
-        "from-violet-600 to-purple-700 dark:from-violet-700 dark:to-purple-800",
-      secondary:
-        "from-violet-400 to-purple-500 dark:from-violet-500 dark:to-purple-600",
-      text: "text-purple-50 dark:text-purple-100",
-      accent: "bg-purple-500 dark:bg-purple-600",
-      ring: "ring-purple-500 dark:ring-purple-600",
-      light: "bg-purple-50/80 dark:bg-purple-900/30",
-      dark: "bg-purple-900/10 dark:bg-purple-950/70",
-      border: "border-purple-200 dark:border-purple-800",
-      progress: "bg-purple-400 dark:bg-purple-500",
-      glow: "shadow-[0_0_15px_rgba(168,85,247,0.6)] dark:shadow-[0_0_20px_rgba(192,132,252,0.7)]",
-      shimmer: "via-violet-500",
-    },
-    chapter: {
-      primary:
-        "from-blue-600 to-indigo-700 dark:from-blue-700 dark:to-indigo-800",
-      secondary:
-        "from-blue-400 to-indigo-500 dark:from-blue-500 dark:to-indigo-600",
-      text: "text-blue-50 dark:text-blue-100",
-      accent: "bg-blue-500 dark:bg-blue-600",
-      ring: "ring-blue-500 dark:ring-blue-600",
-      light: "bg-blue-50/80 dark:bg-blue-900/30",
-      dark: "bg-blue-900/10 dark:bg-blue-950/70",
-      border: "border-blue-200 dark:border-blue-800",
-      progress: "bg-blue-400 dark:bg-blue-500",
-      glow: "shadow-[0_0_15px_rgba(59,130,246,0.6)] dark:shadow-[0_0_20px_rgba(96,165,250,0.7)]",
-      shimmer: "via-blue-500",
-    },
-    scene: {
-      primary:
-        "from-emerald-600 to-green-700 dark:from-emerald-700 dark:to-green-800",
-      secondary:
-        "from-emerald-400 to-green-500 dark:from-emerald-500 dark:to-green-600",
-      text: "text-emerald-50 dark:text-emerald-100",
-      accent: "bg-emerald-500 dark:bg-emerald-600",
-      ring: "ring-emerald-500 dark:ring-emerald-600",
-      light: "bg-emerald-50/80 dark:bg-emerald-900/30",
-      dark: "bg-emerald-900/10 dark:bg-emerald-950/70",
-      border: "border-emerald-200 dark:border-emerald-800",
-      progress: "bg-emerald-400 dark:bg-emerald-500",
-      glow: "shadow-[0_0_15px_rgba(16,185,129,0.6)] dark:shadow-[0_0_20px_rgba(52,211,153,0.7)]",
-      shimmer: "via-emerald-500",
-    },
-    panel: {
-      primary:
-        "from-amber-600 to-yellow-700 dark:from-amber-700 dark:to-yellow-800",
-      secondary:
-        "from-amber-400 to-yellow-500 dark:from-amber-500 dark:to-yellow-600",
-      text: "text-amber-50 dark:text-amber-100",
-      accent: "bg-amber-500 dark:bg-amber-600",
-      ring: "ring-amber-500 dark:ring-amber-600",
-      light: "bg-amber-50/80 dark:bg-amber-900/30",
-      dark: "bg-amber-900/10 dark:bg-amber-950/70",
-      border: "border-amber-200 dark:border-amber-800",
-      progress: "bg-amber-400 dark:bg-amber-500",
-      glow: "shadow-[0_0_15px_rgba(245,158,11,0.6)] dark:shadow-[0_0_20px_rgba(251,191,36,0.7)]",
-      shimmer: "via-amber-500",
-    },
-    dialogue: {
-      primary: "from-rose-600 to-pink-700 dark:from-rose-700 dark:to-pink-800",
-      secondary:
-        "from-rose-400 to-pink-500 dark:from-rose-500 dark:to-pink-600",
-      text: "text-rose-50 dark:text-rose-100",
-      accent: "bg-rose-500 dark:bg-rose-600",
-      ring: "ring-rose-500 dark:ring-rose-600",
-      light: "bg-rose-50/80 dark:bg-rose-900/30",
-      dark: "bg-rose-900/10 dark:bg-rose-950/70",
-      border: "border-rose-200 dark:border-rose-800",
-      progress: "bg-rose-400 dark:bg-rose-500",
-      glow: "shadow-[0_0_15px_rgba(244,63,94,0.6)] dark:shadow-[0_0_20px_rgba(251,113,133,0.7)]",
-      shimmer: "via-rose-500",
-    },
-    character: {
-      primary: "from-cyan-600 to-teal-700 dark:from-cyan-700 dark:to-teal-800",
-      secondary:
-        "from-cyan-400 to-teal-500 dark:from-cyan-500 dark:to-teal-600",
-      text: "text-cyan-50 dark:text-cyan-100",
-      accent: "bg-cyan-500 dark:bg-cyan-600",
-      ring: "ring-cyan-500 dark:ring-cyan-600",
-      light: "bg-cyan-50/80 dark:bg-cyan-900/30",
-      dark: "bg-cyan-900/10 dark:bg-cyan-950/70",
-      border: "border-cyan-200 dark:border-cyan-800",
-      progress: "bg-cyan-400 dark:bg-cyan-500",
-      glow: "shadow-[0_0_15px_rgba(6,182,212,0.6)] dark:shadow-[0_0_20px_rgba(103,232,249,0.7)]",
-      shimmer: "via-cyan-500",
-    },
-  };
-
-  const Icon = nodeIconMap[data.type] || Sparkles;
-  const colors = nodeColors[data.type] || nodeColors.project;
-
-  // Get image URL if available
-  const imageUrl = data.properties?.imageUrl || data.properties?.imgUrl;
-
-  // Helper function to truncate text
-  const truncate = (str: string = "", length: number) => {
-    return str.length > length ? str.substring(0, length) + "..." : str;
-  };
-
-  // Progress indicator (mainly for projects and chapters)
-  const showProgress = data.type === "project" || data.type === "chapter";
-  const progress = data.properties?.progress || 0;
-
-  // Tags if available (mainly for projects and characters)
-  const tags = data.properties?.tags || data.properties?.traits || [];
-  const showTags =
-    tags.length > 0 && (data.type === "project" || data.type === "character");
+  children,
+  onViewDetails,
+}: CustomNodeProps & { children: React.ReactNode }) => {
+  const nodeType = data.type;
+  const colors = nodeColors[nodeType] || nodeColors.project;
+  const Icon = nodeIconMap[nodeType] || Sparkles;
 
   // Floating particle effect
   const [particles, setParticles] = useState<
@@ -247,6 +242,16 @@ export const CustomNode = ({
       setParticles([]);
     }
   }, [selected]);
+
+  // Get image URL if available
+  const imageUrl = data.properties?.imageUrl || data.properties?.imgUrl;
+
+  // Handle view details click
+  const handleViewDetails = () => {
+    if (onViewDetails && data.id) {
+      onViewDetails(data.id);
+    }
+  };
 
   return (
     <div
@@ -298,24 +303,23 @@ export const CustomNode = ({
         <span className="uppercase tracking-wider text-sm drop-shadow-md">
           {data.type}
         </span>
-        {data.type === "panel" && data.properties?.cameraAngle && (
-          <span className="ml-auto px-2.5 py-1 rounded-full text-xs bg-black/20 backdrop-blur-sm">
-            {data.properties.cameraAngle}
-          </span>
-        )}
-        {data.type === "scene" && data.properties?.timeOfDay && (
-          <span className="ml-auto px-2.5 py-1 rounded-full text-xs bg-black/20 backdrop-blur-sm">
-            {data.properties.timeOfDay}
-          </span>
-        )}
+
+        {/* Add View Details button */}
+        <button
+          onClick={handleViewDetails}
+          className="ml-auto flex items-center justify-center p-1.5 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+          aria-label="View details"
+        >
+          <Eye className="h-4 w-4" />
+        </button>
       </div>
 
       {/* Image section with parallax effect */}
-      {imageUrl && (
+      {
         <div className="relative w-full h-40 overflow-hidden group-hover:h-44 transition-all duration-500">
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10"></div>
           <img
-            src={imageUrl}
+            src={imageUrl || "/images/hero-bg.png"}
             alt={data.label}
             className="object-cover transition-all duration-700 group-hover:scale-105"
           />
@@ -325,7 +329,7 @@ export const CustomNode = ({
             </div>
           )}
         </div>
-      )}
+      }
 
       {/* Content area with frosted glass effect */}
       <div
@@ -341,106 +345,11 @@ export const CustomNode = ({
           {data.label}
         </h3>
 
-        {/* Content based on node type with subtle animations */}
-        {data.type === "dialogue" && data.properties?.content && (
-          <div className="mb-4 italic text-sm transform transition-all duration-300 group-hover:translate-x-1">
-            <div className="relative pl-5 border-l-2 border-gray-300 dark:border-gray-600">
-              <span className="text-gray-500 opacity-50 absolute -left-1 top-0 text-xl">
-                "
-              </span>
-              {truncate(data.properties.content, 120)}
-              <span className="text-gray-500 opacity-50 ml-1 text-xl">"</span>
-            </div>
-            {data.properties.emotion && (
-              <div className="flex items-center mt-3 text-xs text-rose-500 dark:text-rose-400">
-                <Heart className="h-3.5 w-3.5 mr-1.5 animate-pulse" />
-                <span>{data.properties.emotion}</span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {data.type === "scene" && data.properties?.setting && (
-          <div className="mb-4 text-sm">
-            <div className="flex items-center mb-3">
-              <Mountain className="h-3.5 w-3.5 mr-2 text-gray-500 dark:text-gray-400" />
-              <span className="font-medium">Setting:</span>
-            </div>
-            <p className="text-gray-700 dark:text-gray-300 pl-5.5">
-              {truncate(data.properties.setting, 100)}
-            </p>
-            {data.properties.mood && (
-              <div className="flex items-center mt-3 text-xs text-emerald-500 dark:text-emerald-400">
-                <Palette className="h-3.5 w-3.5 mr-1.5" />
-                <span>{data.properties.mood}</span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {data.type === "panel" && data.properties?.action && (
-          <div className="mb-4">
-            <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-3 group-hover:line-clamp-4 transition-all">
-              {data.properties.action}
-            </p>
-          </div>
-        )}
-
-        {data.type === "character" && data.properties?.briefDescription && (
-          <div className="mb-4">
-            <p className="text-sm text-gray-700 dark:text-gray-300">
-              {truncate(data.properties.briefDescription, 120)}
-            </p>
-          </div>
-        )}
-
-        {data.type === "project" && data.properties?.description && (
-          <div className="mb-4">
-            <p className="text-sm text-gray-700 dark:text-gray-300">
-              {truncate(data.properties.description, 120)}
-            </p>
-          </div>
-        )}
-
-        {data.type === "chapter" && (
-          <div className="mb-4">
-            <p className="text-sm text-gray-700 dark:text-gray-300">
-              {truncate(data.properties.purpose, 120)}
-            </p>
-            {data.properties.scenes && (
-              <div className="flex items-center mt-3 text-xs text-blue-500 dark:text-blue-400">
-                <Film className="h-3.5 w-3.5 mr-1.5 animate-bounce" />
-                <span>{data.properties.scenes?.length} scenes</span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Tags/Traits for projects and characters */}
-        {showTags && (
-          <div className="flex flex-wrap gap-2 mt-auto pt-3">
-            {tags.slice(0, 3).map((tag, index) => (
-              <span
-                key={index}
-                className={`
-                  px-2.5 py-1 rounded-full text-xs font-medium
-                  bg-gradient-to-r ${colors.secondary} ${colors.text}
-                  shadow-sm hover:scale-105 transition-transform
-                `}
-              >
-                {tag}
-              </span>
-            ))}
-            {tags.length > 3 && (
-              <span className="px-2.5 py-1 rounded-full text-xs bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
-                +{tags.length - 3}
-              </span>
-            )}
-          </div>
-        )}
+        {/* Specific node content will be injected here */}
+        {children}
       </div>
 
-      {/* Glowing connection handles - CHANGED FROM LEFT/RIGHT TO TOP/BOTTOM */}
+      {/* Glowing connection handles */}
       <Handle
         type="target"
         position={Position.Top}
@@ -473,4 +382,216 @@ export const CustomNode = ({
       />
     </div>
   );
+};
+
+// Project Node Component
+export const ProjectNode = (props: CustomNodeProps) => {
+  const { data } = props;
+  const tags = data.properties?.tags || [];
+  const showTags = tags.length > 0;
+
+  return (
+    <BaseNode {...props}>
+      {data.properties?.description && (
+        <div className="mb-4">
+          <p className="text-sm text-gray-700 dark:text-gray-300">
+            {truncate(data.properties.description, 120)}
+          </p>
+        </div>
+      )}
+
+      {/* Tags */}
+      {showTags && (
+        <div className="flex flex-wrap gap-2 mt-auto pt-3">
+          {tags.slice(0, 3).map((tag, index) => (
+            <span
+              key={index}
+              className={`
+                px-2.5 py-1 rounded-full text-xs font-medium
+                bg-gradient-to-r ${nodeColors.project.secondary} ${nodeColors.project.text}
+                shadow-sm hover:scale-105 transition-transform
+              `}
+            >
+              {tag}
+            </span>
+          ))}
+          {tags.length > 3 && (
+            <span className="px-2.5 py-1 rounded-full text-xs bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+              +{tags.length - 3}
+            </span>
+          )}
+        </div>
+      )}
+    </BaseNode>
+  );
+};
+
+// Chapter Node Component
+export const ChapterNode = (props: CustomNodeProps) => {
+  const { data } = props;
+
+  return (
+    <BaseNode {...props}>
+      <div className="mb-4">
+        <p className="text-sm text-gray-700 dark:text-gray-300">
+          {truncate(data.properties?.purpose || "", 120)}
+        </p>
+        {data.properties?.scenes && (
+          <div className="flex items-center mt-3 text-xs text-blue-500 dark:text-blue-400">
+            <Film className="h-3.5 w-3.5 mr-1.5 animate-bounce" />
+            <span>{data.properties.scenes?.length} scenes</span>
+          </div>
+        )}
+      </div>
+    </BaseNode>
+  );
+};
+
+// Scene Node Component
+export const SceneNode = (props: CustomNodeProps) => {
+  const { data } = props;
+
+  return (
+    <BaseNode {...props}>
+      {data.properties?.setting && (
+        <div className="mb-4 text-sm">
+          <div className="flex items-center mb-3">
+            <Mountain className="h-3.5 w-3.5 mr-2 text-gray-500 dark:text-gray-400" />
+            <span className="font-medium">Setting:</span>
+          </div>
+          <p className="text-gray-700 dark:text-gray-300 pl-5.5">
+            {truncate(data.properties.setting, 100)}
+          </p>
+          {data.properties.mood && (
+            <div className="flex items-center mt-3 text-xs text-emerald-500 dark:text-emerald-400">
+              <Palette className="h-3.5 w-3.5 mr-1.5" />
+              <span>{data.properties.mood}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {data.properties?.timeOfDay && (
+        <div className="px-2.5 py-1 rounded-full text-xs self-start bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+          {data.properties.timeOfDay}
+        </div>
+      )}
+    </BaseNode>
+  );
+};
+
+// Panel Node Component
+export const PanelNode = (props: CustomNodeProps) => {
+  const { data } = props;
+
+  return (
+    <BaseNode {...props}>
+      {data.properties?.action && (
+        <div className="mb-4">
+          <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-3 group-hover:line-clamp-4 transition-all">
+            {data.properties.action}
+          </p>
+        </div>
+      )}
+
+      {data.properties?.cameraAngle && (
+        <div className="px-2.5 py-1 rounded-full text-xs self-start bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+          {data.properties.cameraAngle}
+        </div>
+      )}
+    </BaseNode>
+  );
+};
+
+// Dialogue Node Component
+export const DialogueNode = (props: CustomNodeProps) => {
+  const { data } = props;
+
+  return (
+    <BaseNode {...props}>
+      {data.properties?.content && (
+        <div className="mb-4 italic text-sm transform transition-all duration-300 group-hover:translate-x-1">
+          <div className="relative pl-5 border-l-2 border-gray-300 dark:border-gray-600">
+            <span className="text-gray-500 opacity-50 absolute -left-1 top-0 text-xl">
+              "
+            </span>
+            {truncate(data.properties.content, 120)}
+            <span className="text-gray-500 opacity-50 ml-1 text-xl">"</span>
+          </div>
+          {data.properties.emotion && (
+            <div className="flex items-center mt-3 text-xs text-rose-500 dark:text-rose-400">
+              <Heart className="h-3.5 w-3.5 mr-1.5 animate-pulse" />
+              <span>{data.properties.emotion}</span>
+            </div>
+          )}
+        </div>
+      )}
+    </BaseNode>
+  );
+};
+
+// Character Node Component
+export const CharacterNode = (props: CustomNodeProps) => {
+  const { data } = props;
+  const traits = data.properties?.traits || [];
+  const showTraits = traits.length > 0;
+
+  return (
+    <BaseNode {...props}>
+      {data.properties?.briefDescription && (
+        <div className="mb-4">
+          <p className="text-sm text-gray-700 dark:text-gray-300">
+            {truncate(data.properties.briefDescription, 120)}
+          </p>
+        </div>
+      )}
+
+      {/* Traits */}
+      {showTraits && (
+        <div className="flex flex-wrap gap-2 mt-auto pt-3">
+          {traits.slice(0, 3).map((trait, index) => (
+            <span
+              key={index}
+              className={`
+                px-2.5 py-1 rounded-full text-xs font-medium
+                bg-gradient-to-r ${nodeColors.character.secondary} ${nodeColors.character.text}
+                shadow-sm hover:scale-105 transition-transform
+              `}
+            >
+              {trait}
+            </span>
+          ))}
+          {traits.length > 3 && (
+            <span className="px-2.5 py-1 rounded-full text-xs bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+              +{traits.length - 3}
+            </span>
+          )}
+        </div>
+      )}
+    </BaseNode>
+  );
+};
+
+// Main CustomNode wrapper that renders the appropriate node type
+export const CustomNode = (props: CustomNodeProps) => {
+  const { data } = props;
+
+  // Render the correct node type based on data.type
+  switch (data.type) {
+    case "project":
+      return <ProjectNode {...props} />;
+    case "chapter":
+      return <ChapterNode {...props} />;
+    case "scene":
+      return <SceneNode {...props} />;
+    case "panel":
+      return <PanelNode {...props} />;
+    case "dialogue":
+      return <DialogueNode {...props} />;
+    case "character":
+      return <CharacterNode {...props} />;
+    default:
+      // Fallback to base node with empty content
+      return <BaseNode {...props}>{null}</BaseNode>;
+  }
 };

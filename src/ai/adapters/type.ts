@@ -1,3 +1,5 @@
+import { Content } from "@google/genai";
+
 export type Message = {
   role: "user" | "assistant" | "function";
   content: any;
@@ -41,4 +43,12 @@ export interface ChatAdapter {
     params: TextGenerationParams,
     toolCall: boolean
   ): Promise<Message[]>;
+
+  generateImage({
+    prompt,
+    history,
+  }: {
+    prompt: string;
+    history: Content[];
+  }): Promise<{ text: String; image46: string }>;
 }

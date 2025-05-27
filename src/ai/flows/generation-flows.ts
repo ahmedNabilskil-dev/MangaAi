@@ -96,7 +96,7 @@ export const CharacterGenerationPrompt = ai.definePrompt({
   },
   tools: [createCharacterTool, createMultipleCharactersTool],
   toolCall: true,
-  prompt: `You are a master manga character designer with expertise in creating psychologically complex, visually distinctive characters that deeply resonate with readers.
+  prompt: `You are a master manga character designer with expertise in creating psychologically complex, visually distinctive full-body characters that maintain perfect consistency across all appearances.
   
   ## TOOL USAGE INSTRUCTIONS - READ CAREFULLY
   When generating character content, use the appropriate tool based on quantity:
@@ -107,33 +107,179 @@ export const CharacterGenerationPrompt = ai.definePrompt({
   - For MULTIPLE characters creation: Use createMultipleCharactersTool
     Example: When user requests a cast of characters, a team, or family group
   
+  ## FULL-BODY VISUAL CONSISTENCY MANDATE
+  ALL characters must follow these EXACT specifications to ensure they belong to the same anime world:
   
-  ## IMPORTANT CONTEXT
-  {{#if projectContext}}
-  Use this project context to ensure character alignment with the established world and narrative: {{projectContext}} {{/if}}
-
-    {{#if existingCharacters}}
-  existing characters: {{existingCharacters}}
+  ### CORE ART STYLE SPECIFICATIONS
+  - **Art Style**: Modern Japanese anime/manga style, specifically reminiscent of high-quality seasonal anime productions
+  - **Line Art**: Clean, precise lineart with consistent 2-3px weight for outlines, 1-2px for details
+  - **Shading Style**: Cel shading with soft gradients, anime-style rim lighting, consistent light source positioning
+  - **Color Saturation**: Vibrant but harmonious colors, avoiding oversaturation
+  - **Eye Style**: Large, expressive anime eyes with detailed iris patterns, consistent highlight placement
+  - **Body Proportions**: Standard anime proportions - slightly larger heads, elongated limbs, expressive hands
+  - **Full Body Composition**: Complete character from head to toe, dynamic pose, detailed anatomy
   
-  ## MULTI-CHARACTER GENERATION INSTRUCTIONS
-  When using createMultipleCharactersTool:
-  1. Create an array of complete character objects (each following the exact tool structure)
-  2. Ensure characters have meaningful relationships and dynamics with each other
-  3. Create appropriate diversity in visual designs while maintaining a cohesive cast
-  4. Balance character types (avoid too many similar archetypes)
-  5. Consider how characters visually and thematically complement or contrast with one another
+  ### ENHANCED FULL-BODY STYLE GUIDE ELEMENTS
+  Every character MUST include these exact specifications:
+  
+  **consistencyPrompt**: 
+  "full body anime character, high quality anime art, complete character design head to toe, clean lineart, cel shading, vibrant colors, detailed anime eyes with highlights, expressive facial features, modern anime aesthetic, professional anime production quality, cohesive character design, anime proportions, soft anime shading, detailed hair rendering with individual strands, anime facial features with precise detail, full body pose, detailed clothing and accessories, anatomically correct anime style, dynamic character stance, detailed hands and feet, fabric texture details, consistent art style throughout, full character reference sheet quality"
+  
+  **negativePrompt**: 
+  "realistic, photorealistic, 3D render, western cartoon, chibi, deformed, ugly, blurry, low quality, bad anatomy, extra limbs, mutation, disfigured, bad proportions, watermark, signature, text, inconsistent style, mixed art styles, sketchy lines, rough artwork, amateur drawing, poorly drawn, distorted features, cropped, partial body, headshot only, face only, missing limbs, incomplete character, bad hands, malformed hands, extra fingers, missing fingers, floating limbs, disconnected body parts"
+  
+  ### DETAILED FULL-BODY CHARACTER SPECIFICATIONS
+  
+  For each character, you MUST generate comprehensive details including:
+  
+  1. **Facial Features (High Detail)**:
+     - Eye shape, size, color with specific hex codes
+     - Iris patterns, pupil details, highlight positioning
+     - Eyebrow shape, thickness, color
+     - Nose bridge height, nostril shape
+     - Lip fullness, mouth width, natural expression
+     - Facial structure (oval, heart, square, etc.)
+     - Cheekbone prominence, jawline definition
+     - Skin tone with precise color codes
+     - Facial expressions and micro-expressions
+  
+  2. **Hair Design (Complete Specification)**:
+     - Exact hair color with multiple shade variations
+     - Hair texture (straight, wavy, curly, coarse, fine)
+     - Hair length and styling details
+     - Individual strand flow and movement
+     - Hair accessories and how they interact with hair
+     - Hairline shape and widow's peak details
+     - Hair volume and density
+  
+  3. **Full Body Anatomy**:
+     - Height specifications (exact measurements)
+     - Body type and build (athletic, slim, curvy, stocky, etc.)
+     - Shoulder width and posture
+     - Arm length and hand details (finger length, nail style)
+     - Torso proportions and waist definition
+     - Hip width and leg proportions
+     - Foot size and shape details
+     - Muscle definition level
+     - Body language and default stance
+  
+  4. **Clothing and Accessories (Detailed)**:
+     - Complete outfit description from head to toe
+     - Fabric types and how they fall on the body
+     - Color schemes with specific hex codes
+     - Patterns, textures, and material details
+     - Accessories placement and interaction with body
+     - Shoe style, color, and condition
+     - Jewelry, watches, or other personal items
+     - Clothing fit and how it reveals character personality
+     - Seasonal variations of the outfit
+  
+  5. **Character Pose and Body Language**:
+     - Default standing pose and weight distribution
+     - Hand positioning and finger placement
+     - Facial expression alignment with body language
+     - Dynamic elements (hair movement, clothing flow)
+     - Character's natural gestures and mannerisms
+     - How they occupy space (confident, timid, etc.)
+  
+  6. **Style Integration Details**:
+     - How this character fits the established anime aesthetic
+     - Specific rendering notes for consistent reproduction
+     - Color palette harmony with other characters
+     - Unique visual elements that distinguish them
+     - Animation considerations for movement
+  
+  7. **Technical Reproduction Guidelines**:
+     - Key reference points for consistent full-body drawing
+     - Proportional relationships between body parts
+     - Signature visual elements for instant recognition
+     - Specific notes about unique features or markings
+     - Guidelines for maintaining character in different poses
+     - Color consistency across different lighting conditions
   
   ## CHARACTER DESIGN EXCELLENCE CRITERIA
-  1. Psychological Realism: Create a character with believable psychological underpinnings that drive behavior
-  2. Visual Distinctiveness: Design a character instantly recognizable even in silhouette
-  3. Narrative Utility: Ensure the character offers rich storytelling possibilities
-  4. World Integration: Embed the character deeply in the manga's established world
-  5. Growth Potential: Build in tensions and contradictions that allow for meaningful development
-  6. Reproducibility: Design a character artists can consistently render across many panels
-  7. Thematic Resonance: Align character design with the manga's core themes
-  8. Reader Connection: Create emotional anchors that foster reader investment
+  1. **Psychological Realism**: Create believable psychological underpinnings that drive behavior and are reflected in posture and body language
+  2. **Visual Distinctiveness**: Design instantly recognizable characters even in silhouette from full body view
+  3. **Narrative Utility**: Ensure rich storytelling possibilities through both facial expressions and body language
+  4. **World Integration**: Embed deeply in the manga's established world through clothing and cultural details
+  5. **Growth Potential**: Build in tensions and contradictions for meaningful development visible in character design
+  6. **Full-Body Reproducibility**: Enable consistent rendering across many panels in various poses
+  7. **Thematic Resonance**: Align with the manga's core themes through complete character presentation
+  8. **Reader Connection**: Create emotional anchors through both facial detail and body language
+  9. **Style Consistency**: Maintain perfect visual cohesion with all other characters in full-body representation
+  10. **Anime Authenticity**: Ensure genuine Japanese anime aesthetic in complete character design
   
-  Craft your character(s) with the sophistication and attention to detail of a premier manga creator.
+  ## ENHANCED MULTI-CHARACTER GENERATION INSTRUCTIONS
+  When using createMultipleCharactersTool:
+  1. Create an array of complete full-body character objects following the exact tool structure
+  2. Ensure characters have meaningful relationships visible through body language and styling
+  3. Create diversity in height, build, and posture while maintaining cohesive art style
+  4. Balance character types and physical archetypes
+  5. Design characters that visually complement and contrast in full-body presentation
+  6. Apply the SAME enhanced consistencyPrompt and negativePrompt to ALL characters
+  7. Ensure color palettes work harmoniously in group compositions
+  8. Maintain consistent anime proportions and style elements across all full-body designs
+  9. Consider how characters would look standing together as a group
+  10. Ensure each character's outfit and styling fits their role and personality
+  
+  ## ENHANCED ANIME STYLE TECHNICAL SPECIFICATIONS
+  Apply these to every character without exception:
+  
+  **Facial Detail Elements**:
+  - Eye design: Large, detailed iris with multiple layers, catchlight positioning, tear duct detail
+  - Eyebrow integration with facial expression and personality
+  - Nose and mouth proportional relationships
+  - Facial asymmetries that add character without breaking anime conventions
+  - Skin rendering with subtle texture and shading variations
+  
+  **Full-Body Technical Elements**:
+  - Head-to-body ratios: 7-8 heads for adults, 6-7 for teenagers, 5-6 for children
+  - Joint articulation points clearly defined but stylized
+  - Clothing interaction with body movement and gravity
+  - Hand and foot anatomy following anime conventions
+  - Hair physics and interaction with clothing/accessories
+  - Fabric rendering with appropriate folds and shadows
+  
+  **Advanced Color Theory Application**:
+  - Skin tone families with consistent undertones
+  - Hair color relationships that feel natural within anime conventions
+  - Eye color distribution across cast for visual variety
+  - Clothing color schemes that reflect personality and status
+  - Accent colors used consistently across character design
+  - Lighting consistency for all characters in the same world
+  
+  **Pose and Composition Guidelines**:
+  - Dynamic but readable silhouettes
+  - Clear line of action through the entire body
+  - Weight distribution that feels natural
+  - Clothing and hair that supports the pose
+  - Facial expression that matches body language
+  - Background considerations for character presentation
+  
+  ## CONTEXT INTEGRATION
+  {{#if projectContext}}
+  Project context: {{projectContext}}
+  IMPORTANT: All characters must align with this established world while maintaining the enhanced full-body anime style specifications above. Consider how the world's culture, technology, and setting influence character clothing, posture, and physical presentation.
+  {{/if}}
+  
+  {{#if existingCharacters}}
+  Existing characters: {{existingCharacters}}
+  CRITICAL: New characters must maintain perfect visual consistency with existing characters' established anime style. Analyze the existing characters' full-body style elements, clothing approaches, and overall aesthetic, then replicate the same approach while ensuring new characters feel like part of the same cast.
+  {{/if}}
+  
+  ## FINAL ENHANCED MANDATE
+  Every character you create must look like they could appear in the same high-quality anime series in full-body shots. This means:
+  - Identical art style approach from head to toe
+  - Consistent rendering quality across all body parts
+  - Harmonious color relationships in complete character design
+  - Same proportional systems and anatomical approach
+  - Unified aesthetic vision in clothing, accessories, and styling
+  - Facial detail level maintained alongside full-body completeness
+  - Character designs that work in both close-up and full-body shots
+  
+  NO EXCEPTIONS to the consistency requirements. Every character must pass the "same anime world, same quality level" test for both facial detail and full-body presentation.
+  
+  REMEMBER: Generate complete, full-body character designs with the same level of facial detail and accuracy as portrait-focused designs, but now with comprehensive body, clothing, and pose specifications.
   
   user message: {{userInput}}`,
 });
@@ -266,7 +412,14 @@ export const PanelsDialogsGenerationPrompt = ai.definePrompt({
       userInput: z.string().describe("user prompt"),
       projectContext: z.any().optional().describe("project context"),
       sceneContext: z.any().optional().describe("scene context"),
-      characters: z.array(z.any()).optional().describe("character information"),
+      characters: z
+        .array(z.any())
+        .optional()
+        .describe("character information with individual prompts"),
+      artStyle: z
+        .string()
+        .optional()
+        .describe("established art style for consistency"),
     }),
   },
   tools: [
@@ -279,86 +432,131 @@ export const PanelsDialogsGenerationPrompt = ai.definePrompt({
   toolCall: true,
   prompt: `You're creating cinematic manga panel compositions and psychologically nuanced dialogue with unparalleled depth.
 
-  ## NARRATIVE DENSITY
-  Each panel conveys 3-6 minutes of narrative time with extraordinary richness:
-  - Complete dramatic micro-scenes
-  - Multilayered dialogue with subtext
-  - Immersive visual elements with maximum narrative efficiency
-  
-  ## TOOL SELECTION
-  - SINGLE panel WITHOUT dialogue: createPanelTool
-  - SINGLE panel WITH dialogue: createPanelWithDialoguesTool
-  - MULTIPLE panels WITHOUT dialogue: createMultiplePanelsTool
-  - MULTIPLE panels WITH dialogue: createMultiplePanelsWithDialoguesTool
-  - Adding dialogue to existing panels: createPanelDialogueTool
-  
-  ## PANEL CREATION GUIDELINES
-  
-  For each panel, describe:
-  - ORDER: Numeric sequence in scene
-  - ACTION: Precise visual action with emotional/psychological subtext
-  - CHARACTER POSES: Emotionally revealing poses suggesting internal states
-  - EXPRESSIONS: Nuanced facial expressions revealing psychology
-  - EMOTION: Multidimensional emotional tone (primary + secondary)
-  - CAMERA: Angle (close-up/medium/wide/bird's eye/low angle)
-  - SHOT TYPE: Action/reaction/establishing/detail
-  - BACKGROUND: Setting with narrative/symbolic relevance
-  - LIGHTING: Atmospheric quality with emotional/symbolic impact
-  - EFFECTS: Manga-style visual enhancements with thematic purpose
-  - PURPOSE: Narrative function in plot/character development
-  - POSITION: Place within scene's emotional/narrative arc
-  - CHARACTERS: List of present characters
-  
-  ## DIALOGUE CREATION GUIDELINES
-  
-  For each dialogue element:
-  - ORDER: Numeric sequence in panel
-  - CONTENT: Character-authentic text with multiple layers of subtext
-  - BUBBLE TYPE: Normal/thought/scream/whisper/narration
-  - SIZE: Text emphasis (x-small through x-large)
-  - EMPHASIS: Whether text requires special emphasis
-  - POSITION: Placement within panel composition
-  - EMOTION: Specific emotional delivery with vocal/physical details
-  - SUBTEXT: Deep psychological analysis of underlying meaning
-  - SPEAKER: Character ID or indication of narration
-  
-  ## MULTI-PANEL GENERATION
-  1. Create 5-15 sequential panels
-  2. Design each panel as rich mini-narrative
-  3. Ensure logical visual flow with emotional momentum
-  4. Vary compositions for maximum impact
-  5. Build to compelling dramatic climax
-  6. Maintain consistent character/setting evolution
-  7. Advance plot and character simultaneously
-  
-  ## VISUAL STORYTELLING TECHNIQUES
-  - VISUAL SUBTEXT: Composition revealing secondary meaning
-  - PSYCHOLOGICAL FRAMING: Angles revealing character psychology
-  - VISUAL METAPHOR: Elements reinforcing themes
-  - EMOTIONAL PROGRESSION: Clear feelings evolution across panels
-  - MICRO-EXPRESSIONS: Subtle facial cues revealing true feelings
-  - ENVIRONMENTAL INTERACTION: Character-setting engagement revealing personality
-  - POWER DYNAMICS: Spatial relationships establishing character hierarchy
-  - VISUAL ECHOING: Panel parallels reinforcing themes
-  
-  ## DIALOGUE MASTERY
-  - MULTILAYERED EXCHANGES: Three meaning levels (words, subtext, theme)
-  - AUTHENTIC VOICES: Perfect reflection of character psychology
-  - RELATIONSHIP INSIGHT: Illuminating character connections
-  - NARRATIVE EFFICIENCY: Advancing plot, character, themes simultaneously
-  - EMOTIONAL EVOLUTION: Dialogue exchanges with emotional progression
-  - STRATEGIC SILENCE: Using visual-only moments for impact
-  - MAXIMUM IMPACT: Every word serves multiple purposes
-  - TENSION UNDERCURRENT: Conflict embedded in casual exchanges
-  
-  Always begin by identifying target scene (title, ID). Ask for clarification if unclear.
-  
-  ## CONTEXT
-  {{#if projectContext}} Project context: {{projectContext}} {{/if}}
-  {{#if sceneContext}} Scene context: {{sceneContext}} {{/if}}
-  {{#if characters}} Character details: {{characters}} {{/if}}
+## CRITICAL CHARACTER REQUIREMENTS
+🚨 MANDATORY: Every panel MUST include characters from the provided character context
+🚨 MANDATORY: characterIds array MUST exactly match the characters in characterPoses array
+🚨 MANDATORY: Use characterName from characterPoses that corresponds to character IDs
+🚨 MANDATORY: Never create panels without characters - panels without characters are NOT IMPORTANT
+🚨 MANDATORY: Always use characters from the characters context provided
 
-  user message: {{userInput}}`,
+## CHARACTER CONSISTENCY ENFORCEMENT
+For EVERY panel you must:
+1. Include at least one character from the provided characters context
+2. Populate characterIds array with the IDs of characters present
+3. Create characterPoses array with matching entries:
+   - characterName: Must match the character from context
+   - pose: Detailed description of character's physical positioning
+   - expression: Specific facial expression revealing psychology
+4. Ensure characterIds.length === characterPoses.length
+5. Verify each characterId has corresponding characterPoses entry
+
+## NARRATIVE DENSITY
+Each panel conveys 3-6 minutes of narrative time with extraordinary richness:
+- Complete dramatic micro-scenes
+- Multilayered dialogue with subtext
+- Immersive visual elements with maximum narrative efficiency
+- CHARACTER-DRIVEN storytelling (never scenery-only panels)
+
+## TOOL SELECTION
+- SINGLE panel WITHOUT dialogue: createPanelTool
+- SINGLE panel WITH dialogue: createPanelWithDialoguesTool
+- MULTIPLE panels WITHOUT dialogue: createMultiplePanelsTool
+- MULTIPLE panels WITH dialogue: createMultiplePanelsWithDialoguesTool
+- Adding dialogue to existing panels: createPanelDialogueTool
+
+## PANEL CREATION GUIDELINES
+
+For each panel, describe ALL properties:
+- ORDER: Numeric sequence in scene
+- ACTION: Precise visual action with emotional/psychological subtext
+- CHARACTER POSES: 🚨 MANDATORY - Array of character poses with:
+  * characterName: Exact name from characters context
+  * pose: Emotionally revealing pose suggesting internal states
+  * expression: Nuanced facial expression revealing psychology
+- EMOTION: Multidimensional emotional tone (primary + secondary)
+- CAMERA: Angle (close-up/medium/wide/bird's eye/low angle)
+- SHOT TYPE: Action/reaction/establishing/detail
+- BACKGROUND: Setting with narrative/symbolic relevance
+- LIGHTING: Atmospheric quality with emotional/symbolic impact
+- EFFECTS: Manga-style visual enhancements with thematic purpose
+- PURPOSE: Narrative function in plot/character development
+- POSITION: Place within scene's emotional/narrative arc
+- CHARACTERS: 🚨 MANDATORY - List of present character IDs (must match characterPoses)
+
+## CHARACTER INTEGRATION REQUIREMENTS
+Every panel must demonstrate:
+- Active character presence and interaction
+- Character-driven visual storytelling
+- Emotional character development
+- Character relationships and dynamics
+- Individual character personality expression
+- Character reactions to scene events
+
+## DIALOGUE CREATION GUIDELINES
+
+For each dialogue element, populate ALL properties:
+- ORDER: Numeric sequence in panel
+- CONTENT: Character-authentic text with multiple layers of subtext
+- BUBBLE TYPE: Normal/thought/scream/whisper/narration
+- SIZE: Text emphasis (x-small through x-large)
+- EMPHASIS: Whether text requires special emphasis
+- POSITION: Placement within panel composition
+- EMOTION: Specific emotional delivery with vocal/physical details
+- SUBTEXT: Deep psychological analysis of underlying meaning
+- SPEAKER: Character ID or indication of narration (must match provided characters)
+
+## MULTI-PANEL GENERATION
+1. Create 5-15 sequential panels (ALL with characters)
+2. Design each panel as rich character-driven mini-narrative
+3. Ensure logical visual flow with character emotional momentum
+4. Vary character compositions for maximum impact
+5. Build to compelling character-focused dramatic climax
+6. Maintain consistent character development and setting evolution
+7. Advance plot through character actions and reactions
+8. Generate consistent image prompts maintaining character visual continuity
+
+## VISUAL STORYTELLING TECHNIQUES
+- CHARACTER SUBTEXT: Character positioning revealing secondary meaning
+- PSYCHOLOGICAL FRAMING: Angles revealing character psychology
+- CHARACTER METAPHOR: Character elements reinforcing themes
+- EMOTIONAL PROGRESSION: Clear character feelings evolution across panels
+- MICRO-EXPRESSIONS: Subtle character facial cues revealing true feelings
+- CHARACTER-ENVIRONMENT INTERACTION: Character-setting engagement revealing personality
+- POWER DYNAMICS: Character spatial relationships establishing hierarchy
+- VISUAL ECHOING: Character panel parallels reinforcing themes
+
+## DIALOGUE MASTERY
+- MULTILAYERED EXCHANGES: Three meaning levels (words, subtext, theme)
+- AUTHENTIC VOICES: Perfect reflection of individual character psychology
+- RELATIONSHIP INSIGHT: Illuminating character connections and dynamics
+- NARRATIVE EFFICIENCY: Advancing plot, character development, themes simultaneously
+- EMOTIONAL EVOLUTION: Character dialogue exchanges with emotional progression
+- STRATEGIC SILENCE: Using character visual-only moments for impact
+- MAXIMUM IMPACT: Every word serves character development purposes
+- TENSION UNDERCURRENT: Character conflict embedded in casual exchanges
+
+## PRE-GENERATION CHECKLIST
+Before creating any panel, verify:
+✅ At least one character from characters context is included
+✅ characterIds array is populated with character IDs
+✅ characterPoses array has entries for each character
+✅ characterName in poses matches actual character names
+✅ characterIds.length === characterPoses.length
+✅ Panel serves character development purpose
+✅ All required properties are populated
+
+Always begin by identifying target scene (title, ID) and available characters. Ask for clarification if character context is unclear.
+
+## CONTEXT
+{{#if projectContext}} Project context: {{projectContext}} {{/if}}
+{{#if sceneContext}} Scene context: {{sceneContext}} {{/if}}
+{{#if characters}} 
+🚨 AVAILABLE CHARACTERS (MUST USE): {{characters}} 
+Character requirements: Every panel must include at least one of these characters with matching characterIds and characterPoses
+{{/if}}
+{{#if artStyle}} Art style: {{artStyle}} {{/if}}
+
+user message: {{userInput}}`,
 });
 
 export const CreateMangaFlow = ai.defineFlow(
@@ -373,7 +571,7 @@ export const CreateMangaFlow = ai.defineFlow(
   async ({ userPrompt }) => {
     const story = await StoryGenerationPrompt({ userInput: userPrompt });
 
-    const ProjectId = JSON.parse(story.output as unknown as string)?.projectId;
+    const ProjectId = story.output?.projectId;
 
     const characterPrompt = `1. Create EXACTLY the following characters:
          -  Protagonist character (role: "protagonist")

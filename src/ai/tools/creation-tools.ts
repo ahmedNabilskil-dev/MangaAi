@@ -181,7 +181,6 @@ export const createPanelTool = ai.defineTool(
         dialogues: true,
         characters: true,
         imageUrl: true,
-        aiPrompt: true,
         isAiGenerated: true,
         sceneId: true,
       })
@@ -299,7 +298,6 @@ export const createCharacterTool = ai.defineTool(
         createdAt: true,
         updatedAt: true,
         aiGenerationPrompt: true,
-        visualIdentityAnchors: true,
         isAiGenerated: true,
         imgUrl: true,
         styleGuide: true,
@@ -615,7 +613,6 @@ export const createMultipleCharactersTool = ai.defineTool(
             createdAt: true,
             updatedAt: true,
             aiGenerationPrompt: true,
-            visualIdentityAnchors: true,
             isAiGenerated: true,
             imgUrl: true,
             expressionImages: true,
@@ -670,7 +667,6 @@ export const createPanelWithDialoguesTool = ai.defineTool(
           dialogues: true,
           characters: true,
           imageUrl: true,
-          aiPrompt: true,
           isAiGenerated: true,
           sceneId: true,
         })
@@ -797,7 +793,6 @@ export const createMultiplePanelsTool = ai.defineTool(
               dialogues: true,
               characters: true,
               imageUrl: true,
-              aiPrompt: true,
               isAiGenerated: true,
               sceneId: true,
             })
@@ -884,7 +879,6 @@ export const createMultiplePanelsWithDialoguesTool = ai.defineTool(
                 characters: true,
                 imageUrl: true,
                 isAiGenerated: true,
-                aiPrompt: true,
                 sceneId: true,
               })
               .extend({

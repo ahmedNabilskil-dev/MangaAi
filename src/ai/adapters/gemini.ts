@@ -5,8 +5,22 @@ import {
   Tool,
 } from "@/ai/adapters/type";
 
+import {
+  Content,
+  FunctionCallingConfigMode,
+  GenerateContentParameters,
+  GenerateContentResponse,
+  GoogleGenAI,
+  Modality,
+  Part,
+  ToolListUnion,
+} from "@google/genai";
 export class GeminiAdapter implements ChatAdapter {
-  constructor(private apiKey: string) {}
+  private genAI: GoogleGenAI;
+
+  constructor(apiKey: string) {
+    this.genAI = new GoogleGenAI({ apiKey: apiKey });
+  }
 
   async send(
     messages: Message[],
@@ -17,105 +31,151 @@ export class GeminiAdapter implements ChatAdapter {
   ): Promise<Message[]> {
     if (depth > 10) throw new Error("Too many recursive tool calls");
 
-    const responseShape = callTool
-      ? {
-          tool_config: {
-            function_calling_config: {
-              mode: "ANY",
-            },
+    const geminiTools: ToolListUnion = tools.length
+      ? [
+          {
+            functionDeclarations: tools.map((tool) => ({
+              name: tool.name,
+              description: tool.description,
+              parameters: tool.parameters,
+            })),
           },
-        }
-      : params.context?.outputSchema
-      ? {
-          generationConfig: {
-            responseMimeType: "application/json",
-            responseSchema: params.context.outputSchema,
+        ]
+      : [];
+
+    const contents: Content[] = messages.map((m) => {
+      let parts: Part[] = [];
+      if (m.contentKey === "functionCall") {
+        parts.push({
+          functionCall: m.content as {
+            name: string;
+            args: Record<string, any>;
           },
-        }
-      : {};
-    const toolDeclarations = tools.map((tool) => ({
-      name: tool.name,
-      description: tool.description,
-      parameters: tool.parameters,
-    }));
+        });
+      } else if (m.contentKey === "functionResponse") {
+        parts.push({
+          functionResponse: m.content as { name: string; response: any },
+        });
+      } else {
+        parts.push({ text: m.content as string });
+      }
 
-    const buildContents = (msgs: Message[]) =>
-      msgs.map((m) => ({
-        role: m.role === "assistant" ? "model" : m.role,
-        parts: [{ [m.contentKey || "text"]: m.content }],
-      }));
+      // Map your internal role to the SDK's Role type
+      const role = m.role === "assistant" ? "model" : m.role;
 
-    const baseContents = buildContents(messages);
+      return {
+        role: role,
+        parts: parts,
+      };
+    });
 
-    const requestBody = {
-      system_instruction: params.systemPrompt
-        ? {
-            parts: [
-              {
-                text: params.systemPrompt,
-              },
-            ],
-          }
-        : undefined,
-      contents: baseContents,
-      tools: toolDeclarations.length
-        ? [
-            {
-              functionDeclarations: toolDeclarations,
-            },
-          ]
-        : undefined,
-      ...responseShape,
+    const requestOptions: GenerateContentParameters = {
+      model: params.model || "gemini-2.0-flash",
+      contents: contents,
+      config: {
+        tools: geminiTools.length ? geminiTools : undefined,
+        systemInstruction: params.systemPrompt,
+      },
     };
 
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${params.model}:generateContent?key=${this.apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
+    if (params.context?.outputSchema && !callTool) {
+      requestOptions.config!.responseMimeType = "application/json";
+      requestOptions.config!.responseSchema = params.context.outputSchema;
+    }
+
+    if (callTool) {
+      // When calling a tool, the mode should be ANY
+      requestOptions.config!.toolConfig = {
+        functionCallingConfig: {
+          mode: FunctionCallingConfigMode.ANY,
+        },
+      };
+    }
+
+    let result: GenerateContentResponse;
+    try {
+      result = await this.genAI.models.generateContent(requestOptions);
+    } catch (error: any) {
+      // Handle potential errors from the API call
+      console.error("Error generating content:", error);
+      // Attempt to parse the error message if it's in a JSON format from the API
+      try {
+        const errorData = JSON.parse(error.message.split("\n")[0]);
+        if (errorData && errorData.error && errorData.error.message) {
+          throw new Error(`Gemini API Error: ${errorData.error.message}`);
+        }
+      } catch (parseError) {
+        // If not a JSON error, re-throw the original error
+        throw error;
       }
-    );
+      throw error; // Re-throw if parsing fails
+    }
 
-    const data = await res.json();
-    const candidates = data.candidates || [];
-
-    const toolCalls = (candidates[0]?.content?.parts || []).filter(
-      (part: any) => part.functionCall
-    );
+    const toolCalls = result.functionCalls || [];
 
     if (toolCalls.length > 0) {
-      // Handle only one tool call at a time (Gemini limitation)
+      // Handle only one tool call at a time (Gemini limitation if multiple are returned)
       const call = toolCalls[0];
-      const tool = tools.find((t) => t.name === call.functionCall.name);
-      if (!tool) throw new Error(`Tool not found: ${call.functionCall.name}`);
+      const tool = tools.find((t) => t.name === call.name);
+      if (!tool) throw new Error(`Tool not found: ${call.name}`);
 
-      const args = call.functionCall.args || {};
-      const result = await tool.execute(args);
-      const updatedContents: Message[] = [
+      const args = call.args || {};
+      const toolResult = await tool.execute(args);
+
+      const updatedMessages: Message[] = [
         ...messages,
         {
           role: "assistant",
-          content: call.functionCall,
+          content: call,
           contentKey: "functionCall",
         },
         {
           role: "user",
           content: {
-            name: call.functionCall.name,
-            response: { result },
+            name: call.name,
+            response: { result: toolResult }, // Use the result directly
           },
           contentKey: "functionResponse",
         },
       ];
 
-      return await this.send(updatedContents, [], params, false, depth + 1);
+      return await this.send(updatedMessages, [], params, false, depth + 1);
     }
 
     // No tool call — normal response
-    return candidates.map((c: any) => ({
+    return result.candidates!.map((c) => ({
       role: "assistant",
-      content: c.content?.parts?.map((p: any) => p.text || "").join("") || "",
+      content: c.content?.parts?.map((p) => p.text || "").join("") || "",
     }));
   }
+
+  generateImage = async ({
+    prompt,
+    history,
+  }: {
+    prompt: string;
+    history: Content[];
+  }) => {
+    const chat = this.genAI.chats.create({
+      model: "gemini-2.0-flash-preview-image-generation",
+      config: { responseModalities: [Modality.TEXT, Modality.IMAGE] },
+      history,
+    });
+
+    const response = await chat.sendMessage({ message: [{ text: prompt }] });
+
+    const finalResponse = { text: "", image46: "" };
+
+    for (const part of response.candidates?.[0]?.content?.parts || []) {
+      // Based on the part type, either show the text or save the image
+      if (part.text) {
+        finalResponse.text = part.text;
+      } else if (part.inlineData) {
+        const imageData = part.inlineData.data;
+        finalResponse.image46 = imageData || "";
+      }
+    }
+
+    return finalResponse;
+  };
 }
