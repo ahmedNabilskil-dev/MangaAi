@@ -17,7 +17,7 @@ export const GenerateCharacterImage = ai.defineFlow(
     }
 
     // Add project style context if available
-    let prompt = await AnimeCharacterPrompt({
+    let prompt = await AnimeCharacterPortraitPrompt({
       character: character,
       seriesStyle: "Solo Leveling",
     });
@@ -64,7 +64,6 @@ export const GeneratePanelImage = ai.defineFlow(
   async ({ panel, projectContext, scene }) => {
     const conversationHistory: Content[] = [];
 
-    // Build character reference history - IMAGE ONLY, NO DESCRIPTIONS
     for (const ch of projectContext.characters) {
       if (ch.imageData && ch.imageData.data && ch.imageData.mimeType) {
         conversationHistory.push({
@@ -98,8 +97,12 @@ export const GeneratePanelImage = ai.defineFlow(
       scene: scene,
     });
 
+    const finalPrompt = await enhancePanelPrompt({
+      input: prompt.output?.imagePrompt!,
+    });
+
     const res = await ai.generateImage({
-      prompt: prompt.output?.imagePrompt!,
+      prompt: finalPrompt.output!,
       history: conversationHistory,
     });
 
@@ -122,7 +125,7 @@ export const GeneratePanelImage = ai.defineFlow(
 );
 
 export const PanelImagePrompt = ai.definePrompt({
-  name: "CinematicMangaGeneration",
+  name: "DetailedMangaImagePrompt",
   input: {
     schema: z.object({
       panel: z.any(),
@@ -136,127 +139,190 @@ export const PanelImagePrompt = ai.definePrompt({
       imagePrompt: z
         .string()
         .describe(
-          "Ultra-detailed cinematic manga prompt for maximum visual impact"
+          "Detailed, structured image generation prompt following successful format patterns."
         ),
     }),
   },
-  prompt: `You are a master visual storyteller and cinematic artist specializing in creating breathtaking, emotionally-charged color manga panels that transcend language barriers through pure visual poetry.
+  prompt: `You are an expert AI image prompt engineer. Generate a highly detailed, structured prompt based on the successful format that produces clean, artifact-free ANIME/MANGA style images.
 
-## CORE PHILOSOPHY: VISUAL EMOTION MASTERY
-Your mission is to craft prompts that generate images so visually compelling, so rich in emotional subtext, and so cinematically perfect that viewers are moved to silence. Every pixel must carry emotional weight. Every color must whisper secrets. Every shadow must hint at untold stories.
+---
 
-## THE ULTIMATE VISUAL RECIPE
+## QUALITY & STYLE REQUIREMENTS
+**CRITICAL: Every prompt must start with these specifications:**
+- "masterpiece, best quality, high resolution, ultra detailed,"
+- "anime style, manga art style, Japanese animation,"
+- "2D anime art, cel-shaded animation style,"
+- Include specific anime visual characteristics
 
-### FOUNDATION LAYER - Premium Cinematic Quality
-Start with absolute technical perfection:
-"8K ultra-detailed masterpiece, award-winning color manga art, perfect anatomical precision, photorealistic rendering with manga aesthetic, volumetric lighting mastery, razor-sharp lineart with professional digital coloring, cinematic composition that demands attention"
+---
 
-### EMOTIONAL CORE EXTRACTION
-Analyze the provided data and identify the deepest emotional truth:
-- What is the REAL story being told here?
-- What emotion should viewers feel in their chest?
-- What unspoken tension exists between characters?
-- What atmosphere will make viewers hold their breath?
+## SUCCESSFUL PROMPT STRUCTURE
+Follow this exact pattern for best results:
 
-### VISUAL POETRY CONSTRUCTION
-Transform basic elements into cinematic gold:
+1. **QUALITY & STYLE DECLARATION** (quality + anime/manga specification)
+2. **SCENE OVERVIEW** (1 sentence)
+3. **ENVIRONMENT DETAILS** (detailed setting description)
+4. **PRIMARY CHARACTER** (full detailed description)
+5. **SECONDARY CHARACTER** (full detailed description)  
+6. **BACKGROUND ELEMENTS** (if any, brief)
+7. **CAMERA & COMPOSITION** (shot type, angle)
+8. **LIGHTING DETAILS** (specific lighting setup)
+9. **MOOD & ATMOSPHERE** (emotional tone)
+10. **SPECIAL EFFECTS** (blood, magic, etc. if relevant)
 
-**CHARACTER METAMORPHOSIS:**
-- "Basic girl" becomes → "ethereally beautiful young woman with eyes that hold galaxies of unspoken pain, delicate features carved by moonlight, every strand of hair catching light like silk threads of destiny"
-- "Fighting scene" becomes → "ballet of violence frozen at the moment of impact, where time bends and emotions crystallize into pure kinetic energy"
+---
 
-**ENVIRONMENTAL ALCHEMY:**
-- "School" becomes → "prestigious academy where shadows dance with secrets, gothic architecture breathing with ancient wisdom, every window reflecting different worlds of possibility"
-- "Forest" becomes → "primordial woodland cathedral where light performs sacred rituals through emerald canopies, each leaf whispering forgotten magic"
+## DATA EXTRACTION
 
-**ATMOSPHERIC TRANSCENDENCE:**
-- Infuse weather with personality: "storm clouds that mirror inner turmoil, rain that falls like tears of the sky, wind that carries the weight of unspoken words"
-- Make lighting a character: "golden hour that paints everything in nostalgia, harsh noon sun that reveals brutal truths, twilight that holds all mysteries"
+**Panel Information:**
+- Action: {{panel.panelContext.action}}
+- Character Poses: 
+{{#if panel.panelContext.characterPoses}}
+{{#each panel.panelContext.characterPoses}}
+  * {{characterName}}: {{pose}} {{#if expression}}({{expression}}){{/if}}
+{{/each}}
+{{/if}}
+- Camera Angle: {{panel.panelContext.cameraAngle}}
+- Shot Type: {{panel.panelContext.shotType}}
+- Background: {{panel.panelContext.backgroundDescription}}
+- Lighting: {{panel.panelContext.lighting}}
+- Effects: {{panel.panelContext.effects}}
+- Dramatic Purpose: {{panel.panelContext.dramaticPurpose}}
 
-### CINEMATIC MASTERY TECHNIQUES
+**Scene Context:**
+- Setting: {{scene.sceneContext.setting}}
+- Mood: {{scene.sceneContext.mood}}
+- Present Characters: {{scene.sceneContext.presentCharacters}}
+- Time of Day: {{scene.sceneContext.timeOfDay}}
+- Weather: {{scene.sceneContext.weather}}
 
-**Camera Angles as Emotional Instruments:**
-- Close-up: "intimate macro-lens perfection, every pore telling a story, eyes so detailed you can see the reflection of their soul's landscape, facial expressions that could move mountains"
-- Wide shot: "sweeping cinematic vista where characters become part of an epic visual symphony, environmental storytelling that rivals Miyazaki's masterpieces"
-- Low angle: "heroic perspective that makes viewers look up to greatness, shadows and light creating a visual throne of power"
-- High angle: "vulnerable bird's eye view that exposes the fragility of human condition, patterns and symmetries that speak to cosmic order"
+**Characters Available:**
+{{#if characters}}
+{{#each characters}}
+- {{name}}: {{description}}
+{{/each}}
+{{/if}}
 
-**Color Psychology Weaponization:**
-- Use color temperature as emotional manipulation
-- Create color relationships that tell stories without words
-- Employ selective desaturation for dramatic emphasis
-- Build color crescendos that guide the eye through emotional journeys
+---
 
-**Micro-Detail Obsession:**
-- Fabric textures that you can almost feel
-- Hair that moves with individual strand physics
-- Eyes with crystalline depth and complexity
-- Environmental details that reward close inspection
-- Lighting effects that seem to breathe
+## GENERATION APPROACH
 
-### GENRE-SPECIFIC EXCELLENCE BOOSTERS
+**Follow the natural narrative flow of the successful example. Each section should flow seamlessly into the next without repetition or mechanical templating.**
 
-**Action Scenes:**
-"kinetic energy made visible, motion blur trails that trace the geometry of violence, impact effects that shatter the fourth wall, slow-motion crystallization of the decisive moment where fate hangs in perfect balance"
+**STEP 1: Quality & Style Declaration**
+- Always start with "masterpiece, best quality, high resolution, ultra detailed,"
+- Follow with "anime style, manga art style, Japanese animation,"
+- Include specific anime visual characteristics
 
-**Emotional Scenes:**
-"micro-expressions that contain novels worth of feeling, body language that speaks louder than screams, environmental details that mirror internal states, color palettes that resonate in the viewer's chest"
+**STEP 2: Scene Setup (Single flowing paragraph)**
+- Start with the core dramatic action
+- Describe character positions and immediate actions in relation to each other
+- Keep it natural and narrative, not templated
 
-**Mysterious Scenes:**
-"selective lighting that creates more questions than answers, shadows that hide entire worlds, details that emerge gradually like developing photographs, atmospheric effects that make reality feel negotiable"
+**STEP 3: Environment (Single descriptive sentence)**
+- One clear, detailed description of the setting
+- Include specific materials, atmospheric elements
+- Don't repeat environment details later
 
-### THE SECRET INGREDIENT: CREATIVE GAPS FILLING
-When data is sparse, become a visual prophet:
-- Invent compelling backstories through visual cues
-- Create symbolic elements that add layers of meaning
-- Add environmental storytelling that makes viewers theorize
-- Include Easter eggs for attentive observers
-- Build visual metaphors that operate on subconscious levels
+**STEP 4: Character Details (One paragraph per main character)**
+- Start with physical appearance (age, hair, eyes)
+- Add "(use previous character reference images)" after character name
+- Move to clothing (specific materials, fit, condition)
+- Add what they're holding/doing
+- Include body type and anatomical perfection
+- End with expression
+- Make it flow naturally, not like a checklist
 
-## PROMPT ARCHITECTURE FORMULA
+**STEP 5: Background Characters (Brief sentence)**
+- Position and brief description only
+- Don't over-detail background characters
 
-Construct prompts following this exact hierarchy:
+**STEP 6: Camera/Composition (Single sentence)**
+- Shot type, angle, and focus priority
 
-1. **Technical Foundation** (Premium quality establishment)
-2. **Cinematic Perspective** (Camera work and framing)
-3. **Character Magnetism** (Make them unforgettable)
-4. **Environmental Poetry** (Settings as characters)
-5. **Emotional Atmosphere** (The invisible story)
-6. **Color Symphony** (Visual music through color)
-7. **Lighting Mastery** (Illumination as emotion)
-8. **Micro-Detail Excellence** (Pixel-level perfection)
-9. **Artistic Style Fusion** (Best of all techniques)
-10. **Emotional Resonance Amplifier** (The X-factor)
+**STEP 7: Lighting (Flowing paragraph)**
+- Multiple light sources described naturally
+- How light interacts with characters and environment
+- Shadow patterns and highlights
 
-## EXAMPLE TRANSFORMATION MASTERY
+**STEP 8: Mood (Single sentence)**
+- 3-4 emotional descriptors
 
-**Input:** Generic school scene with two characters talking
-**Output:** "8K cinematic masterpiece, two students in prestigious academy's cherry blossom courtyard at golden hour, left character: raven-haired girl with eyes reflecting infinite sadness and determination, school uniform customized with subtle rebellion details, right character: gentle boy with silver hair catching sunlight like spun moonbeams, concerned expression carved with compassion, background: ancient stone architecture where light dances through Gothic windows, cherry petals falling like snow in slow motion, each petal casting micro-shadows, volumetric lighting creating cathedral atmosphere, color palette of warm amber and cool blues creating emotional tension, ultra-detailed facial expressions showing conversation that will change everything, professional manga coloring with watercolor texture blending, every shadow and highlight telling part of their untold story, cinematic depth of field making viewers lean in closer"
+**STEP 9: Special Effects (If relevant)**
+- Realistic descriptions of magical/special elements
 
-## CREATIVE ENHANCEMENT RULES
-- Always choose the most emotionally impactful interpretation
-- Add symbolic elements that operate on multiple levels
-- Create visual callbacks and foreshadowing through details
-- Make every creative addition feel destined, not arbitrary
-- Build layers that reward multiple viewings
+**STEP 10: Final Context (If needed)**
+- Any important contextual notes
 
-## FINAL PROMPT REQUIREMENTS
-Generate a single, comprehensive imagePrompt (400-500 words) that reads like visual poetry, flows like cinematography, and hits like emotional lightning. Every comma should add magic. Every adjective should paint pictures. Every technical specification should serve the story's soul.
+## CRITICAL RULES:
+- **ALWAYS START WITH QUALITY + ANIME STYLE SPECIFICATION**
+- **ADD CHARACTER REFERENCE INSTRUCTION** - Include "(use previous character reference images)" for each character
+- **NO REPETITION** - Each element mentioned only once
+- **NATURAL FLOW** - Read like a story description, not a template
+- **SEAMLESS TRANSITIONS** - Each section flows into the next
+- **AVOID MECHANICAL LANGUAGE** - Don't use "He is..." "She wears..." repeatedly
+- **SINGLE COHERENT NARRATIVE** - Should read as one flowing description
 
-Remember: You're not just describing an image. You're architecting a visual experience that will haunt viewers' dreams and make them believe in the power of wordless storytelling.
+---
 
-Panel Data: {{panel}}
-Scene Data: {{scene}}
-Characters: {{characters}}`,
+## SUCCESSFUL EXAMPLE TO FOLLOW:
+
+"masterpiece, best quality, high resolution, ultra detailed, anime style, manga art style, Japanese animation style, 2D anime art with clean line work and cel-shaded coloring, a young man protecting a young woman from an unseen monster. The young man lunges forward defensively, holding a sharp blade in his dominant hand, his other arm raised to shield the woman. The young woman is partially behind him, looking scared but hopeful, her body tense. a dark, damp, gothic-style cave interior with detailed stalactites and stalagmites, subtle mist, and intricate, realistic spiderwebs. a tall young man (use previous character reference images) with messy dark black hair and piercing bright blue eyes, wearing a tattered, dark grey, loose-fitting cotton t-shirt with realistic wrinkles and folds, and dark combat pants. He holds a short, razor-sharp combat knife with a defined handle and gleaming blade. His body is muscular and toned, with anatomically perfect hands, fingers, and joints. His expression is fierce and determined. a young woman (use previous character reference images) with long, flowing bubblegum pink hair and large, expressive light blue eyes. She wears a form-fitting black sports bra made of smooth, slightly reflective fabric, and dark shorts. Her body is slender and proportioned, with naturally defined shoulders and arms. Her expression is a mix of fear and trust in the boy's protection. a man with short dark hair and a stern expression, wearing a simple black black jacket, positioned further back in the cave, observing the scene, with clear facial features proportionate to his distance. dynamic medium shot, slightly low-angle, focusing on the boy's protective stance and the girl partially behind him. dramatic cinematic lighting with a single, strong glowing magical light source emanating from the boy's blade, casting sharp highlights and deep, realistic shadows. Subtle rim lighting on the characters, highlighting their silhouettes against the dark cave. Hints of ambient light from distant glowing crystals in the cave ceiling. intense, suspenseful, protective, and determined. realistic blood spatter on the blade and a tiny bit on the boy's shirt, appearing as natural liquid. The environment is dark and filled with a sense of danger from an unseen monster (do not generate the monster in the image, imply its presence through character reaction and context)."
+
+## ACTUAL STRUCTURE BREAKDOWN:
+1. **Quality & Style Declaration**: "masterpiece, best quality, high resolution, ultra detailed, anime style, manga art style, Japanese animation style, 2D anime art with clean line work and cel-shaded coloring,"
+
+2. **Scene Setup + Action**: "a young man protecting a young woman from an unseen monster. The young man lunges forward defensively, holding a sharp blade in his dominant hand, his other arm raised to shield the woman. The young woman is partially behind him, looking scared but hopeful, her body tense."
+
+3. **Environment**: "a dark, damp, gothic-style cave interior with detailed stalactites and stalagmites, subtle mist, and intricate, realistic spiderwebs."
+
+4. **Primary Character Details**: "a tall young man (use previous character reference images) with messy dark black hair and piercing bright blue eyes, wearing a tattered, dark grey, loose-fitting cotton t-shirt with realistic wrinkles and folds, and dark combat pants. He holds a short, razor-sharp combat knife with a defined handle and gleaming blade. His body is muscular and toned, with anatomically perfect hands, fingers, and joints. His expression is fierce and determined."
+
+5. **Secondary Character Details**: "a young woman (use previous character reference images) with long, flowing bubblegum pink hair and large, expressive light blue eyes. She wears a form-fitting black sports bra made of smooth, slightly reflective fabric, and dark shorts. Her body is slender and proportioned, with naturally defined shoulders and arms. Her expression is a mix of fear and trust in the boy's protection."
+
+6. **Background Character**: "a man with short dark hair and a stern expression, wearing a simple black black jacket, positioned further back in the cave, observing the scene, with clear facial features proportionate to his distance."
+
+7. **Camera/Composition**: "dynamic medium shot, slightly low-angle, focusing on the boy's protective stance and the girl partially behind him."
+
+8. **Lighting Details**: "dramatic cinematic lighting with a single, strong glowing magical light source emanating from the boy's blade, casting sharp highlights and deep, realistic shadows. Subtle rim lighting on the characters, highlighting their silhouettes against the dark cave. Hints of ambient light from distant glowing crystals in the cave ceiling."
+
+9. **Mood**: "intense, suspenseful, protective, and determined."
+
+10. **Special Effects**: "realistic blood spatter on the blade and a tiny bit on the boy's shirt, appearing as natural liquid."
+
+11. **Final Context**: "The environment is dark and filled with a sense of danger from an unseen monster (do not generate the monster in the image, imply its presence through character reaction and context)."
+
+---
+
+## GENERATE PROMPT
+
+Using the panel, scene, and character data provided, create a detailed prompt following the successful structure pattern. Focus on:
+- **ALWAYS begin with quality + anime/manga style declaration**
+- **Add "(use previous character reference images)" for each character**
+- Specific visual details over abstract concepts
+- Anatomical perfection mentions
+- Realistic material descriptions  
+- Clear spatial relationships between characters
+- Dramatic lighting setups
+- Atmospheric environmental details
+
+Generate the complete prompt now:`,
 });
 
-export const AnimeCharacterPrompt = ai.definePrompt({
-  name: "UltimateAnimeCharacterGeneration",
+export const enhancePanelPrompt = ai.definePrompt({
+  name: "enhancePanelPrompt",
+  input: { schema: z.object({ input: z.string() }) },
+  output: { schema: z.string().describe("the enhanced Prompt") },
+  prompt: `enhance this prompt for the ai image generation that has a poor quality for non well structured prompt  or wide shot it show poor details specially face or things also notes i will give the ai image model the prompt and a reference image for each characters(it is portrait image, only head is appear) don,t try to change the look  {{input}}`,
+});
+
+// PORTRAIT VERSION - For creating detailed character reference faces
+export const AnimeCharacterPortraitPrompt = ai.definePrompt({
+  name: "AnimeCharacterPortraitGeneration",
   input: {
     schema: z.object({
       character: z.any(),
       seriesStyle: z.string().optional(),
-      additionalContext: z.string().optional(),
     }),
   },
   output: {
@@ -264,134 +330,181 @@ export const AnimeCharacterPrompt = ai.definePrompt({
       imagePrompt: z
         .string()
         .describe(
-          "Ultra-detailed anime character portrait prompt optimized for facial precision"
+          "Ultra-detailed anime character portrait prompt optimized for facial precision and reference creation"
         ),
     }),
   },
-  prompt: `You are a master anime character visualizer and portrait specialist, creating ultra-detailed character reference images focused on facial perfection and upper body composition for maximum detail retention and consistency.
+  prompt: `You are a master anime character visualizer creating ultra-detailed portrait references for maximum facial consistency and detail.
 
-## CORE MISSION: PORTRAIT PERFECTION
-Generate character prompts optimized for portrait/upper body shots that prioritize facial detail, expression, and character recognition. This reference will serve as the visual DNA for consistent character appearance across all manga panels.
-
-## COMPOSITION FOCUS: PORTRAIT OPTIMIZATION
-**FRAMING SPECIFICATION:**
-"Portrait shot, upper body composition, face-focused framing, shoulders and chest visible, maximum facial detail retention, professional headshot quality"
+## CORE MISSION: PORTRAIT REFERENCE CREATION
+Generate character portrait prompts optimized for creating detailed facial references that will be used to maintain consistency across all future character appearances.
 
 ## TECHNICAL EXCELLENCE FOUNDATION
-Begin every prompt with premium portrait specifications:
-"8K ultra-detailed portrait masterpiece, perfect facial anatomy, award-winning anime character design, professional portrait photography quality, razor-sharp facial features, flawless facial proportions, studio portrait lighting, reference portrait perfection, close-up character study"
+Begin with premium portrait specifications:
+"8K ultra-detailed portrait masterpiece, perfect facial anatomy, award-winning anime character design, professional portrait photography quality, razor-sharp facial features, flawless facial proportions, studio portrait lighting, reference portrait perfection, close-up character study. Portrait shot, upper body composition, face-focused framing, shoulders and chest visible, maximum facial detail retention, professional headshot quality."
 
-## CHARACTER DATA INTEGRATION PROTOCOL
+## CHARACTER DATA INTEGRATION
 
-### BASIC IDENTITY CONSTRUCTION
-Extract and integrate:
-- Name: {{character.name}}
-- Age: {{character.age}} years old (use age-appropriate descriptors like "young woman/man", "teenage", "mature")
-- Gender: {{character.gender}}
-- Role: {{character.role}} character
-- Personality essence: {{character.personality}}
-- Brief description: {{character.briefDescription}}
+### BASIC IDENTITY
+- {{character.age}} year old {{character.gender}} with {{character.personality}} demeanor, {{character.role}} character
 
-### FACIAL ARCHITECTURE - MAXIMUM DETAIL PRIORITY
-
-**FACE COMPOSITION - PIXEL-PERFECT PRECISION:**
+### FACIAL ARCHITECTURE - MAXIMUM DETAIL
+**Face Structure:**
 - Face shape: {{character.facialAttributes.faceShape}} with {{character.facialAttributes.jawline}} jawline, perfectly symmetrical features
 - Skin: {{character.facialAttributes.skinTone}} complexion with flawless texture, subtle skin highlights, natural skin depth, pore-level detail
-- Eyes: {{character.facialAttributes.eyeColor}} {{character.facialAttributes.eyeShape}} eyes with crystalline iris detail, individual eyelash definition, realistic light reflection, emotional depth, perfect eye symmetry
-- Eyebrows: Perfectly shaped eyebrows matching hair color, natural arch, individual hair strands visible
-- Nose: {{character.facialAttributes.noseType}} nose with subtle shadow definition, perfect nostril symmetry
-- Mouth: {{character.facialAttributes.mouthType}} mouth with detailed lip texture, natural lip color, subtle lip highlights
-- Default expression: {{character.expressionStyle.defaultExpression}} with micro-expression details
-- Emotional range: {{character.expressionStyle.emotionalRange}}
-- Facial tics: {{character.expressionStyle.facialTics}}
 
-**HAIR MASTERY - PORTRAIT OPTIMIZED:**
-- Hair color: {{character.hairAttributes.hairColor}} with realistic color gradients and natural highlights
-- Style: {{character.hairAttributes.hairstyle}} {{character.hairAttributes.hairLength}} hair perfectly framing the face
-- Texture: {{character.hairAttributes.hairTexture}} with individual strand physics, natural hair movement, realistic hair volume
-- Hair-face interaction: Natural hairline, sideburns (if applicable), hair shadows on face
-- Special features: {{character.hairAttributes.specialHairFeatures}} with realistic hair behavior and lighting
+**Eyes (Priority Detail):**
+- {{character.facialAttributes.eyeColor}} {{character.facialAttributes.eyeShape}} eyes with crystalline iris detail, individual eyelash definition, realistic light reflection, emotional depth, perfect eye symmetry
+- Perfectly shaped {{character.hairAttributes.hairColor}} eyebrows with natural arch, individual hair strands visible
+
+**Facial Features:**
+- {{character.facialAttributes.noseType}} nose with subtle shadow definition, perfect nostril symmetry
+- {{character.facialAttributes.mouthType}} mouth with detailed lip texture, natural lip color, subtle lip highlights, {{character.expressionStyle.defaultExpression}} with micro-expression details
+
+**Hair (Portrait Optimized):**
+- Hair color {{character.hairAttributes.hairColor}} with realistic color gradients and natural highlights
+- {{character.hairAttributes.hairstyle}}, {{character.hairAttributes.hairLength}} hair perfectly framing the face
+- {{character.hairAttributes.hairTexture}} texture with individual strand physics, natural hair movement, realistic hair volume
+- Natural hairline, sideburns, hair shadows on face. {{character.hairAttributes.specialHairFeatures}} with realistic hair behavior and lighting
 
 ### UPPER BODY COMPOSITION
+**Body Structure:**
+- {{character.bodyAttributes.bodyType}} build shoulder structure, natural shoulder slope
+- {{character.posture}} reflected in head tilt and shoulder position
 
-**NECK AND SHOULDERS:**
-- Neck: Proportional to face, natural neck curvature, appropriate neck thickness for {{character.gender}}
-- Shoulder line: {{character.bodyAttributes.bodyType}} shoulder structure, natural shoulder slope
-- Posture: {{character.posture}} reflected in head tilt and shoulder position
+**Upper Torso Outfit:**
+- {{character.style.defaultOutfit}} (chest/shoulder area only)
+- Collar detail: High, upturned collar framing the neck, fabric texture, color harmonizing with facial features
 
-**VISIBLE CLOTHING/OUTFIT:**
-- Upper torso outfit: {{character.style.defaultOutfit}} (chest/shoulder area only)
-- Collar detail: Specific collar type, fabric texture, how it frames the neck
-- Color coordination: {{character.style.colorPalette}} harmonizing with facial features
-- Accessories: {{character.style.accessories}} visible in portrait frame (necklaces, earrings, etc.)
-- Signature item: {{character.style.signatureItem}} if visible in upper body shot
+### DISTINCTIVE FEATURES
+- Unique facial features: {{character.distinctiveFeatures}} serves as a distinctive mark
+- Character traits: {{character.traits}} expressed through facial characteristics, especially through {{character.expressionStyle.defaultExpression}} and the intense gaze in the eyes
 
-### DISTINCTIVE IDENTITY MARKERS - PORTRAIT FOCUSED
-- Unique facial features: {{character.distinctiveFeatures}} (focus on face-specific traits)
-- Character traits: {{character.traits}} expressed through facial characteristics
-- Visible abilities manifestation: {{character.abilities}} (only if they affect facial/upper body appearance)
+### SERIES STYLE INTEGRATION
+Apply {{seriesStyle}} aesthetic with portrait focus:
+- Sharp angular facial features, piercing glowing eyes with magical depth, modern upper body fashion, crystalline eye effects, clean precise facial lineart, manhwa-style facial shading
 
-### SERIES STYLE INTEGRATION - PORTRAIT OPTIMIZED
+**Art Style Specifications:**
+- Art style: {{character.styleGuide.artStyle}}, optimized for facial detail
+- Facial line weight with emphasis on eye and lip definition
+- Facial shading with portrait lighting emphasizing bone structure and subtle skin texture
+- Color focus prioritizing natural skin tones and {{character.facialAttributes.eyeColor}} eye colors
 
-Apply {{seriesStyle}} aesthetic characteristics with portrait focus:
-
-**Attack on Titan**: Hyper-realistic facial proportions, intense determined eyes, weathered battle-hardened facial features, sharp jawlines, portrait lighting with dramatic shadows, muted skin tones, thick bold facial lineart
-
-**Solo Leveling**: Sharp angular facial features, piercing glowing eyes with magical depth, modern upper body fashion, crystalline eye effects, clean precise facial lineart, manhwa-style facial shading
-
-**Demon Slayer**: Soft traditional Japanese facial features, gentle yet determined expressions, warm natural skin tones, flowing hair framing face, traditional clothing collars, brushstroke-style facial lines
-
-**Jujutsu Kaisen**: Sharp contrast facial lighting, intense focused eyes, angular facial features, modern urban fashion (upper body), high contrast facial shadows, bold facial outlines
-
-**My Hero Academia**: Bright expressive anime eyes, confident heroic expressions, vibrant hair colors, superhero costume collars/chest pieces, clean superhero facial style
-
-**One Piece**: Distinctive memorable facial features, exaggerated but charming proportions, whimsical facial expressions, unique facial silhouettes, bright tropical-inspired upper body colors
-
-**Naruto**: Classic anime facial features, determined ninja expressions, spiky anime hair, traditional ninja headbands/collars, classic shonen facial proportions
-
-**Death Note**: Sharp intellectual facial features, calculating piercing eyes, gothic sophisticated upper body attire, monochromatic facial color scheme
-
-### ARTISTIC TECHNICAL SPECIFICATIONS - PORTRAIT FOCUSED
-
-**PORTRAIT ART EXECUTION:**
-- Art style: {{character.styleGuide.artStyle}} optimized for facial detail
-- Facial line weight: {{character.styleGuide.lineweight}} with emphasis on eye and lip definition
-- Facial shading: {{character.styleGuide.shadingStyle}} with portrait lighting
-- Color focus: {{character.styleGuide.colorStyle}} prioritizing natural skin tones and eye colors
-
-**CONSISTENCY ENFORCEMENT:**
-{{character.consistencyPrompt}}
-
-### LIGHTING AND ATMOSPHERE - PORTRAIT SPECIFIC
+### LIGHTING SETUP
 - Studio portrait lighting showcasing facial features
 - Soft key light eliminating harsh facial shadows
-- Natural skin tone rendering
-- Eye light for life-like gaze
-- Hair light for texture definition
+- Natural skin tone rendering, Eye light for life-like gaze, Hair light for texture definition
 - {{seriesStyle}} universe atmospheric elements as subtle background
 
-## QUALITY CONTROL SPECIFICATIONS - PORTRAIT PRIORITY
-- Facial symmetry must be perfect
-- Eye detail must be crystalline and life-like
-- Skin texture must be flawless yet natural
-- Hair must frame face naturally with realistic physics
-- Expression must capture core personality instantly
-- Upper body clothing must complement facial features
-- Overall portrait must be instantly recognizable
-- Face must be the clear focal point with maximum detail
+Generate a comprehensive portrait imagePrompt (350-400 words) focused on creating the perfect character reference face.
 
-## NEGATIVE PROMPT INTEGRATION
-Avoid: {{character.negativePrompt}}, full body shots, distant shots, facial asymmetry, blurry facial features, generic faces, poor facial proportions, bad eye detail, flat facial lighting, cropped faces, amateur portrait quality
+Character Data: {{character}}
+Series Style: {{seriesStyle}}`,
+});
 
-## ADDITIONAL CONTEXT INTEGRATION
-{{additionalContext}}
+// FULL BODY VERSION - For creating complete character illustrations
+export const AnimeCharacterFullBodyPrompt = ai.definePrompt({
+  name: "AnimeCharacterFullBodyGeneration",
+  input: {
+    schema: z.object({
+      character: z.any(),
+      seriesStyle: z.string().optional(),
+      portraitReference: z.string().optional(),
+      pose: z.string().optional(),
+      setting: z.string().optional(),
+    }),
+  },
+  output: {
+    schema: z.object({
+      imagePrompt: z
+        .string()
+        .describe(
+          "Complete anime character full-body prompt with facial consistency reference"
+        ),
+    }),
+  },
+  prompt: `You are creating a complete full-body anime character illustration that maintains perfect facial consistency with the established portrait reference.
 
-## FINAL OUTPUT REQUIREMENT
-Generate a single, comprehensive imagePrompt (400-500 words) focused on creating the perfect character portrait. This description should prioritize facial perfection while including enough upper body context for character recognition.
+## CORE MISSION: FULL BODY CHARACTER ILLUSTRATION
+Generate complete character illustrations with consistent facial features, full outfit details, and dynamic poses while maintaining the established character design.
 
-The prompt should read like a professional portrait photographer's specification combined with anime artistry - every facial detail specified for maximum generation accuracy and consistency.
+## TECHNICAL FOUNDATION
+"Full body anime character, high quality anime art, complete character design head to toe, clean lineart, cel shading, vibrant colors, detailed anime eyes with highlights, expressive facial features, modern anime aesthetic, professional anime production quality, cohesive character design, anime proportions, soft anime shading, detailed hair rendering with individual strands, anime facial features with precise detail, full body pose, detailed clothing and accessories, anatomically correct anime style, dynamic character stance, detailed hands and feet, fabric texture details, consistent art style throughout, full character reference sheet quality."
+
+## FACIAL CONSISTENCY REFERENCE
+{{portraitReference ? "CRITICAL: Maintain exact facial consistency with reference: " + portraitReference : ""}}
+
+### MAINTAINED FACIAL FEATURES
+- Face: {{character.facialAttributes.faceShape}} face with {{character.facialAttributes.jawline}} jawline
+- Eyes: {{character.facialAttributes.eyeColor}} {{character.facialAttributes.eyeShape}} eyes with the same crystalline detail and emotional depth
+- Hair: {{character.hairAttributes.hairColor}} {{character.hairAttributes.hairstyle}} {{character.hairAttributes.hairLength}} hair with {{character.hairAttributes.hairTexture}} texture
+- Expression: {{character.expressionStyle.defaultExpression}} expression maintaining character personality
+- Distinctive features: {{character.distinctiveFeatures}} clearly visible
+
+## FULL BODY COMPOSITION
+
+### BODY STRUCTURE & PROPORTIONS
+- {{character.age}} year old {{character.gender}} with {{character.bodyAttributes.bodyType}} build
+- Height: {{character.bodyAttributes.height}}
+- Overall physique: {{character.bodyAttributes.physique}}
+- Posture: {{character.posture}}
+
+### COMPLETE OUTFIT DESIGN
+**Main Clothing:**
+- {{character.style.defaultOutfit}}
+- Color palette: {{character.style.colorPalette}}
+- Fabric details: realistic fabric physics, appropriate draping, texture variety
+- Fit: how clothes conform to body type and movement
+
+**Accessories & Details:**
+- {{character.style.accessories}}
+- Signature item: {{character.style.signatureItem}}
+- Footwear: detailed shoes/boots appropriate to character style
+- Additional details: belts, bags, weapons, tools, etc.
+
+### POSE & COMPOSITION
+**Character Pose:**
+- {{pose || "confident standing pose showing full character design"}}
+- Hand positioning: detailed hands with proper anatomy
+- Stance: reflecting {{character.personality}} personality
+- Dynamic elements: suggesting {{character.abilities}} if applicable
+
+**Framing:**
+- Full body shot showing complete character from head to toe
+- Appropriate spacing around character
+- Clear view of all design elements
+- Character takes up 70-80% of frame height
+
+### SETTING & BACKGROUND
+- {{setting || "Simple background that doesn't distract from character design"}}
+- {{seriesStyle}} universe environmental elements
+- Lighting that enhances character without overpowering
+- Background complements character's color palette
+
+### SERIES STYLE APPLICATION
+Apply {{seriesStyle}} aesthetic to full body:
+- Art style consistency throughout entire figure
+- Appropriate lineart weight and shading style
+- Color saturation and contrast matching series aesthetic
+- Environmental elements that fit the universe
+
+### QUALITY SPECIFICATIONS
+- Anatomically correct proportions
+- Consistent art style from head to toe
+- Detailed fabric rendering and physics
+- Perfect hand and foot anatomy
+- Clear character silhouette
+- Vibrant but harmonious colors
+- Professional anime production quality
+
+## NEGATIVE SPECIFICATIONS
+Avoid: {{character.negativePrompt}}, realistic, photorealistic, 3D render, western cartoon, chibi, deformed, ugly, blurry, low quality, bad anatomy, extra limbs, mutation, disfigured, bad proportions, watermark, signature, text, inconsistent style, mixed art styles, sketchy lines, rough artwork, amateur drawing, poorly drawn, distorted features, cropped, partial body, headshot only, face only, missing limbs, incomplete character, bad hands, malformed hands, extra fingers, missing fingers, floating limbs, disconnected body parts
+
+Generate a comprehensive full-body imagePrompt (400-500 words) that creates a complete character illustration while maintaining facial consistency.
 
 Character Data: {{character}}
 Series Style: {{seriesStyle}}
-Additional Context: {{additionalContext}}`,
+Portrait Reference: {{portraitReference}}
+Pose: {{pose}}
+Setting: {{setting}}`,
 });

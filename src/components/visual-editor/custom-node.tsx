@@ -3,7 +3,6 @@
 import {
   BookOpen,
   Clock,
-  Eye,
   Film,
   Heart,
   LayoutPanelTop,
@@ -62,7 +61,6 @@ export interface CustomNodeProps {
   data: NodeData;
   selected?: boolean;
   isConnectable?: boolean;
-  onViewDetails?: (nodeId: string) => void;
 }
 
 export interface NodeColors {
@@ -205,8 +203,8 @@ export const BaseNode = ({
   selected = false,
   isConnectable = true,
   children,
-  onViewDetails,
-}: CustomNodeProps & { children: React.ReactNode }) => {
+  hasImage,
+}: CustomNodeProps & { children: React.ReactNode; hasImage: boolean }) => {
   const nodeType = data.type;
   const colors = nodeColors[nodeType] || nodeColors.project;
   const Icon = nodeIconMap[nodeType] || Sparkles;
@@ -245,13 +243,6 @@ export const BaseNode = ({
 
   // Get image URL if available
   const imageUrl = data.properties?.imageUrl || data.properties?.imgUrl;
-
-  // Handle view details click
-  const handleViewDetails = () => {
-    if (onViewDetails && data.id) {
-      onViewDetails(data.id);
-    }
-  };
 
   return (
     <div
@@ -303,25 +294,16 @@ export const BaseNode = ({
         <span className="uppercase tracking-wider text-sm drop-shadow-md">
           {data.type}
         </span>
-
-        {/* Add View Details button */}
-        <button
-          onClick={handleViewDetails}
-          className="ml-auto flex items-center justify-center p-1.5 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
-          aria-label="View details"
-        >
-          <Eye className="h-4 w-4" />
-        </button>
       </div>
 
       {/* Image section with parallax effect */}
-      {
+      {hasImage && (
         <div className="relative w-full h-40 overflow-hidden group-hover:h-44 transition-all duration-500">
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10"></div>
           <img
             src={imageUrl || "/images/hero-bg.png"}
             alt={data.label}
-            className="object-cover transition-all duration-700 group-hover:scale-105"
+            className="object-contain transition-all duration-700 group-hover:scale-105"
           />
           {data.type === "character" && data.properties?.role && (
             <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-full text-xs font-medium text-white bg-black/40 backdrop-blur-sm z-20">
@@ -329,7 +311,7 @@ export const BaseNode = ({
             </div>
           )}
         </div>
-      }
+      )}
 
       {/* Content area with frosted glass effect */}
       <div
@@ -391,7 +373,7 @@ export const ProjectNode = (props: CustomNodeProps) => {
   const showTags = tags.length > 0;
 
   return (
-    <BaseNode {...props}>
+    <BaseNode {...props} hasImage>
       {data.properties?.description && (
         <div className="mb-4">
           <p className="text-sm text-gray-700 dark:text-gray-300">
@@ -431,7 +413,7 @@ export const ChapterNode = (props: CustomNodeProps) => {
   const { data } = props;
 
   return (
-    <BaseNode {...props}>
+    <BaseNode {...props} hasImage>
       <div className="mb-4">
         <p className="text-sm text-gray-700 dark:text-gray-300">
           {truncate(data.properties?.purpose || "", 120)}
@@ -452,7 +434,7 @@ export const SceneNode = (props: CustomNodeProps) => {
   const { data } = props;
 
   return (
-    <BaseNode {...props}>
+    <BaseNode {...props} hasImage={false}>
       {data.properties?.setting && (
         <div className="mb-4 text-sm">
           <div className="flex items-center mb-3">
@@ -485,7 +467,7 @@ export const PanelNode = (props: CustomNodeProps) => {
   const { data } = props;
 
   return (
-    <BaseNode {...props}>
+    <BaseNode {...props} hasImage>
       {data.properties?.action && (
         <div className="mb-4">
           <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-3 group-hover:line-clamp-4 transition-all">
@@ -508,7 +490,7 @@ export const DialogueNode = (props: CustomNodeProps) => {
   const { data } = props;
 
   return (
-    <BaseNode {...props}>
+    <BaseNode {...props} hasImage={false}>
       {data.properties?.content && (
         <div className="mb-4 italic text-sm transform transition-all duration-300 group-hover:translate-x-1">
           <div className="relative pl-5 border-l-2 border-gray-300 dark:border-gray-600">
@@ -537,7 +519,7 @@ export const CharacterNode = (props: CustomNodeProps) => {
   const showTraits = traits.length > 0;
 
   return (
-    <BaseNode {...props}>
+    <BaseNode {...props} hasImage={true}>
       {data.properties?.briefDescription && (
         <div className="mb-4">
           <p className="text-sm text-gray-700 dark:text-gray-300">
