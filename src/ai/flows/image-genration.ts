@@ -19,7 +19,7 @@ export const GenerateCharacterImage = ai.defineFlow(
     // Add project style context if available
     let prompt = await AnimeCharacterPortraitPrompt({
       character: character,
-      seriesStyle: "Solo Leveling",
+      seriesStyle: "Komi Can't Communicate",
     });
 
     const result = await ai.generateImage({
@@ -97,12 +97,8 @@ export const GeneratePanelImage = ai.defineFlow(
       scene: scene,
     });
 
-    const finalPrompt = await enhancePanelPrompt({
-      input: prompt.output?.imagePrompt!,
-    });
-
     const res = await ai.generateImage({
-      prompt: finalPrompt.output!,
+      prompt: prompt.output?.imagePrompt!,
       history: conversationHistory,
     });
 
@@ -162,8 +158,8 @@ Follow this exact pattern for best results:
 1. **QUALITY & STYLE DECLARATION** (quality + anime/manga specification)
 2. **SCENE OVERVIEW** (1 sentence)
 3. **ENVIRONMENT DETAILS** (detailed setting description)
-4. **PRIMARY CHARACTER** (full detailed description)
-5. **SECONDARY CHARACTER** (full detailed description)  
+4. **PRIMARY CHARACTER** (pose, action, clothing, expression - NO facial features)
+5. **SECONDARY CHARACTER** (pose, action, clothing, expression - NO facial features)  
 6. **BACKGROUND ELEMENTS** (if any, brief)
 7. **CAMERA & COMPOSITION** (shot type, angle)
 8. **LIGHTING DETAILS** (specific lighting setup)
@@ -225,17 +221,16 @@ Follow this exact pattern for best results:
 - Don't repeat environment details later
 
 **STEP 4: Character Details (One paragraph per main character)**
-- Start with physical appearance (age, hair, eyes)
-- Add "(use previous character reference images)" after character name
-- Move to clothing (specific materials, fit, condition)
-- Add what they're holding/doing
-- Include body type and anatomical perfection
-- End with expression
+- **CRITICAL: NEVER describe facial features (hair, eyes, face shape, etc.)**
+- Start with "(use previous character reference images)" 
+- Focus ONLY on: pose, body positioning, clothing (specific materials, fit, condition), what they're holding/doing, body type, expression
+- Include anatomical perfection for hands, fingers, and joints
 - Make it flow naturally, not like a checklist
 
 **STEP 5: Background Characters (Brief sentence)**
 - Position and brief description only
 - Don't over-detail background characters
+- **NO facial feature descriptions**
 
 **STEP 6: Camera/Composition (Single sentence)**
 - Shot type, angle, and focus priority
@@ -257,6 +252,8 @@ Follow this exact pattern for best results:
 ## CRITICAL RULES:
 - **ALWAYS START WITH QUALITY + ANIME STYLE SPECIFICATION**
 - **ADD CHARACTER REFERENCE INSTRUCTION** - Include "(use previous character reference images)" for each character
+- **NEVER DESCRIBE FACIAL FEATURES** - No hair color, eye color, face shape, etc.
+- **FOCUS ON ACTION & CLOTHING** - Describe pose, action, clothing details, expression only
 - **NO REPETITION** - Each element mentioned only once
 - **NATURAL FLOW** - Read like a story description, not a template
 - **SEAMLESS TRANSITIONS** - Each section flows into the next
@@ -265,32 +262,15 @@ Follow this exact pattern for best results:
 
 ---
 
-## SUCCESSFUL EXAMPLE TO FOLLOW:
+## SUCCESSFUL EXAMPLE TO FOLLOW (UPDATED):
 
-"masterpiece, best quality, high resolution, ultra detailed, anime style, manga art style, Japanese animation style, 2D anime art with clean line work and cel-shaded coloring, a young man protecting a young woman from an unseen monster. The young man lunges forward defensively, holding a sharp blade in his dominant hand, his other arm raised to shield the woman. The young woman is partially behind him, looking scared but hopeful, her body tense. a dark, damp, gothic-style cave interior with detailed stalactites and stalagmites, subtle mist, and intricate, realistic spiderwebs. a tall young man (use previous character reference images) with messy dark black hair and piercing bright blue eyes, wearing a tattered, dark grey, loose-fitting cotton t-shirt with realistic wrinkles and folds, and dark combat pants. He holds a short, razor-sharp combat knife with a defined handle and gleaming blade. His body is muscular and toned, with anatomically perfect hands, fingers, and joints. His expression is fierce and determined. a young woman (use previous character reference images) with long, flowing bubblegum pink hair and large, expressive light blue eyes. She wears a form-fitting black sports bra made of smooth, slightly reflective fabric, and dark shorts. Her body is slender and proportioned, with naturally defined shoulders and arms. Her expression is a mix of fear and trust in the boy's protection. a man with short dark hair and a stern expression, wearing a simple black black jacket, positioned further back in the cave, observing the scene, with clear facial features proportionate to his distance. dynamic medium shot, slightly low-angle, focusing on the boy's protective stance and the girl partially behind him. dramatic cinematic lighting with a single, strong glowing magical light source emanating from the boy's blade, casting sharp highlights and deep, realistic shadows. Subtle rim lighting on the characters, highlighting their silhouettes against the dark cave. Hints of ambient light from distant glowing crystals in the cave ceiling. intense, suspenseful, protective, and determined. realistic blood spatter on the blade and a tiny bit on the boy's shirt, appearing as natural liquid. The environment is dark and filled with a sense of danger from an unseen monster (do not generate the monster in the image, imply its presence through character reaction and context)."
+"masterpiece, best quality, high resolution, ultra detailed, anime style, manga art style, Japanese animation style, 2D anime art with clean line work and cel-shaded coloring, a young man protecting a young woman from an unseen monster. The young man lunges forward defensively, holding a sharp blade in his dominant hand, his other arm raised to shield the woman. The young woman is partially behind him, looking scared but hopeful, her body tense. a dark, damp, gothic-style cave interior with detailed stalactites and stalagmites, subtle mist, and intricate, realistic spiderwebs. a tall young man (use previous character reference images) in a defensive lunging pose, wearing a tattered, dark grey, loose-fitting cotton t-shirt with realistic wrinkles and folds, and dark combat pants. He holds a short, razor-sharp combat knife with a defined handle and gleaming blade. His body is muscular and toned, with anatomically perfect hands, fingers, and joints. His expression is fierce and determined. a young woman (use previous character reference images) positioned partially behind the man, her body tense and leaning slightly away from danger. She wears a form-fitting black sports bra made of smooth, slightly reflective fabric, and dark shorts. Her body is slender and proportioned, with naturally defined shoulders and arms. Her expression shows a mix of fear and trust in the boy's protection. a man (use previous character reference images) positioned further back in the cave, observing the scene with a stern expression, wearing a simple black jacket, with clear facial features proportionate to his distance. dynamic medium shot, slightly low-angle, focusing on the boy's protective stance and the girl partially behind him. dramatic cinematic lighting with a single, strong glowing magical light source emanating from the boy's blade, casting sharp highlights and deep, realistic shadows. Subtle rim lighting on the characters, highlighting their silhouettes against the dark cave. Hints of ambient light from distant glowing crystals in the cave ceiling. intense, suspenseful, protective, and determined. realistic blood spatter on the blade and a tiny bit on the boy's shirt, appearing as natural liquid. The environment is dark and filled with a sense of danger from an unseen monster (do not generate the monster in the image, imply its presence through character reaction and context)."
 
-## ACTUAL STRUCTURE BREAKDOWN:
-1. **Quality & Style Declaration**: "masterpiece, best quality, high resolution, ultra detailed, anime style, manga art style, Japanese animation style, 2D anime art with clean line work and cel-shaded coloring,"
-
-2. **Scene Setup + Action**: "a young man protecting a young woman from an unseen monster. The young man lunges forward defensively, holding a sharp blade in his dominant hand, his other arm raised to shield the woman. The young woman is partially behind him, looking scared but hopeful, her body tense."
-
-3. **Environment**: "a dark, damp, gothic-style cave interior with detailed stalactites and stalagmites, subtle mist, and intricate, realistic spiderwebs."
-
-4. **Primary Character Details**: "a tall young man (use previous character reference images) with messy dark black hair and piercing bright blue eyes, wearing a tattered, dark grey, loose-fitting cotton t-shirt with realistic wrinkles and folds, and dark combat pants. He holds a short, razor-sharp combat knife with a defined handle and gleaming blade. His body is muscular and toned, with anatomically perfect hands, fingers, and joints. His expression is fierce and determined."
-
-5. **Secondary Character Details**: "a young woman (use previous character reference images) with long, flowing bubblegum pink hair and large, expressive light blue eyes. She wears a form-fitting black sports bra made of smooth, slightly reflective fabric, and dark shorts. Her body is slender and proportioned, with naturally defined shoulders and arms. Her expression is a mix of fear and trust in the boy's protection."
-
-6. **Background Character**: "a man with short dark hair and a stern expression, wearing a simple black black jacket, positioned further back in the cave, observing the scene, with clear facial features proportionate to his distance."
-
-7. **Camera/Composition**: "dynamic medium shot, slightly low-angle, focusing on the boy's protective stance and the girl partially behind him."
-
-8. **Lighting Details**: "dramatic cinematic lighting with a single, strong glowing magical light source emanating from the boy's blade, casting sharp highlights and deep, realistic shadows. Subtle rim lighting on the characters, highlighting their silhouettes against the dark cave. Hints of ambient light from distant glowing crystals in the cave ceiling."
-
-9. **Mood**: "intense, suspenseful, protective, and determined."
-
-10. **Special Effects**: "realistic blood spatter on the blade and a tiny bit on the boy's shirt, appearing as natural liquid."
-
-11. **Final Context**: "The environment is dark and filled with a sense of danger from an unseen monster (do not generate the monster in the image, imply its presence through character reaction and context)."
+## KEY CHANGES MADE:
+- **Removed all facial feature descriptions** (hair color, eye color, etc.)
+- **Added reference image instruction for ALL characters** including background characters
+- **Focused character descriptions on pose, clothing, and expression only**
+- **Character appearance comes from reference images, not text descriptions**
 
 ---
 
@@ -299,21 +279,16 @@ Follow this exact pattern for best results:
 Using the panel, scene, and character data provided, create a detailed prompt following the successful structure pattern. Focus on:
 - **ALWAYS begin with quality + anime/manga style declaration**
 - **Add "(use previous character reference images)" for each character**
-- Specific visual details over abstract concepts
-- Anatomical perfection mentions
+- **NEVER describe facial features - let reference images handle appearance**
+- Specific pose and action details
+- Detailed clothing descriptions (materials, fit, condition)
+- Expression and body language only
 - Realistic material descriptions  
 - Clear spatial relationships between characters
 - Dramatic lighting setups
 - Atmospheric environmental details
 
 Generate the complete prompt now:`,
-});
-
-export const enhancePanelPrompt = ai.definePrompt({
-  name: "enhancePanelPrompt",
-  input: { schema: z.object({ input: z.string() }) },
-  output: { schema: z.string().describe("the enhanced Prompt") },
-  prompt: `enhance this prompt for the ai image generation that has a poor quality for non well structured prompt  or wide shot it show poor details specially face or things also notes i will give the ai image model the prompt and a reference image for each characters(it is portrait image, only head is appear) don,t try to change the look  {{input}}`,
 });
 
 // PORTRAIT VERSION - For creating detailed character reference faces
@@ -346,7 +321,8 @@ Begin with premium portrait specifications:
 ## CHARACTER DATA INTEGRATION
 
 ### BASIC IDENTITY
-- {{character.age}} year old {{character.gender}} with {{character.personality}} demeanor, {{character.role}} character
+- {{character.gender}} with {{character.personality}} demeanor, {{character.role}} character
+
 
 ### FACIAL ARCHITECTURE - MAXIMUM DETAIL
 **Face Structure:**
@@ -397,6 +373,10 @@ Apply {{seriesStyle}} aesthetic with portrait focus:
 - {{seriesStyle}} universe atmospheric elements as subtle background
 
 Generate a comprehensive portrait imagePrompt (350-400 words) focused on creating the perfect character reference face.
+
+<!--the character age is {{character.age}} years old but should not be explicitly mentioned in the output prompt. The model may infer age visually (e.g., youthful appearance, elderly features) but should never output the age as a number or state. this is very important don't mention age in any line -->
+don't mention age as number again and again and again don't mention age at all as number
+
 
 Character Data: {{character}}
 Series Style: {{seriesStyle}}`,

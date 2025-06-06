@@ -1,30 +1,41 @@
 "use client";
 
+import { CreateMangaFlow } from "@/ai/flows/generation-flows";
 import { SidebarItem } from "@/app/page";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { getAllProjects } from "@/services/data-service";
+import { deleteProject, getAllProjects } from "@/services/data-service";
 import { MangaProject } from "@/types/entities";
 import { MangaStatus } from "@/types/enums";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   BookMarked,
+  BookOpen,
+  Edit3,
   Filter,
   Home,
   Loader2,
   Menu,
+  MoreVertical,
   Plus,
   Search,
   Send,
   Settings,
   Shield,
   Sparkles,
+  Trash2,
   X,
 } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 const ProjectsPage = () => {
@@ -39,8 +50,9 @@ const ProjectsPage = () => {
     genre: "",
     status: "",
   });
+
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
-  const inputRef = useRef(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -63,18 +75,15 @@ const ProjectsPage = () => {
 
   // Filter projects based on search query and active filters
   const filteredProjects = projects.filter((project) => {
-    // Search filter
     const matchesSearch =
       searchQuery === "" ||
       project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      project.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      project.genre.toLowerCase().includes(searchQuery.toLowerCase());
+      project.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      project.genre?.toLowerCase().includes(searchQuery.toLowerCase());
 
-    // Genre filter
     const matchesGenre =
       activeFilters.genre === "" || project.genre === activeFilters.genre;
 
-    // Status filter
     const matchesStatus =
       activeFilters.status === "" || project.status === activeFilters.status;
 
@@ -91,13 +100,19 @@ const ProjectsPage = () => {
     setMangaIdea("");
   };
 
-  const handleSubmit = async (e) => {
+  const router = useRouter();
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!mangaIdea.trim()) return;
 
     setIsGenerating(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const { projectId, initialMessages } = await CreateMangaFlow({
+        userPrompt: mangaIdea,
+      });
+      localStorage.setItem("messages", JSON.stringify(initialMessages));
+      router.push(`/manga-flow/${projectId}`);
     } finally {
       setIsGenerating(false);
       closeDialog();
@@ -108,7 +123,7 @@ const ProjectsPage = () => {
     setIsFilterMenuOpen(!isFilterMenuOpen);
   };
 
-  const applyFilter = (type, value) => {
+  const applyFilter = (type: "genre" | "status", value: string) => {
     setActiveFilters((prev) => ({
       ...prev,
       [type]: prev[type] === value ? "" : value,
@@ -123,6 +138,53 @@ const ProjectsPage = () => {
     setIsFilterMenuOpen(false);
   };
 
+  // Action handlers
+  const handleReadManga = (projectId: string) => {
+    router.push(`/manga-reader/${projectId}`);
+  };
+
+  const handleReadStory = (projectId: string) => {
+    router.push(`/story-reader/${projectId}`);
+  };
+
+  const handleEditProject = (projectId: string) => {
+    router.push(`/manga-flow/${projectId}`);
+  };
+
+  const [deleteConfirmation, setDeleteConfirmation] = useState({
+    isOpen: false,
+    projectId: "",
+    projectTitle: "",
+  });
+  const handleDeleteClick = (projectId: string, projectTitle: string) => {
+    setDeleteConfirmation({
+      isOpen: true,
+      projectId,
+      projectTitle,
+    });
+  };
+
+  const handleDeleteProject = async () => {
+    try {
+      await deleteProject(deleteConfirmation.projectId);
+      await fetchProjects();
+      setDeleteConfirmation({
+        isOpen: false,
+        projectId: "",
+        projectTitle: "",
+      });
+    } catch (error) {
+      console.error("Failed to delete project:", error);
+    }
+  };
+
+  const cancelDelete = () => {
+    setDeleteConfirmation({
+      isOpen: false,
+      projectId: "",
+      projectTitle: "",
+    });
+  };
   return (
     <div className="flex h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-800 overflow-hidden">
       {/* Sidebar */}
@@ -190,7 +252,7 @@ const ProjectsPage = () => {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col p-6 relative overflow-hidden">
-        {/* Background Image with dark overlay - Matching home page */}
+        {/* Background Image with dark overlay */}
         <div className="absolute inset-0 z-0">
           <Image
             src="/images/hero-bg.png"
@@ -202,7 +264,7 @@ const ProjectsPage = () => {
           <div className="absolute inset-0 bg-black/50" />
         </div>
 
-        {/* Animated background elements - Matching home page */}
+        {/* Animated background elements */}
         <div className="absolute inset-0 overflow-hidden z-10">
           {[...Array(10)].map((_, i) => (
             <motion.div
@@ -226,9 +288,6 @@ const ProjectsPage = () => {
             />
           ))}
         </div>
-
-        {/* Back Button - Fixed at top left */}
-        {/* Removed since we have sidebar navigation now */}
 
         {/* Page Content */}
         <div className="relative z-20 flex flex-col h-full">
@@ -270,7 +329,6 @@ const ProjectsPage = () => {
                     <span className="ml-2 w-2 h-2 bg-pink-500 rounded-full"></span>
                   )}
                 </Button>
-                {/* Filter Dropdown Menu */}
                 {isFilterMenuOpen && (
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
@@ -289,7 +347,6 @@ const ProjectsPage = () => {
                         </button>
                       </div>
 
-                      {/* Genre Filters */}
                       <div className="mb-4">
                         <h4 className="text-gray-400 text-sm mb-2">Genre</h4>
                         <div className="flex flex-wrap gap-2">
@@ -309,7 +366,6 @@ const ProjectsPage = () => {
                         </div>
                       </div>
 
-                      {/* Status Filters */}
                       <div>
                         <h4 className="text-gray-400 text-sm mb-2">Status</h4>
                         <div className="flex flex-wrap gap-2">
@@ -356,13 +412,7 @@ const ProjectsPage = () => {
             >
               {filteredProjects.length > 0 ? (
                 filteredProjects.map((project, index) => (
-                  <motion.div
-                    key={project.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    whileHover={{ y: -5 }}
-                  >
+                  <motion.div key={project.id}>
                     <Card className="bg-gray-900/80 backdrop-blur-md border-gray-700 overflow-hidden hover:shadow-lg hover:shadow-pink-500/20 transition-all h-full flex flex-col">
                       <div className="relative h-48 overflow-hidden">
                         <Image
@@ -373,11 +423,11 @@ const ProjectsPage = () => {
                         />
                         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-4">
                           <div className="flex justify-between items-end">
-                            <Link href={`/manga-flow/${project.id}`}>
-                              <h3 className="text-xl font-bold text-white">
+                            <div>
+                              <h3 className="text-xl font-bold text-white mb-1">
                                 {project.title}
                               </h3>
-                            </Link>
+                            </div>
                             <span
                               className={`px-2 py-1 rounded-full text-xs font-medium ${
                                 project.status === MangaStatus.PUBLISHED
@@ -389,6 +439,53 @@ const ProjectsPage = () => {
                             </span>
                           </div>
                         </div>
+
+                        {/* Action Dropdown */}
+                        <AnimatePresence>
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute top-2 right-2"
+                          >
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="w-8 h-8 bg-gray-800/80 hover:bg-gray-700/80 text-gray-300 hover:text-white"
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent className="bg-gray-800 border-gray-700 w-48">
+                                <DropdownMenuItem
+                                  className="flex items-center gap-2 hover:bg-gray-700 cursor-pointer"
+                                  onClick={() => handleReadManga(project.id)}
+                                >
+                                  <BookOpen className="h-4 w-4" />
+                                  <span>Read Manga</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="flex items-center gap-2 hover:bg-gray-700 cursor-pointer"
+                                  onClick={() => handleEditProject(project.id)}
+                                >
+                                  <Edit3 className="h-4 w-4" />
+                                  <span>Edit Project</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="flex items-center gap-2 hover:bg-red-500/20 text-red-400 cursor-pointer"
+                                  onClick={() =>
+                                    handleDeleteClick(project.id, project.title)
+                                  }
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  <span>Delete Project</span>
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </motion.div>
+                        </AnimatePresence>
                       </div>
 
                       <CardContent className="p-4 flex-1">
@@ -402,16 +499,19 @@ const ProjectsPage = () => {
                         </div>
                       </CardContent>
 
-                      <CardFooter className="p-4 border-t border-gray-800 flex justify-between items-center">
-                        <div className="flex items-center gap-4 text-sm text-gray-400">
-                          <span className="flex items-center gap-1">
-                            <Sparkles className="h-3 w-3 text-pink-400" />
-                            {project.likeCount} likes
-                          </span>
-                          <span>{project.viewCount} views</span>
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          Updated: {new Date(project.updatedAt)?.toDateString()}
+                      <CardFooter className="p-4 border-t border-gray-800">
+                        <div className="flex justify-between items-center w-full">
+                          <div className="flex items-center gap-4 text-sm text-gray-400">
+                            <span className="flex items-center gap-1">
+                              <Sparkles className="h-3 w-3 text-pink-400" />
+                              {project.likeCount} likes
+                            </span>
+                            <span>{project.viewCount} views</span>
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            Updated:{" "}
+                            {new Date(project.updatedAt)?.toDateString()}
+                          </div>
                         </div>
                       </CardFooter>
                     </Card>
@@ -530,6 +630,68 @@ const ProjectsPage = () => {
                   </Button>
                 </div>
               </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Dialog */}
+      <AnimatePresence>
+        {deleteConfirmation.isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-gray-800 rounded-xl max-w-md w-full p-6 shadow-2xl border border-gray-700"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <Trash2 className="h-5 w-5 text-red-400" />
+                  Delete Project
+                </h2>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={cancelDelete}
+                  className="text-gray-400 hover:text-white hover:bg-gray-700"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+
+              <div className="mb-6">
+                <p className="text-gray-300">
+                  Are you sure you want to delete{" "}
+                  <span className="font-semibold text-white">
+                    "{deleteConfirmation.projectTitle}"
+                  </span>
+                  ? This action cannot be undone.
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <Button
+                  variant="outline"
+                  onClick={cancelDelete}
+                  className="border-gray-600 hover:bg-gray-700"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteProject}
+                  className="bg-red-600 hover:bg-red-700 gap-2"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </Button>
+              </div>
             </motion.div>
           </motion.div>
         )}

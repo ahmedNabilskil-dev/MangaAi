@@ -471,13 +471,10 @@ function getNestedProperty(obj: Record<string, any>, path: string): any {
 
   return current;
 }
-
 export const ai = new ChatEngine({
   provider: "gemini",
   model: "gemini-2.0-flash",
-  apiKey:
-    process.env.GOOGLE_GENAI_API_KEY ||
-    "AIzaSyD1f-BJ-F_PuFZb9SAKYE2H9fESUF3zjV4",
+  apiKey: localStorage?.getItem("api-key") || "",
 });
 
 function removeProperty<T>(obj: T, propertyToRemove: string): any {

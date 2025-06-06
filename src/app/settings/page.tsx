@@ -34,19 +34,29 @@ const SettingsPage = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState("text");
   const [textSettings, setTextSettings] = useState({
-    provider: "openai",
-    apiKey: "",
-    model: "gpt-4",
-    temperature: 0.7,
+    provider: "gemini",
+    apiKey: localStorage.getItem("api-key") || "",
+    model: "gemini-2.0-flash",
+    temperature: localStorage.getItem("temperature")
+      ? Number(localStorage.getItem("temperature"))
+      : 0.7,
   });
   const [imageSettings, setImageSettings] = useState({
-    provider: "stability",
-    apiKey: "",
-    model: "stable-diffusion-xl",
-    style: "manga",
+    provider: "gemini",
+    apiKey: localStorage.getItem("api-key") || "",
+    model: "gemini-2.0-flash-preview-image-generation",
   });
 
-  const handleSave = () => {};
+  const handleSave = () => {
+    localStorage.setItem("provider", textSettings.provider);
+    localStorage.setItem("model", textSettings.model);
+    localStorage.setItem("api-key", textSettings.apiKey);
+    localStorage.setItem("temperature", String(textSettings.temperature));
+
+    localStorage.setItem("image-provider", imageSettings.provider);
+    localStorage.setItem("image-model", imageSettings.model);
+    localStorage.setItem("image-api-key", imageSettings.apiKey);
+  };
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -229,10 +239,7 @@ const SettingsPage = () => {
                             <SelectValue placeholder="Select provider" />
                           </SelectTrigger>
                           <SelectContent className="bg-gray-800 border-gray-700 text-white">
-                            <SelectItem value="openai">OpenAI</SelectItem>
-                            <SelectItem value="anthropic">Anthropic</SelectItem>
-                            <SelectItem value="cohere">Cohere</SelectItem>
-                            <SelectItem value="mistral">Mistral</SelectItem>
+                            <SelectItem value="gemini">Gemini</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -254,13 +261,8 @@ const SettingsPage = () => {
                             <SelectValue placeholder="Select model" />
                           </SelectTrigger>
                           <SelectContent className="bg-gray-800 border-gray-700 text-white">
-                            <SelectItem value="gpt-4">GPT-4</SelectItem>
-                            <SelectItem value="gpt-3.5-turbo">
-                              GPT-3.5 Turbo
-                            </SelectItem>
-                            <SelectItem value="claude-2">Claude 2</SelectItem>
-                            <SelectItem value="mistral-7b">
-                              Mistral 7B
+                            <SelectItem value="gemini-2.0-flash">
+                              gemini-2.0-flash
                             </SelectItem>
                           </SelectContent>
                         </Select>
@@ -292,35 +294,6 @@ const SettingsPage = () => {
                         Your API key is stored locally and never sent to our
                         servers.
                       </p>
-                    </div>
-
-                    <div>
-                      <Label
-                        htmlFor="text-temperature"
-                        className="text-gray-300 mb-2"
-                      >
-                        Creativity (Temperature: {textSettings.temperature})
-                      </Label>
-                      <input
-                        id="text-temperature"
-                        type="range"
-                        min="0"
-                        max="1"
-                        step="0.1"
-                        value={textSettings.temperature}
-                        onChange={(e) =>
-                          setTextSettings({
-                            ...textSettings,
-                            temperature: parseFloat(e.target.value),
-                          })
-                        }
-                        className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-pink-500"
-                      />
-                      <div className="flex justify-between text-xs text-gray-400 mt-1">
-                        <span>Precise</span>
-                        <span>Balanced</span>
-                        <span>Creative</span>
-                      </div>
                     </div>
                   </motion.div>
                 </TabsContent>
@@ -355,18 +328,7 @@ const SettingsPage = () => {
                             <SelectValue placeholder="Select provider" />
                           </SelectTrigger>
                           <SelectContent className="bg-gray-800 border-gray-700 text-white">
-                            <SelectItem value="stability">
-                              Stability AI
-                            </SelectItem>
-                            <SelectItem value="openai">
-                              OpenAI DALL-E
-                            </SelectItem>
-                            <SelectItem value="midjourney">
-                              Midjourney
-                            </SelectItem>
-                            <SelectItem value="leonardo">
-                              Leonardo AI
-                            </SelectItem>
+                            <SelectItem value="gemini">Gemini</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -388,15 +350,8 @@ const SettingsPage = () => {
                             <SelectValue placeholder="Select model" />
                           </SelectTrigger>
                           <SelectContent className="bg-gray-800 border-gray-700 text-white">
-                            <SelectItem value="stable-diffusion-xl">
-                              Stable Diffusion XL
-                            </SelectItem>
-                            <SelectItem value="dall-e-3">DALL-E 3</SelectItem>
-                            <SelectItem value="midjourney-v5">
-                              Midjourney V5
-                            </SelectItem>
-                            <SelectItem value="leonardo-vision">
-                              Leonardo Vision
+                            <SelectItem value="gemini-2.0-flash-preview-image-generation">
+                              gemini-2.0-flash-preview-image-generation
                             </SelectItem>
                           </SelectContent>
                         </Select>
@@ -428,33 +383,6 @@ const SettingsPage = () => {
                         Your API key is stored locally and never sent to our
                         servers.
                       </p>
-                    </div>
-
-                    <div>
-                      <Label
-                        htmlFor="image-style"
-                        className="text-gray-300 mb-2"
-                      >
-                        Manga Style
-                      </Label>
-                      <Select
-                        value={imageSettings.style}
-                        onValueChange={(value) =>
-                          setImageSettings({ ...imageSettings, style: value })
-                        }
-                      >
-                        <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
-                          <SelectValue placeholder="Select style" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-gray-800 border-gray-700 text-white">
-                          <SelectItem value="shonen">Shonen</SelectItem>
-                          <SelectItem value="shoujo">Shoujo</SelectItem>
-                          <SelectItem value="seinen">Seinen</SelectItem>
-                          <SelectItem value="josei">Josei</SelectItem>
-                          <SelectItem value="mecha">Mecha</SelectItem>
-                          <SelectItem value="fantasy">Fantasy</SelectItem>
-                        </SelectContent>
-                      </Select>
                     </div>
                   </motion.div>
                 </TabsContent>

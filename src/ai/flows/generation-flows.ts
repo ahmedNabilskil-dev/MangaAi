@@ -328,20 +328,33 @@ export const ChapterGenerationPrompt = ai.definePrompt({
   5. BALANCED ELEMENTS: Rich descriptions, meaningful dialogue, character thoughts, impactful action
   6. THEMATIC DEPTH: Subtle thematic elements woven throughout
   7. CHARACTER REVELATION: New character dimensions in each chapter
-  8. VISUAL POTENTIAL: Literary prose with powerful manga-adaptable moments
+  8. VISUAL NARRATIVE FLOW: Structure events with natural manga pacing and page turn moments
+  9. CLIFFHANGER POTENTIAL: Build toward compelling chapter endings that demand continuation
+  10. HOOK MOMENTS: Create 2-3 visually striking scenes perfect for splash pages or dramatic panels
   
   ## CRAFT MASTERY
   
   - SHOW, DON'T TELL: Experience through senses, not exposition
-  - PRECISE LANGUAGE: Specific, evocative words creating clear images
-  - MEANINGFUL DIALOGUE: Reveals character while advancing plot
-  - PSYCHOLOGICAL DEPTH: Inner conflicts and complex motivations
+  - PRECISE LANGUAGE: Specific, evocative words creating clear visual images
+  - MEANINGFUL DIALOGUE: Reveals character while advancing plot, flows naturally for speech bubbles
+  - PSYCHOLOGICAL DEPTH: Inner conflicts and complex motivations shown through actions and expressions
   - SUBTEXT & SYMBOLISM: Layered meanings beneath surface narrative
-  - VARIED SENTENCES: Rhythm and pacing enhancing emotional impact
-  - VIVID SCENE-SETTING: Quick but powerful location establishment
+  - VARIED SENTENCES: Rhythm and pacing enhancing emotional impact and visual flow
+  - VIVID SCENE-SETTING: Quick but powerful location establishment for background art
   - CONSISTENT POV: Clear third-person perspective throughout
+  - VISUAL METAPHORS: Incorporate symbolic imagery that translates powerfully to manga panels
+  - ENVIRONMENTAL STORYTELLING: Use settings to reinforce mood, theme, and character state
   
-  Create polished prose inherently suggesting visual adaptation possibilities.
+  ## MANGA-SPECIFIC CONSIDERATIONS
+  
+  - EMOTIONAL PEAKS: Plan dramatic crescendos suitable for full-page spreads
+  - QUIET BEATS: Include contemplative moments for character development panels
+  - ACTION CLARITY: Structure fight scenes and dramatic moments for clear sequential art
+  - FACIAL EXPRESSIONS: Emphasize emotional states through detailed character reactions
+  - PANEL TRANSITIONS: Create natural breaks between major story beats
+  - PAGE DYNAMICS: Consider opening/closing moments that work for chapter pagination
+  
+  Create polished prose inherently suggesting visual adaptation possibilities while maintaining literary depth.
   
   user message: {{userInput}}`,
 });
@@ -385,26 +398,49 @@ export const SceneGenerationPrompt = ai.definePrompt({
   3. LIVING ENVIRONMENT: Setting as tangible presence affecting mood and action
   4. CHARACTER DYNAMICS: Complex interactions through dialogue, actions, reactions
   5. EMOTIONAL SUBTLETY: Nuanced states shown through physical cues, dialogue, thoughts
-  6. MOMENT CLARITY: Detail sufficient for clear visualization
-  7. VISUAL POTENTIAL: Natural division into 25-50 potential manga panels
-  8. VARIED PACING: Mix of action, dialogue, quiet moments
+  6. MOMENT CLARITY: Detail sufficient for clear visualization and panel breakdown
+  7. VISUAL POTENTIAL: Natural division into 25-50 potential manga panels with varied compositions
+  8. VARIED PACING: Strategic mix of action, dialogue, and contemplative moments
+  9. PANEL VARIETY: Include wide establishing shots, intimate close-ups, dynamic action sequences
+  10. TRANSITION FLOW: Structure with natural breaks for manga page layouts and panel progression
   
   ## SCENE CONSTRUCTION
   
   1. SEAMLESS FIT: Perfect integration within chapter narrative
-  2. CLEAR ORIENTATION: Establish location, time, characters immediately
-  3. EMOTIONAL CORE: Identify central tension driving scene
-  4. DRAMATIC PROGRESSION: Setup → complication → resolution/transition
-  5. NARRATIVE FLOW: Seamless transitions while maintaining discrete units
+  2. CLEAR ORIENTATION: Establish location, time, characters immediately for opening panels
+  3. EMOTIONAL CORE: Identify central tension driving scene with visual manifestation
+  4. DRAMATIC PROGRESSION: Setup → complication → resolution/transition with panel-friendly beats
+  5. NARRATIVE FLOW: Seamless transitions while maintaining discrete visual units
   6. NATURAL BRIDGES: Thematic/visual/narrative connections between scenes
-  7. CHARACTER CONSISTENCY: Maintain established traits while revealing new layers
-  8. EMOTIONAL JOURNEY: Track progression for satisfying narrative rhythm
+  7. CHARACTER CONSISTENCY: Maintain established traits while revealing new layers through expression and action
+  8. EMOTIONAL JOURNEY: Track progression for satisfying narrative rhythm and visual storytelling
   
-  Create scenes functioning as both literary prose and visual adaptation blueprints.
+  ## MANGA-SPECIFIC SCENE ELEMENTS
+  
+  - SEQUENTIAL ACTION: Break complex movements into clear, followable panel steps
+  - REACTION SHOTS: Include character responses and environmental reactions for dynamic panels
+  - INTERNAL MONOLOGUE: Structure thoughts for effective thought bubble placement
+  - DIALOGUE RHYTHM: Consider speech bubble flow and manga's unique conversation pacing
+  - BACKGROUND DETAILS: Rich environmental elements that support mood and provide visual interest
+  - CAMERA ANGLES: Vary perspectives (bird's eye, close-up, medium shot) for visual diversity
+  - EMOTIONAL BEATS: Pause moments that allow for impactful single panels
+  - SOUND EFFECTS: Natural integration points for manga's onomatopoeia
+  - VISUAL SYMBOLISM: Environmental or metaphorical elements that enhance themes
+  - CLIFFHANGER MOMENTS: Scene endings that create anticipation for next sequence
+  
+  ## PANEL FLOW CONSIDERATIONS
+  
+  - ESTABLISHING SHOTS: Open scenes with clear location and character positioning
+  - ACTION SEQUENCES: Multiple panels showing movement progression and impact
+  - DIALOGUE EXCHANGES: Balanced speaking turns with reaction panels
+  - EMOTIONAL REVEALS: Close-up panels highlighting character expressions and realizations
+  - ENVIRONMENTAL INTERACTION: Show characters responding to and affecting their surroundings
+  - TENSION BUILDING: Gradual visual escalation through panel composition and pacing
+  
+  Create scenes functioning as both compelling literary prose and detailed visual adaptation blueprints that naturally suggest panel divisions and manga storytelling techniques.
   
   user message: {{userInput}}`,
 });
-
 export const PanelsDialogsGenerationPrompt = ai.definePrompt({
   name: "EnhancedPanelsDialogsGenerationFlow",
   input: {
@@ -428,9 +464,10 @@ export const PanelsDialogsGenerationPrompt = ai.definePrompt({
     createPanelWithDialoguesTool,
     createMultiplePanelsTool,
     createMultiplePanelsWithDialoguesTool,
+    createPanelDialogueTool,
   ],
   toolCall: true,
-  prompt: `You're creating cinematic manga panel compositions and psychologically nuanced dialogue with unparalleled depth.
+  prompt: `You're creating cinematic manga panel compositions and psychologically nuanced dialogue with unparalleled depth, optimized for AI image generation.
 
 ## CRITICAL CHARACTER REQUIREMENTS
 🚨 MANDATORY: Every panel MUST include characters from the provided character context
@@ -444,117 +481,164 @@ For EVERY panel you must:
 1. Include at least one character from the provided characters context
 2. Populate characterIds array with the IDs of characters present
 3. Create characterPoses array with matching entries:
-   - characterName: Must match the character from context
-   - pose: Detailed description of character's physical positioning
-   - expression: Specific facial expression revealing psychology
+   - characterName: Must match the character from context exactly
+   - pose: Detailed description of character's physical positioning with specific body language
+   - expression: Specific facial expression revealing psychology with micro-details
 4. Ensure characterIds.length === characterPoses.length
 5. Verify each characterId has corresponding characterPoses entry
 
-## NARRATIVE DENSITY
-Each panel conveys 3-6 minutes of narrative time with extraordinary richness:
-- Complete dramatic micro-scenes
-- Multilayered dialogue with subtext
-- Immersive visual elements with maximum narrative efficiency
-- CHARACTER-DRIVEN storytelling (never scenery-only panels)
+## AI IMAGE GENERATION OPTIMIZATION
 
-## TOOL SELECTION
-- SINGLE panel WITHOUT dialogue: createPanelTool
-- SINGLE panel WITH dialogue: createPanelWithDialoguesTool
-- MULTIPLE panels WITHOUT dialogue: createMultiplePanelsTool
-- MULTIPLE panels WITH dialogue: createMultiplePanelsWithDialoguesTool
-- Adding dialogue to existing panels: createPanelDialogueTool
+### VISUAL PROMPT STRUCTURE
+Each panel must include a comprehensive IMAGE_PROMPT field following this structure:
+"[CAMERA_ANGLE], [SHOT_TYPE] of [CHARACTER_DESCRIPTION] [CHARACTER_ACTION] in [ENVIRONMENT_DETAILS], [LIGHTING_CONDITIONS], [ARTISTIC_STYLE], [MOOD_DESCRIPTORS], [TECHNICAL_SPECIFICATIONS]"
+
+### AI-FRIENDLY VISUAL LANGUAGE
+- **CHARACTER DESCRIPTIONS**: Physical features, clothing, distinctive marks in consistent order
+- **POSE SPECIFICATIONS**: Precise body positioning using anatomical references
+- **FACIAL EXPRESSIONS**: Detailed emotion descriptors with specific facial muscle engagement
+- **ENVIRONMENTAL CLARITY**: Concrete setting elements with spatial relationships
+- **LIGHTING TECHNICAL**: Specific light source, direction, intensity, color temperature
+- **COMPOSITION RULES**: Rule of thirds, leading lines, depth of field specifications
+- **ARTISTIC MARKERS**: Style tags, rendering quality indicators, detail level commands
+
+### VISUAL CONSISTENCY KEYWORDS
+Each panel must include standardized descriptors:
+- **MANGA_STYLE**: "manga art style, black and white lineart, screentones, dynamic composition"
+- **QUALITY_TAGS**: "high detail, professional manga, clean linework, sharp focus"
+- **CHARACTER_CONSISTENCY**: "[Character_Name] with [consistent_features], [distinctive_clothing]"
+- **BACKGROUND_DETAIL**: Specific environmental elements that establish setting clearly
 
 ## PANEL CREATION GUIDELINES
 
-For each panel, describe ALL properties:
-- ORDER: Numeric sequence in scene
-- ACTION: Precise visual action with emotional/psychological subtext
-- CHARACTER POSES: 🚨 MANDATORY - Array of character poses with:
-  * characterName: Exact name from characters context
-  * pose: Emotionally revealing pose suggesting internal states
-  * expression: Nuanced facial expression revealing psychology
-- EMOTION: Multidimensional emotional tone (primary + secondary)
-- CAMERA: Angle (close-up/medium/wide/bird's eye/low angle)
-- SHOT TYPE: Action/reaction/establishing/detail
-- BACKGROUND: Setting with narrative/symbolic relevance
-- LIGHTING: Atmospheric quality with emotional/symbolic impact
-- EFFECTS: Manga-style visual enhancements with thematic purpose
-- PURPOSE: Narrative function in plot/character development
-- POSITION: Place within scene's emotional/narrative arc
-- CHARACTERS: 🚨 MANDATORY - List of present character IDs (must match characterPoses)
+For each panel, describe ALL properties with AI optimization:
 
-## CHARACTER INTEGRATION REQUIREMENTS
+### CORE PANEL PROPERTIES
+- **ORDER**: Numeric sequence in scene
+- **ACTION**: Precise visual action with emotional/psychological subtext
+- **CHARACTER POSES**: 🚨 MANDATORY - Array with:
+  * characterName: Exact name from characters context
+  * pose: Anatomically precise pose with weight distribution, limb positioning
+  * expression: Detailed facial expression using emotion-action units (AU) descriptors
+  * clothing: Specific outfit details maintaining consistency
+  * props: Any held objects or accessories with positioning
+- **EMOTION**: Primary and secondary emotional layers with intensity levels
+- **CAMERA**: Technical camera specifications (angle, distance, lens type)
+- **SHOT TYPE**: Action/reaction/establishing/detail/insert with composition rules
+- **BACKGROUND**: Environmental elements with depth planes (foreground/midground/background)
+- **LIGHTING**: Technical lighting setup with source, direction, quality, shadows
+- **EFFECTS**: Manga-specific visual elements (speed lines, impact lines, screentones)
+- **PURPOSE**: Narrative function in plot/character development
+- **POSITION**: Place within scene's emotional/narrative arc
+- **CHARACTERS**: 🚨 MANDATORY - Character IDs matching characterPoses
+
+### AI-OPTIMIZED VISUAL FIELDS
+- **IMAGE_PROMPT**: Complete AI generation prompt following structure above
+- **VISUAL_TAGS**: Comma-separated descriptors for style consistency
+- **COMPOSITION_NOTES**: Specific framing and layout instructions
+- **DETAIL_FOCUS**: Primary visual elements requiring high detail
+- **STYLE_MODIFIERS**: Art style specifications and rendering instructions
+- **COLOR_PALETTE**: Even for B&W manga, tonal specifications for AI understanding
+- **NEGATIVE_PROMPTS**: Elements to avoid (blurry, distorted, extra limbs, etc.)
+
+## CHARACTER INTEGRATION WITH AI OPTIMIZATION
 Every panel must demonstrate:
-- Active character presence and interaction
-- Character-driven visual storytelling
-- Emotional character development
-- Character relationships and dynamics
-- Individual character personality expression
-- Character reactions to scene events
+- **VISUAL CHARACTER CONSISTENCY**: Identical physical features across panels
+- **POSE REFERENCE ACCURACY**: Anatomically correct positioning with clear weight distribution
+- **EXPRESSION PRECISION**: Specific facial coding for AI to replicate emotions accurately
+- **CLOTHING CONTINUITY**: Consistent outfit details and wear patterns
+- **SCALE RELATIONSHIPS**: Proper character proportions relative to environment
+- **DISTINCTIVE FEATURES**: Unique character elements that maintain identity
 
 ## DIALOGUE CREATION GUIDELINES
 
-For each dialogue element, populate ALL properties:
-- ORDER: Numeric sequence in panel
-- CONTENT: Character-authentic text with multiple layers of subtext
-- BUBBLE TYPE: Normal/thought/scream/whisper/narration
-- SIZE: Text emphasis (x-small through x-large)
-- EMPHASIS: Whether text requires special emphasis
-- POSITION: Placement within panel composition
-- EMOTION: Specific emotional delivery with vocal/physical details
-- SUBTEXT: Deep psychological analysis of underlying meaning
-- SPEAKER: Character ID or indication of narration (must match provided characters)
+For each dialogue element with AI considerations:
+- **ORDER**: Numeric sequence in panel
+- **CONTENT**: Character-authentic text optimized for speech bubble placement
+- **BUBBLE TYPE**: Normal/thought/scream/whisper/narration with visual specifications
+- **SIZE**: Text emphasis with specific font size indicators
+- **EMPHASIS**: Bold, italic, or special formatting requirements
+- **POSITION**: Exact placement coordinates within panel composition
+- **BUBBLE_STYLE**: Shape, tail direction, border style for AI generation
+- **TEXT_DENSITY**: Character count and readability optimization
+- **EMOTION**: Delivery style with vocal indicators for bubble design
+- **SUBTEXT**: Psychological analysis for consistent character voice
+- **SPEAKER**: Character ID matching provided characters exactly
 
-## MULTI-PANEL GENERATION
-1. Create 5-15 sequential panels (ALL with characters)
-2. Design each panel as rich character-driven mini-narrative
-3. Ensure logical visual flow with character emotional momentum
-4. Vary character compositions for maximum impact
-5. Build to compelling character-focused dramatic climax
-6. Maintain consistent character development and setting evolution
-7. Advance plot through character actions and reactions
-8. Generate consistent image prompts maintaining character visual continuity
+## AI IMAGE GENERATION BEST PRACTICES
 
-## VISUAL STORYTELLING TECHNIQUES
-- CHARACTER SUBTEXT: Character positioning revealing secondary meaning
-- PSYCHOLOGICAL FRAMING: Angles revealing character psychology
-- CHARACTER METAPHOR: Character elements reinforcing themes
-- EMOTIONAL PROGRESSION: Clear character feelings evolution across panels
-- MICRO-EXPRESSIONS: Subtle character facial cues revealing true feelings
-- CHARACTER-ENVIRONMENT INTERACTION: Character-setting engagement revealing personality
-- POWER DYNAMICS: Character spatial relationships establishing hierarchy
-- VISUAL ECHOING: Character panel parallels reinforcing themes
+### TECHNICAL SPECIFICATIONS
+- **RESOLUTION**: "1024x1024, high resolution, sharp details"
+- **ASPECT RATIO**: Panel-specific ratios (1:1, 16:9, 9:16, 4:3)
+- **RENDERING STYLE**: "Clean lineart, professional manga style, black and white"
+- **DETAIL LEVEL**: "Highly detailed, intricate linework, professional quality"
 
-## DIALOGUE MASTERY
-- MULTILAYERED EXCHANGES: Three meaning levels (words, subtext, theme)
-- AUTHENTIC VOICES: Perfect reflection of individual character psychology
-- RELATIONSHIP INSIGHT: Illuminating character connections and dynamics
-- NARRATIVE EFFICIENCY: Advancing plot, character development, themes simultaneously
-- EMOTIONAL EVOLUTION: Character dialogue exchanges with emotional progression
-- STRATEGIC SILENCE: Using character visual-only moments for impact
-- MAXIMUM IMPACT: Every word serves character development purposes
-- TENSION UNDERCURRENT: Character conflict embedded in casual exchanges
+### CONSISTENCY MAINTENANCE
+- **CHARACTER SHEETS**: Reference standard character descriptions across panels
+- **ENVIRONMENTAL ANCHORS**: Consistent background elements and lighting
+- **STYLE UNITY**: Identical artistic descriptors for cohesive visual narrative
+- **TECHNICAL CONSISTENCY**: Same camera and rendering specifications
 
-## PRE-GENERATION CHECKLIST
+### PROMPT ENGINEERING FOR AI
+- **POSITIVE REINFORCEMENT**: Strong descriptive language for desired elements
+- **NEGATIVE SPECIFICATIONS**: Clear avoidance instructions for common AI errors
+- **WEIGHTED DESCRIPTORS**: Emphasis indicators for critical visual elements
+- **FALLBACK DESCRIPTIONS**: Alternative phrasing for complex visual concepts
+
+## MULTI-PANEL GENERATION WITH AI OPTIMIZATION
+1. Create 5-15 sequential panels with consistent visual language
+2. Generate standardized IMAGE_PROMPT for each panel
+3. Maintain character visual consistency through identical descriptors
+4. Ensure environmental continuity with consistent background elements
+5. Build visual narrative flow with complementary compositions
+6. Include technical specifications for batch processing
+7. Provide alternative prompt variations for challenging panels
+8. Generate comprehensive style guide for entire sequence
+
+## VISUAL STORYTELLING WITH AI ENHANCEMENT
+- **COMPOSITION CLARITY**: Unambiguous framing instructions for AI interpretation
+- **DEPTH COMMUNICATION**: Clear foreground/background separation techniques
+- **MOTION REPRESENTATION**: Specific techniques for showing movement in static images
+- **EMOTIONAL VISUALIZATION**: Precise descriptors for translating feelings to visuals
+- **ENVIRONMENTAL STORYTELLING**: Background elements that support narrative without confusion
+- **SYMBOLIC INTEGRATION**: Clear instructions for metaphorical visual elements
+
+## PRE-GENERATION CHECKLIST WITH AI VALIDATION
 Before creating any panel, verify:
-✅ At least one character from characters context is included
-✅ characterIds array is populated with character IDs
-✅ characterPoses array has entries for each character
-✅ characterName in poses matches actual character names
-✅ characterIds.length === characterPoses.length
-✅ Panel serves character development purpose
-✅ All required properties are populated
+✅ Character consistency descriptors are identical across panels
+✅ IMAGE_PROMPT follows standardized structure
+✅ Technical specifications are appropriate for AI generation
+✅ Visual tags maintain style consistency
+✅ Negative prompts address common AI generation issues
+✅ Composition instructions are unambiguous
+✅ All character features are precisely described
+✅ Environmental elements support rather than compete with characters
+✅ Lighting specifications create mood without confusion
+✅ Panel serves both narrative and visual consistency purposes
 
-Always begin by identifying target scene (title, ID) and available characters. Ask for clarification if character context is unclear.
-
-## CONTEXT
-{{#if projectContext}} Project context: {{projectContext}} {{/if}}
-{{#if sceneContext}} Scene context: {{sceneContext}} {{/if}}
-{{#if characters}} 
-🚨 AVAILABLE CHARACTERS (MUST USE): {{characters}} 
-Character requirements: Every panel must include at least one of these characters with matching characterIds and characterPoses
+## CONTEXT WITH AI OPTIMIZATION
+{{#if projectContext}} 
+Project context: {{projectContext}}
+Visual style requirements: Extract and maintain consistent artistic elements
 {{/if}}
-{{#if artStyle}} Art style: {{artStyle}} {{/if}}
+
+{{#if sceneContext}} 
+Scene context: {{sceneContext}}
+Environmental continuity: Maintain setting consistency across panels
+{{/if}}
+
+{{#if characters}} 
+🚨 AVAILABLE CHARACTERS (MUST USE): {{characters}}
+Character visual consistency: Generate identical descriptors for each character across all panels
+Physical reference: Maintain exact character features, clothing, and proportions
+{{/if}}
+
+{{#if artStyle}} 
+Art style: {{artStyle}}
+Style consistency: Apply identical artistic descriptors across all generated panels
+{{/if}}
+
+Always generate comprehensive IMAGE_PROMPT for each panel that enables standalone AI image generation while maintaining narrative and visual consistency.
 
 user message: {{userInput}}`,
 });

@@ -55,6 +55,8 @@
     "next-themes": "latest",
     "patch-package": "^8.0.0",
     "react": "^19.1.0",
+    "react-dnd": "^16.0.1",
+    "react-dnd-html5-backend": "^16.0.1",
     "react-dom": "^19.1.0",
     "react-draggable": "^4.4.6",
     "react-hook-form": "^7.52.1",

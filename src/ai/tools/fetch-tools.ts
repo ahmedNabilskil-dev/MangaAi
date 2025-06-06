@@ -1,6 +1,5 @@
 import { ai } from "@/ai/ai-instance";
 import {
-  getAllCharacters,
   getAllProjects,
   getChapterForContext,
   getChapters,
@@ -13,6 +12,7 @@ import {
   getSceneForContext,
   getScenes,
   getUser as getUserService,
+  listCharacters,
 } from "@/services/data-service";
 import {
   chapterSchema,
@@ -425,7 +425,7 @@ export const listCharactersForProjectTool = ai.defineTool(
   },
   async ({ projectId, role }) => {
     try {
-      const characters = await getAllCharacters(projectId);
+      const characters = await listCharacters(projectId);
       return characters
         .filter((character) => !role || character.role === role)
         .map((character) =>
@@ -472,7 +472,7 @@ export const findCharacterByNameTool = ai.defineTool(
   },
   async ({ projectId, name, exactMatch }) => {
     try {
-      const characters = await getAllCharacters(projectId);
+      const characters = await listCharacters(projectId);
       const found = characters.find((character) =>
         exactMatch
           ? character.name === name

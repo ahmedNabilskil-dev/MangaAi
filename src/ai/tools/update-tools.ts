@@ -1,13 +1,13 @@
 import { ai } from "@/ai/ai-instance";
 import {
   assignCharacterToPanel as assignCharacterToPanelService,
-  getAllCharacters,
   getChapterForContext,
   getCharacter as getCharacterForContext,
   getPanelDialogueForContext,
   getPanelForContext,
   getProject as getProjectForContext,
   getSceneForContext,
+  listCharacters,
   removeCharacterFromPanel as removeCharacterFromPanelService,
   updateChapter as updateChapterService,
   updateCharacter as updateCharacterService,
@@ -314,7 +314,7 @@ export const updatePanelDialogueTool = ai.defineTool(
           });
           if (!projectId) throw new Error("Could not determine project");
 
-          const characters = await getAllCharacters(projectId);
+          const characters = await listCharacters(projectId);
           const foundSpeaker = characters.find(
             (c) => c.name.toLowerCase() === speakerName.toLowerCase()
           );

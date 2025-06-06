@@ -6,12 +6,12 @@ import {
   createPanel as createPanelService,
   createProject as createProjectService,
   createScene as createSceneService,
-  getAllCharacters,
   getChapterForContext,
   getCharacter as getCharacterForContext,
   getPanelForContext,
   getProject as getProjectForContext,
   getSceneForContext,
+  listCharacters,
 } from "@/services/data-service";
 import { MangaStatus } from "@/types/enums";
 import {
@@ -209,7 +209,7 @@ export const createPanelTool = ai.defineTool(
         input.characterNames.length > 0 &&
         projectId
       ) {
-        const charactersInProject = await getAllCharacters(projectId);
+        const charactersInProject = await listCharacters(projectId);
         characterIds = input.characterNames
           .map(
             (name) =>
@@ -267,7 +267,7 @@ export const createPanelDialogueTool = ai.defineTool(
         panelId: input.panelId,
       });
       if (input.speakerName && projectId) {
-        const characters = await getAllCharacters(projectId);
+        const characters = await listCharacters(projectId);
         const found = characters.find(
           (c) => c.name.toLowerCase() === input.speakerName?.toLowerCase()
         );
@@ -721,7 +721,7 @@ export const createPanelWithDialoguesTool = ai.defineTool(
         input.panelData.characterNames.length > 0 &&
         projectId
       ) {
-        const charactersInProject = await getAllCharacters(projectId);
+        const charactersInProject = await listCharacters(projectId);
         characterIds = input.panelData.characterNames
           .map(
             (name) =>
@@ -746,7 +746,7 @@ export const createPanelWithDialoguesTool = ai.defineTool(
         // Resolve speaker ID if provided
         let speakerId: string | undefined | null = null;
         if (dialogueData.speakerName && projectId) {
-          const characters = await getAllCharacters(projectId);
+          const characters = await listCharacters(projectId);
           const found = characters.find(
             (c) =>
               c.name.toLowerCase() === dialogueData.speakerName?.toLowerCase()
@@ -821,7 +821,7 @@ export const createMultiplePanelsTool = ai.defineTool(
       });
 
       const charactersInProject = projectId
-        ? await getAllCharacters(projectId)
+        ? await listCharacters(projectId)
         : [];
 
       const panelIds = [];
@@ -933,7 +933,7 @@ export const createMultiplePanelsWithDialoguesTool = ai.defineTool(
       });
 
       const charactersInProject = projectId
-        ? await getAllCharacters(projectId)
+        ? await listCharacters(projectId)
         : [];
 
       const result = [];

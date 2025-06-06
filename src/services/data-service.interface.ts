@@ -2,13 +2,10 @@
 import type {
   Chapter,
   Character,
-  KeyEvent,
-  MangaLocation,
   MangaProject,
   Panel,
   PanelDialogue,
   Scene,
-  User,
 } from "@/types/entities";
 import type { DeepPartial } from "@/types/utils";
 
@@ -32,41 +29,6 @@ export interface IDataService {
     >
   ): Promise<void>;
   deleteProject(id: string): Promise<void>;
-  getDefaultProject(): Promise<MangaProject | null>;
-
-  // --- Location ---
-  getAllLocations(projectId?: string): Promise<MangaLocation[]>;
-  getLocation(id: string): Promise<MangaLocation | null>;
-  createLocation(locationData: MangaLocation): Promise<MangaLocation>;
-  updateLocation(
-    id: string,
-    locationData: DeepPartial<MangaLocation>
-  ): Promise<void>;
-  deleteLocation(id: string): Promise<void>;
-  getLocationForContext(id: string): Promise<MangaLocation | null>;
-
-  // --- Key Event ---
-  getAllKeyEvents(projectId?: string): Promise<KeyEvent[]>;
-  getKeyEvent(id: string): Promise<KeyEvent | null>;
-  createKeyEvent(eventData: KeyEvent): Promise<KeyEvent>;
-  updateKeyEvent(
-    id: string,
-    eventData: DeepPartial<Omit<KeyEvent, "id">>
-  ): Promise<void>;
-  deleteKeyEvent(id: string): Promise<void>;
-  getKeyEventForContext(id: string): Promise<KeyEvent | null>;
-
-  // --- User ---
-  getAllUsers(): Promise<User[]>;
-  getUser(id: string): Promise<User | null>;
-  createUser(userData: Omit<User, "id">): Promise<User>;
-  updateUser(
-    id: string,
-    userData: DeepPartial<Omit<User, "id">>
-  ): Promise<void>;
-  deleteUser(id: string): Promise<void>;
-  getUserForContext(id: string): Promise<User | null>;
-
   // --- Chapter ---
   createChapter(
     chapterData: Omit<Chapter, "id" | "createdAt" | "updatedAt" | "scenes">
@@ -128,7 +90,6 @@ export interface IDataService {
   getPanelDialogueForContext(id: string): Promise<PanelDialogue | null>; // Needed for flows
 
   // --- Character ---
-  getAllCharacters(projectId?: string): Promise<Character[]>;
   getCharacter(id: string): Promise<Character | null>;
   createCharacter(
     characterData: Omit<Character, "id" | "createdAt" | "updatedAt">

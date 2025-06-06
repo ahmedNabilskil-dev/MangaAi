@@ -5,7 +5,6 @@ import type {
   Panel,
   PanelDialogue,
   Scene,
-  User,
 } from "@/types/entities";
 import type { DeepPartial } from "@/types/utils";
 import type { IDataService } from "./data-service.interface";
@@ -44,10 +43,6 @@ export async function updateProject(
 
 export async function deleteProject(id: string): Promise<void> {
   return activeDataService.deleteProject(id);
-}
-
-export async function getDefaultProject(): Promise<MangaProject | null> {
-  return activeDataService.getDefaultProject();
 }
 
 // --- Chapter ---
@@ -171,10 +166,8 @@ export async function getPanelDialogueForContext(
 }
 
 // --- Character ---
-export async function getAllCharacters(
-  projectId?: string
-): Promise<Character[]> {
-  return activeDataService.getAllCharacters(projectId);
+export async function listCharacters(projectId: string): Promise<Character[]> {
+  return activeDataService.listCharacters(projectId);
 }
 
 export async function getCharacter(id: string): Promise<Character | null> {
@@ -202,23 +195,6 @@ export async function getCharacterForContext(
   id: string
 ): Promise<Character | null> {
   return activeDataService.getCharacterForContext(id);
-}
-
-// --- User ---
-
-export async function getUser(id: string): Promise<User | null> {
-  return activeDataService.getUser(id);
-}
-
-export async function createUser(userData: Omit<User, "id">): Promise<User> {
-  return activeDataService.createUser(userData);
-}
-
-export async function updateUser(
-  id: string,
-  userData: DeepPartial<Omit<User, "id">>
-): Promise<void> {
-  return activeDataService.updateUser(id, userData);
 }
 
 export async function getMangaProjects(): Promise<MangaProject[]> {
