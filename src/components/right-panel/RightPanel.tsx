@@ -2,7 +2,6 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { NodeType } from "@/components/visual-editor/custom-node";
 import { useVisualEditorStore } from "@/store/visual-editor-store";
 import {
@@ -188,15 +187,6 @@ export const ProjectViewerPanel = ({ project }: { project: MangaProject }) => {
             ))}
           </div>
         )}
-
-        <div className="flex justify-end mb-4">
-          <Button
-            className="bg-pink-600 hover:bg-pink-700"
-            onClick={() => console.log("Edit project")}
-          >
-            Edit Project
-          </Button>
-        </div>
       </div>
     </div>
   );
@@ -311,18 +301,6 @@ export const ChapterViewerPanel = ({ chapter }: { chapter: Chapter }) => {
             <Clock className="w-10 h-10 text-pink-400/30" />
           </div>
         </div>
-
-        <div className="flex justify-end space-x-3 mb-4">
-          <Button
-            variant="outline"
-            className="border-gray-700 text-white hover:bg-gray-800"
-          >
-            View Scenes
-          </Button>
-          <Button className="bg-pink-600 hover:bg-pink-700">
-            Edit Chapter
-          </Button>
-        </div>
       </div>
     </div>
   );
@@ -343,10 +321,10 @@ export const SceneViewerPanel = ({ scene }: { scene: Scene }) => {
         </div>
       </div>
 
-      {scene.narrative && (
+      {scene.visualSequence && (
         <div className="bg-gray-800/50 p-5 rounded-lg mb-8">
-          <h3 className="text-xl font-bold mb-3">Narrative</h3>
-          <p className="text-gray-200">{scene.narrative}</p>
+          <h3 className="text-xl font-bold mb-3">visual Sequence</h3>
+          <p className="text-gray-200">{scene.visualSequence}</p>
         </div>
       )}
 
@@ -430,16 +408,6 @@ export const SceneViewerPanel = ({ scene }: { scene: Scene }) => {
           </div>
           <Clock className="w-10 h-10 text-pink-400/30" />
         </div>
-      </div>
-
-      <div className="flex justify-end space-x-3">
-        <Button
-          variant="outline"
-          className="border-gray-700 text-white hover:bg-gray-800"
-        >
-          View Panels
-        </Button>
-        <Button className="bg-pink-600 hover:bg-pink-700">Edit Scene</Button>
       </div>
     </div>
   );
@@ -635,20 +603,6 @@ export const PanelViewerPanel = ({ panel }: { panel: Panel }) => {
               </div>
             </div>
           )}
-
-          <div className="flex justify-end space-x-3">
-            {panel.dialogues && panel.dialogues.length > 0 && (
-              <Button
-                variant="outline"
-                className="border-gray-700 text-white hover:bg-gray-800"
-              >
-                View Dialogues
-              </Button>
-            )}
-            <Button className="bg-pink-600 hover:bg-pink-700">
-              Edit Panel
-            </Button>
-          </div>
         </div>
       </div>
     </div>
@@ -799,10 +753,6 @@ export const DialogueViewerPanel = ({
           </div>
           <Sparkles className="w-8 h-8 text-pink-400/30" />
         </div>
-      </div>
-
-      <div className="flex justify-end">
-        <Button className="bg-pink-600 hover:bg-pink-700">Edit Dialogue</Button>
       </div>
     </div>
   );
@@ -1351,12 +1301,6 @@ export const CharacterViewerPanel = ({
               )}
             </div>
           )}
-
-          <div className="flex justify-end mt-8">
-            <Button className="bg-pink-600 hover:bg-pink-700">
-              Edit Character
-            </Button>
-          </div>
         </div>
       </div>
     </div>

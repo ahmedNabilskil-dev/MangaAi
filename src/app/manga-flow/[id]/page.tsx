@@ -1,6 +1,6 @@
 "use client";
 
-import EnhancedChatbox from "@/components/chatbox/chatbox";
+import ChatBox from "@/components/chatbox/chatbox";
 import { RightPanel } from "@/components/right-panel/RightPanel";
 import EnhancedSidebar from "@/components/sidenav/SideNav";
 import VisualEditor from "@/components/visual-editor/visual-editor";
@@ -285,11 +285,7 @@ export default function EnhancedMangaFlow(): JSX.Element {
                   transition={{ duration: 0.2, ease: "easeInOut" }}
                   className="h-full"
                 >
-                  {activeTab === "chat" ? (
-                    <EnhancedChatbox />
-                  ) : (
-                    <EnhancedSidebar />
-                  )}
+                  {activeTab === "chat" ? <ChatBox /> : <EnhancedSidebar />}
                 </motion.div>
               </AnimatePresence>
             </div>

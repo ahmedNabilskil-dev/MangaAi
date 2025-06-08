@@ -108,7 +108,6 @@ const UpdatePanelDataSchema = panelSchema
     characters: true,
     sceneId: true,
     characterIds: true,
-    aiPrompt: true,
     imageUrl: true,
     isAiGenerated: true,
   })

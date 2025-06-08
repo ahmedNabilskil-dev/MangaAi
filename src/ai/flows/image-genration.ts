@@ -98,7 +98,10 @@ export const GeneratePanelImage = ai.defineFlow(
     });
 
     const res = await ai.generateImage({
-      prompt: prompt.output?.imagePrompt!,
+      prompt:
+        prompt.output?.imagePrompt! +
+        " negative prompt: " +
+        prompt.output?.negativePrompt,
       history: conversationHistory,
     });
 
@@ -110,7 +113,6 @@ export const GeneratePanelImage = ai.defineFlow(
 
       updatePanel(panel.id, {
         imageUrl: url,
-        aiPrompt: prompt.output?.imagePrompt!,
       });
       return res?.text;
     } else {
@@ -121,12 +123,13 @@ export const GeneratePanelImage = ai.defineFlow(
 );
 
 export const PanelImagePrompt = ai.definePrompt({
-  name: "DetailedMangaImagePrompt",
+  name: "PanelImagePrompt",
   input: {
     schema: z.object({
-      panel: z.any(),
-      scene: z.any(),
-      characters: z.array(z.any()).optional(),
+      panel: z.any().describe("panel with aiPrompt and panelContext"),
+      scene: z.any().describe("scene context"),
+      characters: z.array(z.any()).optional().describe("character references"),
+      artStyle: z.string().optional().describe("art style specification"),
       additionalContext: z.string().optional(),
     }),
   },
@@ -135,160 +138,130 @@ export const PanelImagePrompt = ai.definePrompt({
       imagePrompt: z
         .string()
         .describe(
-          "Detailed, structured image generation prompt following successful format patterns."
+          "Comprehensive, structured image generation prompt optimized for high-quality manga art"
+        ),
+      negativePrompt: z
+        .string()
+        .describe(
+          "Detailed negative prompt to avoid common manga generation issues"
         ),
     }),
   },
-  prompt: `You are an expert AI image prompt engineer. Generate a highly detailed, structured prompt based on the successful format that produces clean, artifact-free ANIME/MANGA style images.
+  prompt: `You are an expert AI image prompt engineer specializing in high-quality anime/manga art generation. Your task is to enhance existing prompts to ensure that **characters are the central focus**, maintaining perfect fidelity to their references, with the background playing a supportive, non-dominant role unless explicitly required.
+
+## QUALITY & STYLE FOUNDATION
+**MANDATORY OPENING**: Every imagePrompt must begin with:
+"masterpiece, best quality, high resolution, ultra detailed, anime style, manga art style, Japanese animation, 2D anime art, cel-shaded animation style, professional manga illustration, detailed line art, cinematic composition"
 
 ---
 
-## QUALITY & STYLE REQUIREMENTS
-**CRITICAL: Every prompt must start with these specifications:**
-- "masterpiece, best quality, high resolution, ultra detailed,"
-- "anime style, manga art style, Japanese animation,"
-- "2D anime art, cel-shaded animation style,"
-- Include specific anime visual characteristics
+## PANEL DATA EXTRACTION
 
----
+**Base Prompt**:
+{{panel.aiPrompt}}
 
-## SUCCESSFUL PROMPT STRUCTURE
-Follow this exact pattern for best results:
-
-1. **QUALITY & STYLE DECLARATION** (quality + anime/manga specification)
-2. **SCENE OVERVIEW** (1 sentence)
-3. **ENVIRONMENT DETAILS** (detailed setting description)
-4. **PRIMARY CHARACTER** (pose, action, clothing, expression - NO facial features)
-5. **SECONDARY CHARACTER** (pose, action, clothing, expression - NO facial features)  
-6. **BACKGROUND ELEMENTS** (if any, brief)
-7. **CAMERA & COMPOSITION** (shot type, angle)
-8. **LIGHTING DETAILS** (specific lighting setup)
-9. **MOOD & ATMOSPHERE** (emotional tone)
-10. **SPECIAL EFFECTS** (blood, magic, etc. if relevant)
-
----
-
-## DATA EXTRACTION
-
-**Panel Information:**
+### PANEL CONTEXT
 - Action: {{panel.panelContext.action}}
-- Character Poses: 
-{{#if panel.panelContext.characterPoses}}
-{{#each panel.panelContext.characterPoses}}
-  * {{characterName}}: {{pose}} {{#if expression}}({{expression}}){{/if}}
-{{/each}}
-{{/if}}
 - Camera Angle: {{panel.panelContext.cameraAngle}}
 - Shot Type: {{panel.panelContext.shotType}}
-- Background: {{panel.panelContext.backgroundDescription}}
+- Emotion: {{panel.panelContext.emotion}}
 - Lighting: {{panel.panelContext.lighting}}
+- Background: {{panel.panelContext.backgroundDescription}}
 - Effects: {{panel.panelContext.effects}}
 - Dramatic Purpose: {{panel.panelContext.dramaticPurpose}}
+- Narrative Position: {{panel.panelContext.narrativePosition}}
 
-**Scene Context:**
+**Character Details**:
+{{#each panel.panelContext.characterPoses}}
+- {{characterName}}: pose = {{pose}}, expression = {{expression}}, clothing = {{clothing}}{{#if props}}, props: {{props}}{{/if}}{{#if spatialPosition}}, position: {{spatialPosition}}{{/if}}
+{{/each}}
+
+**Scene Context**:
 - Setting: {{scene.sceneContext.setting}}
 - Mood: {{scene.sceneContext.mood}}
-- Present Characters: {{scene.sceneContext.presentCharacters}}
 - Time of Day: {{scene.sceneContext.timeOfDay}}
 - Weather: {{scene.sceneContext.weather}}
+{{#if scene.sceneContext.consistencyAnchors}}
+- Consistency Anchors:
+  - Character Clothing: {{scene.sceneContext.consistencyAnchors.characterClothing}}
+  - Environmental Elements: {{scene.sceneContext.consistencyAnchors.environmentalElements}}
+  - Lighting Sources: {{scene.sceneContext.consistencyAnchors.lightingSources}}
+  - Color Palette: {{scene.sceneContext.consistencyAnchors.colorPalette}}
+  - Atmospheric Effects: {{scene.sceneContext.consistencyAnchors.atmosphericEffects}}
+{{/if}}
 
-**Characters Available:**
+**Available Characters**:
 {{#if characters}}
 {{#each characters}}
 - {{name}}: {{description}}
 {{/each}}
 {{/if}}
 
----
 
-## GENERATION APPROACH
 
-**Follow the natural narrative flow of the successful example. Each section should flow seamlessly into the next without repetition or mechanical templating.**
+## PROMPT GENERATION STRATEGY
 
-**STEP 1: Quality & Style Declaration**
-- Always start with "masterpiece, best quality, high resolution, ultra detailed,"
-- Follow with "anime style, manga art style, Japanese animation,"
-- Include specific anime visual characteristics
+### 1. CHARACTER FOCUS (Top Priority)
+- Integrate: "(use previous character reference image for [CHARACTER_NAME])"
+- NEVER describe facial traits; instead focus on:
+  - Body posture & pose
+  - Expression
+  - Props
+  - Clothing
+  - Interaction & position in space
+  - Perspective from camera angle
 
-**STEP 2: Scene Setup (Single flowing paragraph)**
-- Start with the core dramatic action
-- Describe character positions and immediate actions in relation to each other
-- Keep it natural and narrative, not templated
+✅ Use anatomical precision: detailed hands, feet, fingers, proportions  
+✅ Include spatial layering: foreground/background depth  
 
-**STEP 3: Environment (Single descriptive sentence)**
-- One clear, detailed description of the setting
-- Include specific materials, atmospheric elements
-- Don't repeat environment details later
 
-**STEP 4: Character Details (One paragraph per main character)**
-- **CRITICAL: NEVER describe facial features (hair, eyes, face shape, etc.)**
-- Start with "(use previous character reference images)" 
-- Focus ONLY on: pose, body positioning, clothing (specific materials, fit, condition), what they're holding/doing, body type, expression
-- Include anatomical perfection for hands, fingers, and joints
-- Make it flow naturally, not like a checklist
+### 2. COMPOSITION & CAMERA
+- Apply cinematic composition techniques according to:
+  - Shot Type (e.g. close-up = facial focus, wide = group scene, etc.)
+  - Camera Angle (low-angle = heroic, high-angle = vulnerable)
 
-**STEP 5: Background Characters (Brief sentence)**
-- Position and brief description only
-- Don't over-detail background characters
-- **NO facial feature descriptions**
 
-**STEP 6: Camera/Composition (Single sentence)**
-- Shot type, angle, and focus priority
+### 3. ENVIRONMENT (Supportive Role)
+- Only enhance environmental details **when required by shot type**
+- Extract architectural and mood details from:
+  - 'backgroundDescription', 'setting', 'weather', and 'consistencyAnchors'
+- If camera is focused on characters (close-up, medium shot), background should be minimal, blurred, or stylistically light to keep character focus
 
-**STEP 7: Lighting (Flowing paragraph)**
-- Multiple light sources described naturally
-- How light interacts with characters and environment
-- Shadow patterns and highlights
 
-**STEP 8: Mood (Single sentence)**
-- 3-4 emotional descriptors
+### 4. LIGHTING INTEGRATION
+- Base it on:
+  - 'scene.sceneContext.timeOfDay', 'lightingSources', 'effects'
+  - Enhance contrast and mood according to panel emotion
+- Include lighting realism via:
+  - Material interaction
+  - Shadow softness or harshness
+  - Directional lighting from props (lamps, sun)
 
-**STEP 9: Special Effects (If relevant)**
-- Realistic descriptions of magical/special elements
 
-**STEP 10: Final Context (If needed)**
-- Any important contextual notes
+### 5. EMOTIONAL EXPRESSION
+- Adjust image tone, color temperature, and composition around:
+  - 'panel.panelContext.emotion'
+  - Dramatic Purpose
+  - Character interaction & expression
 
-## CRITICAL RULES:
-- **ALWAYS START WITH QUALITY + ANIME STYLE SPECIFICATION**
-- **ADD CHARACTER REFERENCE INSTRUCTION** - Include "(use previous character reference images)" for each character
-- **NEVER DESCRIBE FACIAL FEATURES** - No hair color, eye color, face shape, etc.
-- **FOCUS ON ACTION & CLOTHING** - Describe pose, action, clothing details, expression only
-- **NO REPETITION** - Each element mentioned only once
-- **NATURAL FLOW** - Read like a story description, not a template
-- **SEAMLESS TRANSITIONS** - Each section flows into the next
-- **AVOID MECHANICAL LANGUAGE** - Don't use "He is..." "She wears..." repeatedly
-- **SINGLE COHERENT NARRATIVE** - Should read as one flowing description
 
----
+## NEGATIVE PROMPT RULES
 
-## SUCCESSFUL EXAMPLE TO FOLLOW (UPDATED):
+Use this comprehensive default negative prompt, with modifications per panel:
 
-"masterpiece, best quality, high resolution, ultra detailed, anime style, manga art style, Japanese animation style, 2D anime art with clean line work and cel-shaded coloring, a young man protecting a young woman from an unseen monster. The young man lunges forward defensively, holding a sharp blade in his dominant hand, his other arm raised to shield the woman. The young woman is partially behind him, looking scared but hopeful, her body tense. a dark, damp, gothic-style cave interior with detailed stalactites and stalagmites, subtle mist, and intricate, realistic spiderwebs. a tall young man (use previous character reference images) in a defensive lunging pose, wearing a tattered, dark grey, loose-fitting cotton t-shirt with realistic wrinkles and folds, and dark combat pants. He holds a short, razor-sharp combat knife with a defined handle and gleaming blade. His body is muscular and toned, with anatomically perfect hands, fingers, and joints. His expression is fierce and determined. a young woman (use previous character reference images) positioned partially behind the man, her body tense and leaning slightly away from danger. She wears a form-fitting black sports bra made of smooth, slightly reflective fabric, and dark shorts. Her body is slender and proportioned, with naturally defined shoulders and arms. Her expression shows a mix of fear and trust in the boy's protection. a man (use previous character reference images) positioned further back in the cave, observing the scene with a stern expression, wearing a simple black jacket, with clear facial features proportionate to his distance. dynamic medium shot, slightly low-angle, focusing on the boy's protective stance and the girl partially behind him. dramatic cinematic lighting with a single, strong glowing magical light source emanating from the boy's blade, casting sharp highlights and deep, realistic shadows. Subtle rim lighting on the characters, highlighting their silhouettes against the dark cave. Hints of ambient light from distant glowing crystals in the cave ceiling. intense, suspenseful, protective, and determined. realistic blood spatter on the blade and a tiny bit on the boy's shirt, appearing as natural liquid. The environment is dark and filled with a sense of danger from an unseen monster (do not generate the monster in the image, imply its presence through character reaction and context)."
+**Negative Prompt**:  
+"blurry, low quality, distorted anatomy, amateur art, poor anatomy, bad anatomy, realistic photography, western comic style, 3D render, photorealistic, deformed hands, extra fingers, missing limbs, distorted proportions, malformed anatomy, inconsistent clothing, mismatched lighting, cluttered composition, oversaturated colors, photographic shading, non-anime style, artifacts, noise, compression errors, unclear focus, poor framing, continuity errors, character inconsistency, multiple heads, duplicate characters, realistic facial features, photorealistic lighting, live action, impossible architecture, floating objects"
 
-## KEY CHANGES MADE:
-- **Removed all facial feature descriptions** (hair color, eye color, etc.)
-- **Added reference image instruction for ALL characters** including background characters
-- **Focused character descriptions on pose, clothing, and expression only**
-- **Character appearance comes from reference images, not text descriptions**
+### Panel-Specific Additions
+- If camera is close-up: exclude "distant background, wide scenery"
+- If emotional: exclude "neutral expressions"
+- If dramatic: exclude "lighthearted tone, soft color palette"
+- If action: exclude "motion blur, awkward posing"
 
----
 
-## GENERATE PROMPT
-
-Using the panel, scene, and character data provided, create a detailed prompt following the successful structure pattern. Focus on:
-- **ALWAYS begin with quality + anime/manga style declaration**
-- **Add "(use previous character reference images)" for each character**
-- **NEVER describe facial features - let reference images handle appearance**
-- Specific pose and action details
-- Detailed clothing descriptions (materials, fit, condition)
-- Expression and body language only
-- Realistic material descriptions  
-- Clear spatial relationships between characters
-- Dramatic lighting setups
-- Atmospheric environmental details
-
-Generate the complete prompt now:`,
+## GENERATION COMMAND
+Using the provided aiPrompt, panelContext, scene context, and character data, enhance and optimize the aiPrompt to create a comprehensive imagePrompt and negativePrompt. Prioritize character fidelity and reference accuracy while supporting visual storytelling through background and lighting only as needed. Build upon the existing prompt rather than replacing it.
+`,
 });
 
 // PORTRAIT VERSION - For creating detailed character reference faces
@@ -374,8 +347,15 @@ Apply {{seriesStyle}} aesthetic with portrait focus:
 
 Generate a comprehensive portrait imagePrompt (350-400 words) focused on creating the perfect character reference face.
 
-<!--the character age is {{character.age}} years old but should not be explicitly mentioned in the output prompt. The model may infer age visually (e.g., youthful appearance, elderly features) but should never output the age as a number or state. this is very important don't mention age in any line -->
-don't mention age as number again and again and again don't mention age at all as number
+<!-- 
+The character's age is {{character.age}}, but it must never be explicitly stated as a number in the output.
+
+The image should reflect the character's **true age visually** using descriptive cues (e.g., youthful energy, mature expression, aged features, life-worn gaze). Do not say the age numerically, and never include phrases like "40 years old" or "teenage".
+
+Use visual storytelling and physical traits to **imply** the age (e.g., soft round cheeks for youth, fine smile lines for adults, sagging eyelids for elderly), depending on the character.
+
+⚠️ ABSOLUTELY DO NOT mention any number representing age in any form. Age must be visually inferred through descriptive details only. This rule applies to all ages.
+-->
 
 
 Character Data: {{character}}

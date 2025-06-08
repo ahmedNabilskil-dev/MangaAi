@@ -1,13 +1,15 @@
 "use client";
+import Frame from "@/components/bubble/Frame";
+import Speech, {
+  ROUNDED_RECT_BUBBLE_SHAPE,
+  SPEECH_TYPE,
+} from "@/components/bubble/speech";
+import { updatePanelDialogue } from "@/services/data-service";
 import { getProjectWithRelations } from "@/services/db";
-import {
-  Chapter,
-  Character,
-  MangaProject,
-  PanelDialogue,
-} from "@/types/entities";
+import { Chapter, MangaProject } from "@/types/entities";
 import {
   BookOpen,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
@@ -15,167 +17,159 @@ import {
   LayoutGrid,
   LayoutList,
   Maximize,
+  Menu,
   Minimize,
   Moon,
+  Navigation,
   Save,
+  Settings,
   Sun,
-  Volume2,
-  VolumeX,
-  Zap,
+  X,
 } from "lucide-react";
 import { useParams } from "next/navigation";
-import React, { useEffect, useRef, useState } from "react";
-import { DndProvider, useDrag, useDrop } from "react-dnd";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { HexAlphaColorPicker } from "react-colorful";
+import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
-
-// ========== TYPES ==========
-type ReadingMode = "normal" | "focus" | "cinematic";
-type LayoutMode = "vertical" | "grid";
-type EditPanelMode = "dialog" | "sfx" | "panel";
-
-interface Position {
-  x: number;
-  y: number;
+interface ColorPickerProps {
+  value: string;
+  onChange: (value: string) => void;
 }
 
-interface DragItem {
-  type: string;
-  id: string;
-  panelId: string;
-  initialX: number;
-  initialY: number;
-}
-
-// ========== COMPONENTS ==========
-const DialogBubble: React.FC<{
-  dialogue: PanelDialogue;
-  panelId: string;
-  editMode: boolean;
-  selected: boolean;
-  onClick: () => void;
-  character?: Character | null;
-  onPositionChange: (id: string, x: number, y: number) => void;
-}> = ({
-  dialogue,
-  panelId,
-  editMode,
-  selected,
-  onClick,
-  character,
-  onPositionChange,
-}) => {
-  const bubbleClasses = {
-    normal: "bg-white border-2 border-gray-800 text-gray-800",
-    thought: "bg-blue-100 border-2 border-blue-400 text-blue-800 rounded-full",
-    narration:
-      "bg-yellow-100 border-2 border-yellow-600 text-yellow-800 italic",
-    scream: "bg-red-100 border-2 border-red-500 text-red-800 font-bold",
-    whisper: "bg-gray-100 border-2 border-gray-400 text-gray-600 text-sm",
-  };
-
-  const tailClasses = {
-    normal: "border-t-white",
-    thought: "", // No tail for thought bubbles
-    narration: "border-t-yellow-100",
-    scream: "border-t-red-100",
-    whisper: "border-t-gray-100",
-  };
-
-  const bubbleType = dialogue.style?.bubbleType || "normal";
-  const fontSizeMap = {
-    "x-small": 10,
-    small: 12,
-    medium: 14,
-    large: 16,
-    "x-large": 18,
-  };
-  const fontSize = dialogue.style?.fontSize
-    ? fontSizeMap[dialogue.style.fontSize]
-    : 14;
-
-  const [{ isDragging }, drag] = useDrag(() => ({
-    type: "DIALOGUE",
-    item: {
-      type: "DIALOGUE",
-      id: dialogue.id,
-      panelId,
-      initialX: dialogue.style?.position?.x || 50,
-      initialY: dialogue.style?.position?.y || 50,
-    },
-    canDrag: editMode,
-    collect: (monitor) => ({
-      isDragging: !!monitor.isDragging(),
-    }),
-  }));
-
+export const ColorPicker = ({ value, onChange }: ColorPickerProps) => {
   return (
-    <div
-      ref={drag}
-      data-dialogue-id={dialogue.id}
-      className={`absolute max-w-xs p-3 rounded-lg shadow-lg z-10 ${
-        editMode ? "cursor-grab active:cursor-grabbing" : ""
-      } ${bubbleClasses[bubbleType]} ${
-        editMode ? "hover:scale-105" : "animate-fade-in"
-      } ${selected ? "ring-2 ring-blue-400" : ""} ${
-        isDragging ? "opacity-50" : "opacity-100"
-      }`}
-      style={{
-        left: `${dialogue.style?.position?.x || 50}%`,
-        top: `${dialogue.style?.position?.y || 50}%`,
-        fontSize: `${fontSize}px`,
-        transform: `translate(-50%, -50%)`,
-        userSelect: editMode ? "none" : "auto",
-        fontFamily: dialogue.style?.fontType || "inherit",
-        fontWeight: dialogue.style?.emphasis ? "bold" : "normal",
-        textAlign: "left",
-      }}
-      onClick={onClick}
-    >
-      {character && bubbleType !== "narration" && (
-        <div className="font-bold text-xs mb-1 opacity-75">
-          {character.name}
-        </div>
-      )}
-      <div>{dialogue.content}</div>
-
-      {!editMode && bubbleType !== "thought" && (
-        <div
-          className={`absolute w-0 h-0 border-l-8 border-r-8 border-t-8 border-transparent ${tailClasses[bubbleType]} left-1/2 transform -translate-x-1/2 -bottom-2`}
-        />
-      )}
+    <div className="p-2 border rounded-lg shadow-md bg-white w-fit">
+      <HexAlphaColorPicker color={value} onChange={onChange} />
     </div>
   );
 };
 
-const PanelDropArea: React.FC<{
-  panelId: string;
-  onDrop: (item: DragItem, x: number, y: number) => void;
-  children: React.ReactNode;
-}> = ({ panelId, onDrop, children }) => {
-  const ref = useRef<HTMLDivElement>(null);
+type LayoutMode = "vertical" | "grid";
 
-  const [, drop] = useDrop(() => ({
-    accept: "DIALOGUE",
-    drop: (item: DragItem, monitor) => {
-      if (!ref.current) return;
+const DEFAULT_CONFIG = {
+  w: 160,
+  h: 100,
+  c: { x: 50, y: 50 },
+  tail: {
+    corners: [{ x: 100, y: 100 }],
+    tip: { x: 200, y: 200 },
+  },
+  shape: ROUNDED_RECT_BUBBLE_SHAPE,
+  type: SPEECH_TYPE,
+  config: {
+    fontSize: 16,
+    lineHeight: 26,
+    textPadding: 14,
+    cornerRadius: 12,
+    strokeWidth: 2,
+    strokeColor: "#000000",
+    fillColor: "#ffffff",
+    textColor: "#000000",
+    tailWidthFactor: 4,
+  },
+};
 
-      const offset = monitor.getClientOffset();
-      if (!offset) return;
+const deepMergeWithDefaults = (defaults: any, overrides: any) => {
+  if (!overrides) return { ...defaults };
+  const result = { ...defaults };
+  for (const key in overrides) {
+    if (typeof overrides[key] === "object" && !Array.isArray(overrides[key])) {
+      result[key] = deepMergeWithDefaults(defaults[key] || {}, overrides[key]);
+    } else if (overrides[key] !== undefined) {
+      result[key] = overrides[key];
+    }
+  }
+  return result;
+};
 
-      const rect = ref.current.getBoundingClientRect();
-      const x = ((offset.x - rect.left) / rect.width) * 100;
-      const y = ((offset.y - rect.top) / rect.height) * 100;
+interface DialogBubbleProps {
+  dialogue: {
+    id: string;
+    content: string;
+    config: any;
+    style?: {
+      bubbleType?: "normal" | "thought" | "scream" | "whisper" | "narration";
+      fontSize?: "x-small" | "small" | "medium" | "large" | "x-large";
+      fontType?: string;
+      emphasis?: boolean;
+      position?: { x: number; y: number };
+    };
+  };
+  editMode: boolean;
+  selected: boolean;
+  character?: {
+    name: string;
+  };
+  onConfigChange: (config: any) => void;
+}
 
-      onDrop(item, x, y);
+const DialogBubble = ({
+  dialogue,
+  editMode,
+  selected,
+  character,
+  onConfigChange,
+}: DialogBubbleProps) => {
+  const config = dialogue.config;
+
+  const handleUpdate = useCallback(
+    (updates: Partial<typeof config>) => {
+      onConfigChange({ ...config, ...updates });
     },
-  }));
-
-  drop(ref);
-
+    [config, onConfigChange]
+  );
+  const bubbleType = dialogue.style?.bubbleType || "normal";
+  const displayText =
+    character && bubbleType !== "narration"
+      ? `${character.name}: ${dialogue.content}`
+      : dialogue.content;
   return (
-    <div ref={ref} className="w-full h-full relative">
-      {children}
-    </div>
+    <Speech
+      w={config.w || 100}
+      h={config.h || 100}
+      c={config.c}
+      tail={config.tail}
+      shape={config.shape}
+      type={config.type}
+      text={displayText}
+      config={config.config}
+      onUpdateCentre={
+        editMode
+          ? ({ dx, dy }) =>
+              handleUpdate({
+                c: { x: config.c.x + dx, y: config.c.y + dy },
+              })
+          : undefined
+      }
+      onUpdateControlPoint={
+        editMode
+          ? (index, { dx, dy }) => {
+              const newCorners = [...config.tail.corners];
+              newCorners[index] = {
+                x: newCorners[index].x + dx,
+                y: newCorners[index].y + dy,
+              };
+              handleUpdate({ tail: { ...config.tail, corners: newCorners } });
+            }
+          : undefined
+      }
+      onUpdateTip={
+        editMode
+          ? ({ dx, dy }) =>
+              handleUpdate({
+                tail: {
+                  ...config.tail,
+                  tip: {
+                    x: config.tail.tip.x + dx,
+                    y: config.tail.tip.y + dy,
+                  },
+                },
+              })
+          : undefined
+      }
+      onUpdateSize={editMode ? ({ w, h }) => handleUpdate({ w, h }) : undefined}
+      conClick={() => {}}
+    />
   );
 };
 
@@ -184,234 +178,525 @@ const Header: React.FC<{
   currentChapterIndex: number;
   currentPanelIndex: number;
   darkMode: boolean;
-  soundEnabled: boolean;
   autoScroll: boolean;
   layoutMode: LayoutMode;
   fullscreen: boolean;
   editMode: boolean;
-  readingMode: ReadingMode;
+  onChapterChange: (index: number) => void;
   onScrollToPanel: (index: number) => void;
   onToggleDarkMode: () => void;
-  onToggleSound: () => void;
   onToggleAutoScroll: () => void;
   onToggleLayout: () => void;
   onToggleFullscreen: () => void;
   onToggleEditMode: () => void;
-  onSetReadingMode: (mode: ReadingMode) => void;
 }> = ({
   chapters,
   currentChapterIndex,
   currentPanelIndex,
   darkMode,
-  soundEnabled,
   autoScroll,
   layoutMode,
   fullscreen,
   editMode,
-  readingMode,
+  onChapterChange,
   onScrollToPanel,
   onToggleDarkMode,
-  onToggleSound,
   onToggleAutoScroll,
   onToggleLayout,
   onToggleFullscreen,
   onToggleEditMode,
-  onSetReadingMode,
 }) => {
   const currentChapter = chapters[currentChapterIndex];
   const panelCount =
     currentChapter?.scenes?.flatMap((s) => s.panels).length || 0;
 
+  const [isChapterDropdownOpen, setIsChapterDropdownOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Modern color scheme
+  const headerBg = darkMode
+    ? "bg-gray-900/95 border-gray-800"
+    : "bg-white/95 border-gray-200";
+
+  const cardBg = darkMode
+    ? "bg-gray-800/80 hover:bg-gray-700/80 border-gray-700/50"
+    : "bg-white/80 hover:bg-gray-50/80 border-gray-300/50";
+
+  const primaryText = darkMode ? "text-white" : "text-gray-900";
+  const secondaryText = darkMode ? "text-gray-300" : "text-gray-600";
+  const mutedText = darkMode ? "text-gray-400" : "text-gray-500";
+
+  const accentColor = darkMode ? "text-blue-400" : "text-blue-600";
+  const accentBg = darkMode
+    ? "bg-blue-500/10 hover:bg-blue-500/20 border-blue-500/20"
+    : "bg-blue-50 hover:bg-blue-100 border-blue-200";
+
   return (
-    <div
-      className={`sticky top-0 z-50 ${
-        darkMode ? "bg-gray-800 border-gray-700" : "bg-white"
-      } shadow-md border-b-4 border-red-500 transition-colors duration-300`}
-    >
-      <div className="max-w-6xl mx-auto px-4 py-3">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-4">
+    <>
+      {/* Main Header */}
+      <div
+        className={`sticky top-0 z-50 ${headerBg} backdrop-blur-xl border-b shadow-sm`}
+      >
+        {/* Desktop Header */}
+        <div className="hidden md:block">
+          <div className="max-w-7xl mx-auto px-6 py-4">
+            {/* Top Row - Main Navigation */}
+            <div className="flex items-center justify-between mb-4">
+              {/* Logo & Title */}
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-xl ${accentBg}`}>
+                  <BookOpen className={accentColor} size={20} />
+                </div>
+                <div>
+                  <h1 className={`text-xl font-bold ${primaryText}`}>
+                    {currentChapter?.title || "Manga Reader"}
+                  </h1>
+                  <p className={`text-sm ${mutedText}`}>
+                    Chapter {currentChapter?.chapterNumber}
+                  </p>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={onToggleEditMode}
+                  className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 ${
+                    editMode
+                      ? "bg-emerald-500 hover:bg-emerald-600 text-white"
+                      : `${accentBg} ${accentColor} hover:scale-105`
+                  }`}
+                >
+                  {editMode ? <Save size={16} /> : <Edit3 size={16} />}
+                  <span>{editMode ? "Save Changes" : "Edit Mode"}</span>
+                </button>
+
+                <div className="flex items-center gap-1 p-1 rounded-lg bg-gray-100 dark:bg-gray-800">
+                  <button
+                    onClick={onToggleDarkMode}
+                    className={`p-2 rounded-md transition-all duration-200 ${
+                      darkMode
+                        ? "bg-gray-700 text-yellow-400"
+                        : "text-gray-600 hover:bg-white"
+                    }`}
+                    title={darkMode ? "Light Mode" : "Dark Mode"}
+                  >
+                    {darkMode ? <Sun size={16} /> : <Moon size={16} />}
+                  </button>
+
+                  <button
+                    onClick={onToggleFullscreen}
+                    className={`p-2 rounded-md transition-all duration-200 ${
+                      fullscreen
+                        ? "bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400"
+                        : "text-gray-600 hover:bg-white dark:text-gray-400 dark:hover:bg-gray-700"
+                    }`}
+                    title={fullscreen ? "Exit Fullscreen" : "Fullscreen"}
+                  >
+                    {fullscreen ? (
+                      <Minimize size={16} />
+                    ) : (
+                      <Maximize size={16} />
+                    )}
+                  </button>
+
+                  <button
+                    onClick={onToggleLayout}
+                    className={`p-2 rounded-md transition-all duration-200 ${
+                      layoutMode === "grid"
+                        ? "bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400"
+                        : "text-gray-600 hover:bg-white dark:text-gray-400 dark:hover:bg-gray-700"
+                    }`}
+                    title={
+                      layoutMode === "vertical" ? "Grid View" : "Vertical View"
+                    }
+                  >
+                    {layoutMode === "vertical" ? (
+                      <LayoutGrid size={16} />
+                    ) : (
+                      <LayoutList size={16} />
+                    )}
+                  </button>
+
+                  <button
+                    onClick={onToggleAutoScroll}
+                    className={`p-2 rounded-md transition-all duration-200 ${
+                      autoScroll
+                        ? "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
+                        : "text-gray-600 hover:bg-white dark:text-gray-400 dark:hover:bg-gray-700"
+                    }`}
+                    title="Auto Scroll"
+                  >
+                    <ChevronUp
+                      size={16}
+                      className={autoScroll ? "animate-pulse" : ""}
+                    />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Row - Navigation & Progress */}
+            <div className="flex items-center justify-between">
+              {/* Navigation Controls */}
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => onScrollToPanel(0)}
+                    className={`p-2 rounded-lg ${cardBg} border backdrop-blur-sm transition-all duration-200 hover:scale-105`}
+                    title="First Panel"
+                  >
+                    <ChevronLeft className={secondaryText} size={16} />
+                  </button>
+                  <button
+                    onClick={() => onScrollToPanel(panelCount - 1)}
+                    className={`p-2 rounded-lg ${cardBg} border backdrop-blur-sm transition-all duration-200 hover:scale-105`}
+                    title="Last Panel"
+                  >
+                    <ChevronRight className={secondaryText} size={16} />
+                  </button>
+                </div>
+
+                {/* Chapter Selector */}
+                <div className="relative">
+                  <button
+                    onClick={() =>
+                      setIsChapterDropdownOpen(!isChapterDropdownOpen)
+                    }
+                    className={`flex items-center gap-3 px-4 py-2 rounded-lg ${cardBg} border backdrop-blur-sm transition-all duration-200 hover:scale-105`}
+                  >
+                    <div className="text-left">
+                      <div className={`text-sm font-medium ${primaryText}`}>
+                        Chapter {currentChapter?.chapterNumber}
+                      </div>
+                      <div className={`text-xs ${mutedText} truncate max-w-32`}>
+                        {currentChapter?.title}
+                      </div>
+                    </div>
+                    <ChevronDown
+                      size={14}
+                      className={`${mutedText} transition-transform duration-200 ${
+                        isChapterDropdownOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+
+                  {isChapterDropdownOpen && (
+                    <div
+                      className={`absolute left-0 mt-2 w-72 ${cardBg} border backdrop-blur-xl rounded-xl shadow-xl z-50 overflow-hidden`}
+                    >
+                      <div className="p-2 max-h-64 overflow-y-auto">
+                        {chapters.map((chapter, index) => (
+                          <button
+                            key={chapter.id}
+                            onClick={() => {
+                              onChapterChange(index);
+                              setIsChapterDropdownOpen(false);
+                            }}
+                            className={`w-full text-left p-3 rounded-lg transition-all duration-150 ${
+                              index === currentChapterIndex
+                                ? `${accentBg} ${accentColor}`
+                                : `hover:bg-gray-100 dark:hover:bg-gray-700 ${primaryText}`
+                            }`}
+                          >
+                            <div className="font-medium">
+                              Chapter {chapter.chapterNumber}
+                            </div>
+                            <div className={`text-sm ${mutedText} truncate`}>
+                              {chapter.title}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Progress Section */}
+              <div className="flex items-center gap-6">
+                <div className={`text-sm ${secondaryText} font-medium`}>
+                  Panel {currentPanelIndex + 1} of {panelCount}
+                </div>
+
+                {panelCount > 0 && (
+                  <div className="flex items-center gap-3">
+                    <div className="w-48 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-500 rounded-full"
+                        style={{
+                          width: `${
+                            ((currentPanelIndex + 1) / panelCount) * 100
+                          }%`,
+                        }}
+                      />
+                    </div>
+                    <span
+                      className={`text-sm font-medium ${accentColor} min-w-[3rem]`}
+                    >
+                      {Math.round(((currentPanelIndex + 1) / panelCount) * 100)}
+                      %
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile Header - Keep existing mobile design */}
+        <div className="md:hidden px-4 py-3">
+          <div className="flex items-center justify-between">
             <button
-              onClick={() => onScrollToPanel(0)}
-              className={`p-2 rounded-lg transition-colors ${
-                darkMode ? "hover:bg-gray-700" : "hover:bg-gray-100"
-              }`}
-              title="First Panel"
+              onClick={() => setIsMobileMenuOpen(true)}
+              className={`${cardBg} border p-2 rounded-lg transition-all duration-200 hover:scale-105`}
             >
-              <ChevronLeft
-                className={darkMode ? "text-white" : "text-gray-700"}
-              />
+              <Menu className={primaryText} size={18} />
             </button>
 
-            <div className="flex-1 text-center">
+            <div className="flex-1 text-center px-3">
               <h1
-                className={`text-2xl font-bold flex items-center justify-center gap-2 ${
-                  darkMode ? "text-white" : "text-gray-800"
-                }`}
+                className={`text-lg font-bold ${primaryText} flex items-center justify-center gap-2`}
               >
-                <Zap className="text-yellow-500" size={24} />
-                <span>✨ {currentChapter?.title || "Manga"} ✨</span>
-                <BookOpen className="text-blue-500" size={20} />
+                <BookOpen className={accentColor} size={16} />
+                <span className="">{currentChapter?.title || "Manga"}</span>
               </h1>
-              <p
-                className={`text-sm mt-1 ${
-                  darkMode ? "text-gray-300" : "text-gray-600"
-                }`}
+              <div
+                className={`text-xs ${mutedText} flex items-center justify-center gap-2`}
               >
-                Chapter {currentChapter?.chapterNumber} • {panelCount} Panels •
-                Panel {currentPanelIndex + 1}
-              </p>
+                <span>Ch.{currentChapter?.chapterNumber}</span>
+                <span>•</span>
+                <span>
+                  {currentPanelIndex + 1}/{panelCount}
+                </span>
+              </div>
             </div>
 
             <button
-              onClick={() => onScrollToPanel(panelCount - 1)}
-              className={`p-2 rounded-lg transition-colors ${
-                darkMode ? "hover:bg-gray-700" : "hover:bg-gray-100"
-              }`}
-              title="Last Panel"
-            >
-              <ChevronRight
-                className={darkMode ? "text-white" : "text-gray-700"}
-              />
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onToggleDarkMode}
-              className={`p-2 rounded-lg transition-colors ${
-                darkMode
-                  ? "bg-yellow-100 text-yellow-600"
-                  : "bg-gray-800 text-white"
-              }`}
-              title={darkMode ? "Light Mode" : "Dark Mode"}
-            >
-              {darkMode ? <Sun size={16} /> : <Moon size={16} />}
-            </button>
-
-            <button
-              onClick={onToggleSound}
-              className={`p-2 rounded-lg transition-colors ${
-                soundEnabled
-                  ? darkMode
-                    ? "bg-green-700 text-green-100"
-                    : "bg-green-100 text-green-600"
-                  : darkMode
-                  ? "bg-gray-700 text-gray-400"
-                  : "bg-gray-100 text-gray-400"
-              }`}
-              title="Toggle Sound"
-            >
-              {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
-            </button>
-
-            <button
-              onClick={onToggleAutoScroll}
-              className={`p-2 rounded-lg transition-colors ${
-                autoScroll
-                  ? darkMode
-                    ? "bg-blue-700 text-blue-100"
-                    : "bg-blue-100 text-blue-600"
-                  : darkMode
-                  ? "bg-gray-700 text-gray-400"
-                  : "bg-gray-100 text-gray-400"
-              }`}
-              title="Auto Scroll"
-            >
-              <ChevronUp
-                size={16}
-                className={autoScroll ? "animate-bounce" : ""}
-              />
-            </button>
-
-            <button
-              onClick={onToggleLayout}
-              className={`p-2 rounded-lg transition-colors ${
-                darkMode
-                  ? "bg-gray-700 text-gray-100"
-                  : "bg-gray-100 text-gray-600"
-              }`}
-              title={layoutMode === "vertical" ? "Grid View" : "Vertical View"}
-            >
-              {layoutMode === "vertical" ? (
-                <LayoutGrid size={16} />
-              ) : (
-                <LayoutList size={16} />
-              )}
-            </button>
-
-            <button
-              onClick={onToggleFullscreen}
-              className={`p-2 rounded-lg transition-colors ${
-                darkMode
-                  ? "bg-gray-700 text-gray-100"
-                  : "bg-gray-100 text-gray-600"
-              }`}
-              title={fullscreen ? "Exit Fullscreen" : "Fullscreen"}
-            >
-              {fullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
-            </button>
-
-            <button
               onClick={onToggleEditMode}
-              className={`px-4 py-2 rounded-lg font-semibold transition-all duration-300 flex items-center gap-2 ${
+              className={`px-3 py-2 rounded-lg font-medium transition-all duration-200 hover:scale-105 text-sm ${
                 editMode
-                  ? "bg-green-500 text-white hover:bg-green-600"
-                  : darkMode
-                  ? "bg-blue-600 text-white hover:bg-blue-700"
-                  : "bg-blue-500 text-white hover:bg-blue-600"
+                  ? "bg-emerald-500 hover:bg-emerald-600 text-white"
+                  : `${accentBg} ${accentColor}`
               }`}
             >
-              {editMode ? <Save size={16} /> : <Edit3 size={16} />}
               {editMode ? "Save" : "Edit"}
             </button>
           </div>
+
+          {/* Mobile progress bar */}
+          {panelCount > 0 && (
+            <div className="mt-3">
+              <div className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-500"
+                  style={{
+                    width: `${((currentPanelIndex + 1) / panelCount) * 100}%`,
+                  }}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="mt-2 flex justify-between items-center">
-          <div className="flex gap-2">
-            {(["normal", "focus", "cinematic"] as const).map((mode) => (
-              <button
-                key={mode}
-                onClick={() => onSetReadingMode(mode)}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                  readingMode === mode
-                    ? "bg-purple-500 text-white"
-                    : darkMode
-                    ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                    : "bg-gray-200 text-gray-600 hover:bg-gray-300"
-                }`}
-              >
-                {mode.charAt(0).toUpperCase() + mode.slice(1)}
-              </button>
-            ))}
+        {/* Edit Mode Banner */}
+        {editMode && (
+          <div className="bg-emerald-50 dark:bg-emerald-900/20 border-t border-emerald-200 dark:border-emerald-800 px-6 py-3">
+            <p className="text-emerald-700 dark:text-emerald-300 text-sm text-center flex items-center justify-center gap-2">
+              <Edit3 size={16} />
+              <span className="font-medium">Edit Mode Active</span>
+              <span className="hidden sm:inline text-emerald-600 dark:text-emerald-400">
+                • Click elements to edit • Drag to reposition
+              </span>
+            </p>
           </div>
-        </div>
+        )}
       </div>
 
-      {editMode && (
-        <div
-          className={`px-4 py-2 ${
-            darkMode
-              ? "bg-blue-900 border-blue-800"
-              : "bg-blue-50 border-blue-200"
-          } border-t`}
-        >
-          <p
-            className={`text-sm text-center ${
-              darkMode ? "text-blue-200" : "text-blue-700"
-            }`}
+      {/* Mobile Menu Overlay - Keep existing mobile menu */}
+      {isMobileMenuOpen && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 md:hidden"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+
+          <div
+            className={`fixed inset-y-0 left-0 w-80 ${headerBg} z-50 md:hidden transform transition-all duration-300 shadow-xl border-r`}
           >
-            🎨 Edit Mode: Click elements to edit • Drag to reposition • Use
-            panel below to customize
-          </p>
-        </div>
+            <div className="p-4 h-full overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h2
+                  className={`text-lg font-bold ${primaryText} flex items-center gap-2`}
+                >
+                  <Menu size={18} />
+                  Menu
+                </h2>
+                <button
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`${cardBg} border p-2 rounded-lg transition-all duration-200 hover:scale-105`}
+                >
+                  <X className={primaryText} size={16} />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Navigation */}
+                <div>
+                  <h3
+                    className={`${secondaryText} font-medium mb-3 flex items-center gap-2 text-sm`}
+                  >
+                    <Navigation size={16} />
+                    Navigation
+                  </h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => {
+                        onScrollToPanel(0);
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className={`${cardBg} border p-3 rounded-lg text-center transition-all duration-200 hover:scale-105`}
+                    >
+                      <ChevronLeft
+                        className={`${primaryText} mx-auto mb-1`}
+                        size={16}
+                      />
+                      <div className={`${primaryText} text-xs`}>First</div>
+                    </button>
+                    <button
+                      onClick={() => {
+                        onScrollToPanel(panelCount - 1);
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className={`${cardBg} border p-3 rounded-lg text-center transition-all duration-200 hover:scale-105`}
+                    >
+                      <ChevronRight
+                        className={`${primaryText} mx-auto mb-1`}
+                        size={16}
+                      />
+                      <div className={`${primaryText} text-xs`}>Last</div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Chapter Selection */}
+                <div>
+                  <h3
+                    className={`${secondaryText} font-medium mb-3 flex items-center gap-2 text-sm`}
+                  >
+                    <BookOpen size={16} />
+                    Chapters
+                  </h3>
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    {chapters.map((chapter, index) => (
+                      <button
+                        key={chapter.id}
+                        onClick={() => {
+                          onChapterChange(index);
+                          setIsMobileMenuOpen(false);
+                        }}
+                        className={`w-full text-left p-3 rounded-lg transition-all duration-200 text-sm ${
+                          index === currentChapterIndex
+                            ? `${accentBg} ${accentColor}`
+                            : `${cardBg} border ${primaryText} hover:bg-gray-100 dark:hover:bg-gray-700`
+                        }`}
+                      >
+                        <div className="font-medium">
+                          Chapter {chapter.chapterNumber}
+                        </div>
+                        <div className={`text-xs ${mutedText} truncate`}>
+                          {chapter.title}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Controls */}
+                <div>
+                  <h3
+                    className={`${secondaryText} font-medium mb-3 flex items-center gap-2 text-sm`}
+                  >
+                    <Settings size={16} />
+                    Controls
+                  </h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => {
+                        onToggleDarkMode();
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className={`${cardBg} border p-3 rounded-lg text-center transition-all duration-200 hover:scale-105`}
+                    >
+                      {darkMode ? (
+                        <Sun
+                          className="text-yellow-500 mx-auto mb-1"
+                          size={18}
+                        />
+                      ) : (
+                        <Moon
+                          className="text-indigo-500 mx-auto mb-1"
+                          size={18}
+                        />
+                      )}
+                      <div className={`${primaryText} text-xs`}>
+                        {darkMode ? "Light" : "Dark"}
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        onToggleAutoScroll();
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className={`${cardBg} border p-3 rounded-lg text-center transition-all duration-200 hover:scale-105`}
+                    >
+                      <ChevronUp
+                        className={`mx-auto mb-1 ${
+                          autoScroll
+                            ? "text-blue-500 animate-pulse"
+                            : secondaryText
+                        }`}
+                        size={18}
+                      />
+                      <div className={`${primaryText} text-xs`}>Auto</div>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        onToggleLayout();
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className={`${cardBg} border p-3 rounded-lg text-center transition-all duration-200 hover:scale-105`}
+                    >
+                      {layoutMode === "vertical" ? (
+                        <LayoutGrid
+                          className="text-purple-500 mx-auto mb-1"
+                          size={18}
+                        />
+                      ) : (
+                        <LayoutList
+                          className="text-purple-500 mx-auto mb-1"
+                          size={18}
+                        />
+                      )}
+                      <div className={`${primaryText} text-xs`}>Layout</div>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
       )}
-    </div>
+    </>
   );
 };
+interface MangaWebtoonProps {
+  mangaProject: MangaProject;
+  initialChapterIndex?: number;
+}
 
-// ========== MAIN COMPONENT ==========
 interface MangaWebtoonProps {
   mangaProject: MangaProject;
   initialChapterIndex?: number;
@@ -421,39 +706,91 @@ const MangaComponent: React.FC<MangaWebtoonProps> = ({
   mangaProject,
   initialChapterIndex = 0,
 }) => {
-  // State management
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [selectedDialogue, setSelectedDialogue] = useState<string | null>(null);
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [readingMode, setReadingMode] = useState<ReadingMode>("normal");
   const [autoScroll, setAutoScroll] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(true);
   const [currentChapterIndex, setCurrentChapterIndex] =
     useState(initialChapterIndex);
   const [currentPanelIndex, setCurrentPanelIndex] = useState(0);
   const [layoutMode, setLayoutMode] = useState<LayoutMode>("vertical");
-  const [panels, setPanels] = useState(
-    mangaProject.chapters?.[initialChapterIndex]?.scenes?.flatMap(
-      (scene) => scene.panels || []
-    ) || []
-  );
+  const [panels, setPanels] = useState<any[]>([]);
 
-  // Refs
   const containerRef = useRef<HTMLDivElement>(null);
   const autoScrollRef = useRef<number | null>(null);
   const lastScrollTimeRef = useRef<number>(0);
 
-  // Get current chapter
-  const currentChapter = mangaProject.chapters?.[currentChapterIndex];
+  const updateDialogueConfig = (
+    panelId: string,
+    dialogueId: string,
+    newConfig: any
+  ) => {
+    setPanels((prevPanels) =>
+      prevPanels.map((panel) => {
+        if (panel.id !== panelId) return panel;
+        return {
+          ...panel,
+          dialogues:
+            panel.dialogues?.map((dialogue) => {
+              if (dialogue.id !== dialogueId) return dialogue;
+              return { ...dialogue, config: newConfig };
+            }) || [],
+        };
+      })
+    );
+  };
+
+  const handleSave = async () => {
+    try {
+      const allDialogues = panels.flatMap((panel) => panel.dialogues || []);
+      const updatePromises = allDialogues.map((dialogue) =>
+        updatePanelDialogue(dialogue.id, { config: dialogue.config })
+      );
+      await Promise.all(updatePromises);
+      console.log("All dialogues saved successfully");
+      setEditMode(false);
+    } catch (error) {
+      console.error("Failed to save dialogues:", error);
+    }
+  };
+
+  const toggleEditMode = async () => {
+    if (editMode) {
+      await handleSave();
+    } else {
+      setEditMode(true);
+    }
+  };
 
   // Update panels when chapter changes
   useEffect(() => {
     setPanels(
-      currentChapter?.scenes?.flatMap((scene) => scene.panels || []) || []
+      mangaProject.chapters?.[currentChapterIndex]?.scenes?.flatMap(
+        (scene) =>
+          scene.panels?.map((panel) => ({
+            ...panel,
+            dialogues: panel.dialogues?.map((dialogue) => ({
+              ...dialogue,
+              config: deepMergeWithDefaults(
+                DEFAULT_CONFIG,
+                dialogue.config || {}
+              ),
+            })),
+          })) || []
+      ) || []
     );
-  }, [currentChapter]);
+    setCurrentPanelIndex(0); // Reset panel index when chapter changes
+    scrollToTop(); // Scroll to top when chapter changes
+  }, [currentChapterIndex]);
+
+  // Handle chapter change
+  const handleChapterChange = (index: number) => {
+    if (index >= 0 && index < (mangaProject.chapters?.length || 0)) {
+      setCurrentChapterIndex(index);
+    }
+  };
 
   // Smooth auto-scroll functionality
   useEffect(() => {
@@ -469,7 +806,6 @@ const MangaComponent: React.FC<MangaWebtoonProps> = ({
       const now = Date.now();
       const delta = now - lastScrollTimeRef.current;
 
-      // Only scroll if at least 16ms have passed (60fps)
       if (delta >= 16) {
         window.scrollBy({ top: 1, behavior: "auto" });
         lastScrollTimeRef.current = now;
@@ -512,59 +848,31 @@ const MangaComponent: React.FC<MangaWebtoonProps> = ({
 
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [layoutMode]);
+  }, [layoutMode, panels]); // Add panels to dependencies to update when chapter changes
 
   // Navigation functions
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const scrollToPanel = (index: number) => {
+  const scrollToPanel = useCallback((index: number) => {
     const panelElements = document.querySelectorAll("[data-panel]");
     if (panelElements[index]) {
       panelElements[index].scrollIntoView({ behavior: "smooth" });
+      setCurrentPanelIndex(index);
+      console.log(index);
     }
-  };
+  }, []);
 
-  // Edit mode functions
-  const toggleEditMode = () => {
-    setEditMode(!editMode);
-    setSelectedDialogue(null);
-  };
-
-  const handleDialoguePositionChange = (
-    dialogueId: string,
-    panelId: string,
-    x: number,
-    y: number
-  ) => {
-    setPanels((prevPanels) =>
-      prevPanels.map((panel) => {
-        if (panel.id === panelId) {
-          const updatedDialogues = panel.dialogues?.map((dialogue) => {
-            if (dialogue.id === dialogueId) {
-              return {
-                ...dialogue,
-                style: {
-                  ...dialogue.style,
-                  position: { x, y },
-                },
-              };
-            }
-            return dialogue;
-          });
-          return { ...panel, dialogues: updatedDialogues };
-        }
-        return panel;
-      })
-    );
-  };
-
-  const handleDrop = (item: DragItem, x: number, y: number) => {
-    if (item.type === "DIALOGUE") {
-      handleDialoguePositionChange(item.id, item.panelId, x, y);
-    }
-  };
+  const handleGridPanelClick = useCallback(
+    (index: number) => {
+      setLayoutMode("vertical");
+      setTimeout(() => {
+        scrollToPanel(index);
+      }, 600);
+    },
+    [scrollToPanel]
+  );
 
   const toggleFullscreen = () => {
     if (!fullscreen) {
@@ -575,15 +883,121 @@ const MangaComponent: React.FC<MangaWebtoonProps> = ({
     setFullscreen(!fullscreen);
   };
 
+  const renderPanel = (panel: any, index: number) => (
+    <div
+      key={panel.id}
+      className="relative w-full overflow-visible group"
+      data-panel
+    >
+      <div
+        className={`w-full bg-cover bg-no-repeat relative transition-all duration-1000`}
+        style={{
+          backgroundImage: panel.imageUrl ? `url(${panel.imageUrl})` : "none",
+          // Dynamic height based on viewport
+          height: "calc(100vh - 100px)", // Adjust 100px as needed
+          // Smart background positioning
+          backgroundPosition: "center center",
+          // Ensure important content is always visible
+          backgroundAttachment: "local",
+          // Fallback background size
+          backgroundSize: "cover",
+          // Visual effects
+          filter: "brightness(100%) contrast(100%) saturate(100%) blur(0px)",
+          // Safe area padding if needed
+          padding:
+            "env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)",
+        }}
+      >
+        <svg
+          width="100%"
+          height="100%"
+          viewBox="0 0 100% 100%" // Changed to 100% to match container
+          className="absolute inset-0 pointer-events-none"
+          style={{ pointerEvents: editMode ? "auto" : "none" }}
+        >
+          {panel.dialogues?.map((dialogue: any) => (
+            <Frame key={dialogue.id}>
+              <DialogBubble
+                dialogue={dialogue}
+                editMode={editMode}
+                selected={selectedDialogue === dialogue.id}
+                character={
+                  panel.characters?.find((c) => c.id === dialogue.speakerId) ||
+                  null
+                }
+                onConfigChange={(newConfig) => {
+                  updateDialogueConfig(panel.id, dialogue.id, newConfig);
+                }}
+              />
+            </Frame>
+          ))}
+        </svg>
+      </div>
+      {index < panels.length - 1 && (
+        <div className={`h-6 transition-all duration-500 ${`bg-black`}`} />
+      )}
+    </div>
+  );
+
+  // Render grid panel with preview
+  const renderGridPanel = (panel: any, index: number) => (
+    <div
+      key={panel.id}
+      className="relative rounded-xl overflow-hidden shadow-lg group cursor-pointer transform transition-all duration-300 hover:scale-105"
+      onClick={() => handleGridPanelClick(index)}
+    >
+      <div
+        className="w-full h-64 bg-cover bg-center relative"
+        style={{
+          backgroundImage: panel.imageUrl ? `url(${panel.imageUrl})` : "none",
+        }}
+      >
+        {/* Preview overlay */}
+        <div
+          className={`absolute inset-0 bg-gradient-to-t ${
+            darkMode ? "from-black" : "from-white"
+          } via-transparent to-transparent opacity-80`}
+        />
+
+        {/* Preview dialog bubbles (simplified) */}
+        <div className="absolute inset-0">
+          {panel.dialogues?.slice(0, 2).map((dialogue, dialogueIndex) => (
+            <div
+              key={dialogue.id}
+              className="absolute bg-white bg-opacity-90 rounded-lg px-2 py-1 text-xs max-w-24 truncate shadow-md"
+              style={{
+                left: `${20 + dialogueIndex * 30}%`,
+                top: `${30 + dialogueIndex * 20}%`,
+                transform: "translate(-50%, -50%)",
+              }}
+            >
+              {dialogue.content.substring(0, 20)}...
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="absolute bottom-0 left-0 p-4 w-full">
+        <h3
+          className={`font-bold ${darkMode ? "text-white" : "text-gray-800"}`}
+        >
+          {panel.panelContext?.action || `Panel ${index + 1}`}
+        </h3>
+        <p
+          className={`text-xs ${darkMode ? "text-gray-300" : "text-gray-600"}`}
+        >
+          {panel.panelContext?.shotType || "Action Panel"} •{" "}
+          {panel.dialogues?.length || 0} dialogs
+        </p>
+      </div>
+    </div>
+  );
+
   return (
     <DndProvider backend={HTML5Backend}>
       <div
         className={`min-h-screen transition-all duration-500 ${
           darkMode
-            ? "bg-gray-900"
-            : readingMode === "focus"
-            ? "bg-black"
-            : readingMode === "cinematic"
             ? "bg-gray-900"
             : "bg-gradient-to-b from-gray-100 to-gray-200"
         }`}
@@ -594,178 +1008,38 @@ const MangaComponent: React.FC<MangaWebtoonProps> = ({
           currentChapterIndex={currentChapterIndex}
           currentPanelIndex={currentPanelIndex}
           darkMode={darkMode}
-          soundEnabled={soundEnabled}
           autoScroll={autoScroll}
           layoutMode={layoutMode}
           fullscreen={fullscreen}
           editMode={editMode}
-          readingMode={readingMode}
+          onChapterChange={handleChapterChange}
           onScrollToPanel={scrollToPanel}
           onToggleDarkMode={() => setDarkMode(!darkMode)}
-          onToggleSound={() => setSoundEnabled(!soundEnabled)}
           onToggleAutoScroll={() => setAutoScroll(!autoScroll)}
           onToggleLayout={() =>
             setLayoutMode(layoutMode === "vertical" ? "grid" : "vertical")
           }
           onToggleFullscreen={toggleFullscreen}
           onToggleEditMode={toggleEditMode}
-          onSetReadingMode={setReadingMode}
         />
 
         {/* Main content */}
         <div
           className={`mx-auto transition-all duration-500 pb-24 ${
-            darkMode
-              ? "bg-gray-800 border-gray-700"
-              : readingMode === "focus"
-              ? "bg-black"
-              : "bg-white"
+            darkMode ? "bg-gray-800 border-gray-700" : "bg-white"
           } ${
             layoutMode === "vertical" ? "max-w-2xl shadow-2xl" : "max-w-6xl p-4"
           }`}
         >
           {layoutMode === "vertical" ? (
-            // Vertical Layout
-            panels.map((panel, index) => (
-              <div
-                key={panel.id}
-                className="relative w-full overflow-hidden group"
-                data-panel
-              >
-                {/* Panel image */}
-                <PanelDropArea panelId={panel.id} onDrop={handleDrop}>
-                  <div
-                    className={`w-full bg-cover bg-center bg-no-repeat relative transition-all duration-1000 ${
-                      panel.panelContext?.cameraAngle === "close-up"
-                        ? "hover:scale-105"
-                        : ""
-                    }`}
-                    style={{
-                      backgroundImage: panel.imageUrl
-                        ? `url(${panel.imageUrl})`
-                        : "none",
-                      height: "600px", // Fixed height for now
-                      filter: `
-                        brightness(100%) 
-                        contrast(100%) 
-                        saturate(100%) 
-                        blur(0px)
-                      `,
-                    }}
-                    onClick={() => {
-                      if (editMode && !selectedDialogue) {
-                        // Handle panel selection
-                      }
-                    }}
-                  >
-                    {/* Dynamic overlay */}
-                    <div
-                      className={`absolute inset-0 transition-all duration-300 ${
-                        editMode
-                          ? "bg-black bg-opacity-40"
-                          : readingMode === "focus"
-                          ? "bg-black bg-opacity-60"
-                          : "bg-black bg-opacity-20"
-                      }`}
-                    />
-
-                    {/* Edit mode grid overlay */}
-                    {editMode && (
-                      <div
-                        className="absolute inset-0 opacity-30 pointer-events-none"
-                        style={{
-                          backgroundImage: `
-                            linear-gradient(rgba(255,255,255,0.8) 1px, transparent 1px),
-                            linear-gradient(90deg, rgba(255,255,255,0.8) 1px, transparent 1px)
-                          `,
-                          backgroundSize: "50px 50px",
-                        }}
-                      />
-                    )}
-
-                    {/* Dialogues */}
-                    {panel.dialogues?.map((dialogue) => (
-                      <DialogBubble
-                        key={dialogue.id}
-                        dialogue={dialogue}
-                        panelId={panel.id}
-                        editMode={editMode}
-                        selected={selectedDialogue === dialogue.id}
-                        onClick={() => {
-                          if (editMode) {
-                            setSelectedDialogue(dialogue.id);
-                          }
-                        }}
-                        character={
-                          panel.characters?.find(
-                            (c) => c.id === dialogue.speakerId
-                          ) || null
-                        }
-                        onPositionChange={(id, x, y) =>
-                          handleDialoguePositionChange(id, panel.id, x, y)
-                        }
-                      />
-                    ))}
-                  </div>
-                </PanelDropArea>
-
-                {/* Dynamic Panel separator */}
-                {index < panels.length - 1 && (
-                  <div
-                    className={`h-6 transition-all duration-500 ${
-                      readingMode === "cinematic"
-                        ? "bg-black"
-                        : darkMode
-                        ? "bg-gradient-to-r from-purple-900 via-pink-900 to-red-900"
-                        : "bg-gradient-to-r from-red-400 via-purple-500 to-blue-500"
-                    }`}
-                  />
-                )}
-              </div>
-            ))
+            // Vertical Layout with SVG dialog system
+            <div className="space-y-0">
+              {panels.map((panel, index) => renderPanel(panel, index))}
+            </div>
           ) : (
-            // Grid Layout
+            // Grid Layout with dialog previews
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {panels.map((panel, index) => (
-                <div
-                  key={panel.id}
-                  className="relative rounded-xl overflow-hidden shadow-lg group cursor-pointer"
-                  onClick={() => {
-                    setLayoutMode("vertical");
-                    setTimeout(() => scrollToPanel(index), 100);
-                  }}
-                >
-                  <div
-                    className="w-full h-64 bg-cover bg-center"
-                    style={{
-                      backgroundImage: panel.imageUrl
-                        ? `url(${panel.imageUrl})`
-                        : "none",
-                    }}
-                  />
-                  <div
-                    className={`absolute inset-0 bg-gradient-to-t ${
-                      darkMode ? "from-black" : "from-white"
-                    } via-transparent to-transparent opacity-80`}
-                  />
-                  <div className="absolute bottom-0 left-0 p-4 w-full">
-                    <h3
-                      className={`font-bold ${
-                        darkMode ? "text-white" : "text-gray-800"
-                      }`}
-                    >
-                      {panel.panelContext?.action || `Panel ${index + 1}`}
-                    </h3>
-                    <p
-                      className={`text-xs ${
-                        darkMode ? "text-gray-300" : "text-gray-600"
-                      }`}
-                    >
-                      {panel.panelContext?.shotType || "Action Panel"}
-                    </p>
-                  </div>
-                </div>
-              ))}
+              {panels.map((panel, index) => renderGridPanel(panel, index))}
             </div>
           )}
         </div>
@@ -774,7 +1048,7 @@ const MangaComponent: React.FC<MangaWebtoonProps> = ({
         {showScrollTop && (
           <button
             onClick={scrollToTop}
-            className={`fixed bottom-24 right-6 p-3 rounded-full shadow-lg z-40 transition-all ${
+            className={`fixed bottom-24 right-6 p-3 rounded-full shadow-lg z-40 transition-all transform hover:scale-110 ${
               darkMode
                 ? "bg-gray-700 text-white hover:bg-gray-600"
                 : "bg-white text-gray-800 hover:bg-gray-100"

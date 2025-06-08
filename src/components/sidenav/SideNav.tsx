@@ -1,7 +1,7 @@
 "use client";
 
 import { useVisualEditorStore } from "@/store/visual-editor-store";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   ChevronDown,
   ChevronRight,
@@ -13,7 +13,7 @@ import {
   Settings,
   User,
 } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useReactFlow } from "reactflow";
 
 const ICON_MAP = {
@@ -31,6 +31,12 @@ export default function EnhancedSidebar() {
   const { setCenter, getZoom } = useReactFlow();
   const [expandedNodes, setExpandedNodes] = useState({});
   const [searchQuery, setSearchQuery] = useState("");
+  const scrollContainerRef = useRef(null);
+  const nodeRefs = useRef({});
+  const [isInternalSelection, setIsInternalSelection] = useState(false);
+  const [isUserScrolling, setIsUserScrolling] = useState(false);
+  const scrollTimeoutRef = useRef(null);
+  const lastSelectedNodeRef = useRef(null);
 
   // Build tree structure from nodes and edges
   const buildTree = useCallback(() => {
@@ -92,6 +98,113 @@ export default function EnhancedSidebar() {
 
   const treeData = buildTree();
 
+  // Find path to a node (returns array of node IDs from root to target)
+  const findPathToNode = useCallback((targetId, tree) => {
+    const findPath = (nodes, path = []) => {
+      for (const node of nodes) {
+        const currentPath = [...path, node.id];
+        if (node.id === targetId) {
+          return currentPath;
+        }
+        if (node.children && node.children.length > 0) {
+          const childPath = findPath(node.children, currentPath);
+          if (childPath) {
+            return childPath;
+          }
+        }
+      }
+      return null;
+    };
+    return findPath(tree);
+  }, []);
+
+  // Track user scrolling
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
+    if (!scrollContainer) return;
+
+    const handleScroll = () => {
+      setIsUserScrolling(true);
+
+      // Clear existing timeout
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+
+      // Reset scrolling flag after user stops scrolling
+      scrollTimeoutRef.current = setTimeout(() => {
+        setIsUserScrolling(false);
+      }, 1000);
+    };
+
+    scrollContainer.addEventListener("scroll", handleScroll);
+
+    return () => {
+      scrollContainer.removeEventListener("scroll", handleScroll);
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Auto-expand parents and scroll to selected node (only for external selections)
+  useEffect(() => {
+    if (selectedNode && treeData.length > 0) {
+      // Check if this is a new selection (not from internal sidebar click)
+      const isNewExternalSelection =
+        !isInternalSelection && lastSelectedNodeRef.current !== selectedNode.id;
+
+      if (isNewExternalSelection) {
+        const pathToNode = findPathToNode(selectedNode.id, treeData);
+
+        if (pathToNode) {
+          // Expand all parent nodes (exclude the target node itself)
+          const parentsToExpand = pathToNode.slice(0, -1);
+
+          setExpandedNodes((prev) => {
+            const newExpanded = { ...prev };
+            parentsToExpand.forEach((nodeId) => {
+              newExpanded[nodeId] = true;
+            });
+            return newExpanded;
+          });
+
+          // Only scroll if user is not currently scrolling
+          if (!isUserScrolling) {
+            setTimeout(() => {
+              const nodeElement = nodeRefs.current[selectedNode.id];
+              if (
+                nodeElement &&
+                scrollContainerRef.current &&
+                !isUserScrolling
+              ) {
+                nodeElement.scrollIntoView({
+                  behavior: "smooth",
+                  block: "center",
+                  inline: "nearest",
+                });
+              }
+            }, 100);
+          }
+        }
+      }
+
+      // Update last selected node reference
+      lastSelectedNodeRef.current = selectedNode.id;
+
+      // Reset internal selection flag
+      if (isInternalSelection) {
+        setIsInternalSelection(false);
+      }
+    }
+  }, [
+    selectedNode,
+    treeData,
+    findPathToNode,
+    isInternalSelection,
+    isUserScrolling,
+  ]);
+
   // Filter tree based on search query
   const filteredData = useMemo(() => {
     if (!searchQuery) return treeData;
@@ -113,7 +226,7 @@ export default function EnhancedSidebar() {
     };
 
     return filterNodes(treeData);
-  }, [treeData, searchQuery]);
+  }, [JSON.stringify(treeData), searchQuery]);
 
   // Toggle node expansion
   const toggleExpand = useCallback((id) => {
@@ -126,6 +239,8 @@ export default function EnhancedSidebar() {
   // Focus on node in the editor
   const focusNode = useCallback(
     (node) => {
+      // Mark this as an internal selection
+      setIsInternalSelection(true);
       setSelectedNode(node);
       const zoom = getZoom();
       const x = node.position.x + (node.width || 0) / 2;
@@ -144,6 +259,11 @@ export default function EnhancedSidebar() {
     return (
       <div className="space-y-1">
         <motion.div
+          ref={(el) => {
+            if (el) {
+              nodeRefs.current[node.id] = el;
+            }
+          }}
           whileHover={{ scale: 1.01 }}
           className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
             isSelected
@@ -193,21 +313,13 @@ export default function EnhancedSidebar() {
           </div>
         </motion.div>
 
-        <AnimatePresence>
-          {isExpanded && hasChildren && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.2 }}
-              className="space-y-1"
-            >
-              {node.children.map((child) => (
-                <TreeNode key={child.id} node={child} depth={depth + 1} />
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {isExpanded && hasChildren && (
+          <div className="space-y-1">
+            {node.children.map((child) => (
+              <TreeNode key={child.id} node={child} depth={depth + 1} />
+            ))}
+          </div>
+        )}
       </div>
     );
   };
@@ -246,7 +358,7 @@ export default function EnhancedSidebar() {
       </div>
 
       {/* Tree */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4">
         <div className="space-y-1">
           {filteredData.map((node) => (
             <TreeNode key={node.id} node={node} />

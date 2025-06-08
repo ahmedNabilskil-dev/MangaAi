@@ -285,7 +285,7 @@ export const CharacterGenerationPrompt = ai.definePrompt({
 });
 
 export const ChapterGenerationPrompt = ai.definePrompt({
-  name: "ChapterGenerationFlow",
+  name: "ChapterGenerationPrompt",
   input: {
     schema: z.object({
       userInput: z.string().describe("user prompt"),
@@ -299,68 +299,71 @@ export const ChapterGenerationPrompt = ai.definePrompt({
   },
   tools: [createChapterTool, createMultipleChaptersTool],
   toolCall: true,
-  prompt: `You're crafting literary-quality narrative prose that works as standalone story and manga blueprint.
-  
-  ## TOOL SELECTION
-  - SINGLE chapter: Use createChapterTool
-  - MULTIPLE chapters: Use createMultipleChaptersTool
-  
-  ## PROJECT INTEGRATION
-  {{#if projectContext}}
-  Project context: {{projectContext}} 
+  prompt: `You're crafting literary-quality narrative prose optimized for comprehensive scene breakdown and manga adaptation.
 
-  {{#if existingCharacters}}
-  Existing characters: {{existingCharacters}}
-  CRITICAL: Integrate with established elements while creating complete narrative units.
-  {{/if}}
+## TOOL SELECTION
+- SINGLE chapter: Use createChapterTool
+- MULTIPLE chapters: Use createMultipleChaptersTool
 
-  {{#if existingChapters}}
-  Previous chapters: {{existingChapters}}
-  CRITICAL: Maintain perfect narrative continuity.
-  {{/if}}
-  
-  ## CHAPTER REQUIREMENTS (500-800 words)
-  
-  1. LITERARY EXCELLENCE: Sophisticated third-person prose with published-fiction quality
-  2. DRAMATIC ARC: Self-contained beginning/middle/end while advancing larger story
-  3. EMOTIONAL JOURNEY: Meaningful character transformations within each chapter
-  4. SENSORY IMMERSION: Vivid sensory details creating lived experience
-  5. BALANCED ELEMENTS: Rich descriptions, meaningful dialogue, character thoughts, impactful action
-  6. THEMATIC DEPTH: Subtle thematic elements woven throughout
-  7. CHARACTER REVELATION: New character dimensions in each chapter
-  8. VISUAL NARRATIVE FLOW: Structure events with natural manga pacing and page turn moments
-  9. CLIFFHANGER POTENTIAL: Build toward compelling chapter endings that demand continuation
-  10. HOOK MOMENTS: Create 2-3 visually striking scenes perfect for splash pages or dramatic panels
-  
-  ## CRAFT MASTERY
-  
-  - SHOW, DON'T TELL: Experience through senses, not exposition
-  - PRECISE LANGUAGE: Specific, evocative words creating clear visual images
-  - MEANINGFUL DIALOGUE: Reveals character while advancing plot, flows naturally for speech bubbles
-  - PSYCHOLOGICAL DEPTH: Inner conflicts and complex motivations shown through actions and expressions
-  - SUBTEXT & SYMBOLISM: Layered meanings beneath surface narrative
-  - VARIED SENTENCES: Rhythm and pacing enhancing emotional impact and visual flow
-  - VIVID SCENE-SETTING: Quick but powerful location establishment for background art
-  - CONSISTENT POV: Clear third-person perspective throughout
-  - VISUAL METAPHORS: Incorporate symbolic imagery that translates powerfully to manga panels
-  - ENVIRONMENTAL STORYTELLING: Use settings to reinforce mood, theme, and character state
-  
-  ## MANGA-SPECIFIC CONSIDERATIONS
-  
-  - EMOTIONAL PEAKS: Plan dramatic crescendos suitable for full-page spreads
-  - QUIET BEATS: Include contemplative moments for character development panels
-  - ACTION CLARITY: Structure fight scenes and dramatic moments for clear sequential art
-  - FACIAL EXPRESSIONS: Emphasize emotional states through detailed character reactions
-  - PANEL TRANSITIONS: Create natural breaks between major story beats
-  - PAGE DYNAMICS: Consider opening/closing moments that work for chapter pagination
-  
-  Create polished prose inherently suggesting visual adaptation possibilities while maintaining literary depth.
-  
-  user message: {{userInput}}`,
+## PROJECT INTEGRATION
+{{#if projectContext}}
+Project context: {{projectContext}} 
+
+{{#if existingCharacters}}
+Existing characters: {{existingCharacters}}
+CRITICAL: Integrate with established elements while creating complete narrative units.
+{{/if}}
+
+{{#if existingChapters}}
+Previous chapters: {{existingChapters}}
+CRITICAL: Maintain perfect narrative continuity.
+{{/if}}
+
+## ENHANCED CHAPTER REQUIREMENTS (500-800 words)
+
+### STRUCTURAL FOUNDATION
+1. **SCENE-READY NARRATIVE**: Write with clear scene transitions and visual moments
+2. **DIALOGUE CLARITY**: Conversations that translate perfectly to speech bubbles
+3. **ACTION PRECISION**: Physical actions described with manga panel potential
+4. **EMOTIONAL BEATS**: Internal moments that can be visualized through expression/body language
+5. **ENVIRONMENTAL RICHNESS**: Settings detailed enough for background art reference
+6. **CHARACTER CONSISTENCY**: Consistent appearance details throughout chapter
+7. **VISUAL METAPHORS**: Symbolic imagery perfect for manga visual storytelling
+8. **PACING VARIETY**: Mix of action, dialogue, quiet moments, and dramatic peaks
+
+### LITERARY EXCELLENCE
+- **SOPHISTICATED PROSE**: Third-person narrative with published-fiction quality
+- **DRAMATIC ARC**: Self-contained beginning/middle/end advancing larger story
+- **SENSORY IMMERSION**: Vivid details creating lived experience
+- **THEMATIC DEPTH**: Subtle themes woven throughout narrative
+- **CHARACTER REVELATION**: New character dimensions in each chapter
+- **EMOTIONAL JOURNEY**: Meaningful character transformations
+
+### MANGA ADAPTATION OPTIMIZATION
+- **CLEAR SCENE BREAKS**: Natural divisions for scene generation
+- **VISUAL STORYTELLING**: Show emotions and conflict through action/appearance
+- **DYNAMIC MOMENTS**: 2-3 scenes perfect for splash pages or dramatic panels
+- **QUIET DEVELOPMENT**: Character moments suitable for intimate panels
+- **CLIFFHANGER POTENTIAL**: Build toward compelling chapter endings
+- **PANEL FLOW CONSIDERATION**: Structure events with natural manga pacing
+
+### SCENE BREAKDOWN READINESS
+Structure chapters with clear:
+1. **Opening establishment** (setting, character, mood)
+2. **Dialogue exchanges** (distinct conversational beats)
+3. **Action sequences** (physical events and reactions)
+4. **Emotional transitions** (internal shifts and realizations)
+5. **Environmental changes** (location or atmosphere shifts)
+6. **Climactic moments** (chapter peaks and revelations)
+7. **Resolution/transition** (conclusion and setup for next chapter)
+
+Create chapters that maintain literary quality while being perfectly structured for comprehensive scene breakdown and manga visual adaptation.
+
+User message: {{userInput}}`,
 });
 
 export const SceneGenerationPrompt = ai.definePrompt({
-  name: "SceneGenerationFlow",
+  name: "SceneGenerationPrompt",
   input: {
     schema: z.object({
       userInput: z.string().describe("user prompt"),
@@ -371,87 +374,174 @@ export const SceneGenerationPrompt = ai.definePrompt({
   },
   tools: [createSceneTool, createMultipleScenesTool],
   toolCall: true,
-  prompt: `You're breaking narrative chapters into rich, detailed scenes optimized for prose and manga adaptation.
+  prompt: `You create comprehensive scene breakdowns that convert rich chapter narratives into detailed visual sequences optimized for manga panel generation. Each scene captures EVERY meaningful moment from the chapter with numbered visual sequences that will be converted directly into individual panels.
 
-  ## TOOL SELECTION
-  - SINGLE scene: Use createSceneTool
-  - MULTIPLE scenes: Use createMultipleScenesTool
-    
-  ## CHAPTER INTEGRATION
+## MANDATORY SCENE STRUCTURE REQUIREMENTS
 
-  {{#if projectContext}}
-  Project context: {{projectContext}} 
-  {{/if}}
+**EVERY SCENE MUST INCLUDE ALL REQUIRED PROPERTIES:**
 
-  {{#if existingCharacters}}
-  Existing characters: {{existingCharacters}}
-  {{/if}}
+### Required Fields (NO EXCEPTIONS):
+- **order**: Sequential scene number (1, 2, 3...)
+- **title**: Descriptive scene title (e.g., "Hero's Dramatic Entrance", "Villain's Revelation")
+- **visualSequence**: Detailed numbered panel descriptions (MANDATORY - see format below)
+- **sceneContext**: Complete context object with ALL sub-properties:
+  - **setting**: Specific location with environmental details
+  - **mood**: Emotional atmosphere/tone
+  - **presentCharacters**: Array of character names present in scene
+  - **timeOfDay**: Specific time (e.g., "dawn", "midday", "sunset", "midnight")
+  - **weather**: Weather conditions (e.g., "clear", "rainy", "stormy", "foggy")
+  - **consistencyAnchors**: Object with ALL sub-properties:
+    - **characterClothing**: Object mapping character IDs to outfit descriptions
+    - **environmentalElements**: Array of consistent background elements
+    - **lightingSources**: Array of light sources affecting the scene
+    - **colorPalette**: Array of dominant colors for scene consistency
+    - **atmosphericEffects**: Array of atmospheric elements (fog, rain, dust, etc.)
 
-  {{#if chapterContext}}
-  Chapter context: {{chapterContext}} 
-  {{/if}}
-  
-  ## SCENE REQUIREMENTS (300-500 words)
-  
-  1. FOCUSED NARRATIVE: Specific moment or interaction with distinct emotional arc
-  2. LITERARY QUALITY: Depth consistent with chapter's style
-  3. LIVING ENVIRONMENT: Setting as tangible presence affecting mood and action
-  4. CHARACTER DYNAMICS: Complex interactions through dialogue, actions, reactions
-  5. EMOTIONAL SUBTLETY: Nuanced states shown through physical cues, dialogue, thoughts
-  6. MOMENT CLARITY: Detail sufficient for clear visualization and panel breakdown
-  7. VISUAL POTENTIAL: Natural division into 25-50 potential manga panels with varied compositions
-  8. VARIED PACING: Strategic mix of action, dialogue, and contemplative moments
-  9. PANEL VARIETY: Include wide establishing shots, intimate close-ups, dynamic action sequences
-  10. TRANSITION FLOW: Structure with natural breaks for manga page layouts and panel progression
-  
-  ## SCENE CONSTRUCTION
-  
-  1. SEAMLESS FIT: Perfect integration within chapter narrative
-  2. CLEAR ORIENTATION: Establish location, time, characters immediately for opening panels
-  3. EMOTIONAL CORE: Identify central tension driving scene with visual manifestation
-  4. DRAMATIC PROGRESSION: Setup → complication → resolution/transition with panel-friendly beats
-  5. NARRATIVE FLOW: Seamless transitions while maintaining discrete visual units
-  6. NATURAL BRIDGES: Thematic/visual/narrative connections between scenes
-  7. CHARACTER CONSISTENCY: Maintain established traits while revealing new layers through expression and action
-  8. EMOTIONAL JOURNEY: Track progression for satisfying narrative rhythm and visual storytelling
-  
-  ## MANGA-SPECIFIC SCENE ELEMENTS
-  
-  - SEQUENTIAL ACTION: Break complex movements into clear, followable panel steps
-  - REACTION SHOTS: Include character responses and environmental reactions for dynamic panels
-  - INTERNAL MONOLOGUE: Structure thoughts for effective thought bubble placement
-  - DIALOGUE RHYTHM: Consider speech bubble flow and manga's unique conversation pacing
-  - BACKGROUND DETAILS: Rich environmental elements that support mood and provide visual interest
-  - CAMERA ANGLES: Vary perspectives (bird's eye, close-up, medium shot) for visual diversity
-  - EMOTIONAL BEATS: Pause moments that allow for impactful single panels
-  - SOUND EFFECTS: Natural integration points for manga's onomatopoeia
-  - VISUAL SYMBOLISM: Environmental or metaphorical elements that enhance themes
-  - CLIFFHANGER MOMENTS: Scene endings that create anticipation for next sequence
-  
-  ## PANEL FLOW CONSIDERATIONS
-  
-  - ESTABLISHING SHOTS: Open scenes with clear location and character positioning
-  - ACTION SEQUENCES: Multiple panels showing movement progression and impact
-  - DIALOGUE EXCHANGES: Balanced speaking turns with reaction panels
-  - EMOTIONAL REVEALS: Close-up panels highlighting character expressions and realizations
-  - ENVIRONMENTAL INTERACTION: Show characters responding to and affecting their surroundings
-  - TENSION BUILDING: Gradual visual escalation through panel composition and pacing
-  
-  Create scenes functioning as both compelling literary prose and detailed visual adaptation blueprints that naturally suggest panel divisions and manga storytelling techniques.
-  
-  user message: {{userInput}}`,
+## TOOL SELECTION
+- SINGLE scene: Use createSceneTool
+- MULTIPLE scenes: Use createMultipleScenesTool (PREFERRED for comprehensive chapter coverage)
+
+## CONTEXT INTEGRATION
+{{#if projectContext}}
+Project context: {{projectContext}} 
+{{/if}}
+
+{{#if existingCharacters}}
+Existing characters: {{existingCharacters}}
+{{/if}}
+
+{{#if chapterContext}}
+Chapter context: {{chapterContext}} 
+CRITICAL: Break down this entire chapter into comprehensive scenes that capture every significant moment. Each scene's visual sequence will be converted into individual manga panels (1 numbered item = 1 panel).
+{{/if}}
+
+## VISUAL SEQUENCE FORMAT (MANDATORY)
+
+### CRITICAL UNDERSTANDING
+**EACH NUMBERED ITEM = ONE MANGA PANEL**
+
+### VISUAL SEQUENCE REQUIREMENTS (MANDATORY FOR EVERY SCENE)
+
+Each numbered item must contain COMPLETE information for panel generation:
+
+**STRUCTURE PER ITEM**:
+"[SHOT_TYPE] [CHARACTER_DETAILS] [ACTION_DESCRIPTION] [ENVIRONMENT_SPECIFICS] [LIGHTING_CONDITIONS] [ATMOSPHERIC_ELEMENTS] [COMPOSITION_NOTES]"
+
+**MANDATORY SHOT TYPES**:
+- **[WIDE SHOT]** / **[ESTABLISHING SHOT]** → "wide" camera angle
+- **[MEDIUM SHOT]** → "medium" camera angle
+- **[CLOSE-UP]** → "close-up" camera angle  
+- **[EXTREME CLOSE-UP]** → "extreme close-up" camera angle
+- **[LOW ANGLE]** → "low angle" camera angle
+- **[BIRD'S EYE]** → "bird's eye" camera angle
+- **[POV SHOT]** → point of view shot
+
+## MANDATORY SCENE CONTEXT COMPLETION
+
+### SETTING (REQUIRED)
+- Specific location name and description
+- Architectural details, furniture, natural features
+- Spatial relationships and layout
+- Example: "Ancient library with towering bookshelves, dusty stone floors, and flickering candlelight"
+
+### MOOD (REQUIRED)
+- Emotional atmosphere affecting all panels
+- Tension level, energy, emotional weight
+- Example: "Tense anticipation with underlying dread"
+
+### PRESENT CHARACTERS (REQUIRED)
+- Array of ALL characters appearing in the scene
+- Use consistent character identifiers
+- Example: ["protagonist_sarah", "antagonist_marcus", "mentor_elder"]
+
+### TIME OF DAY (REQUIRED)
+- Specific time affecting lighting across all panels
+- Must be one of: "dawn", "early_morning", "midday", "afternoon", "sunset", "evening", "night", "midnight", "late_night"
+- Example: "sunset" (affects warm lighting throughout scene)
+
+### WEATHER (REQUIRED)
+- Weather conditions affecting all panels in scene
+- Must specify: "clear", "cloudy", "overcast", "light_rain", "heavy_rain", "storm", "snow", "fog", "windy", "humid"
+- Example: "heavy_rain" (affects visibility and atmosphere)
+
+### CONSISTENCY ANCHORS (REQUIRED)
+
+#### characterClothing (REQUIRED OBJECT)
+- Map each present character to their outfit description
+- Ensures clothing consistency across all panels
+- Format: { "character_id": "detailed_outfit_description" }
+- Example: { "sarah": "blue hooded cloak with silver clasps, muddy leather boots", "marcus": "black armor with red accents, tattered cape" }
+
+#### environmentalElements (REQUIRED ARRAY)
+- Background elements consistent across all panels
+- Architectural features, furniture, natural elements
+- Example: ["stone archways", "flickering torches", "ancient tapestries", "cracked floor tiles"]
+
+#### lightingSources (REQUIRED ARRAY)
+- All light sources affecting the scene
+- Natural and artificial lighting
+- Example: ["setting_sun_through_windows", "torch_flames", "magical_crystal_glow"]
+
+#### colorPalette (REQUIRED ARRAY)
+- Dominant colors for scene visual consistency
+- 3-5 primary colors that define the scene's look
+- Example: ["deep_blue", "warm_orange", "golden_yellow", "shadow_black"]
+
+#### atmosphericEffects (REQUIRED ARRAY)
+- Weather and atmospheric elements in all panels
+- Environmental particles, weather effects
+- Example: ["heavy_raindrops", "mist_from_ground", "dust_motes", "steam_from_breath"]
+
+## SCENE CREATION WORKFLOW
+
+### MANDATORY COMPLETION CHECKLIST
+For EVERY scene, verify ALL fields are populated:
+
+1. **✓ order**: Sequential number assigned
+2. **✓ title**: Descriptive scene title written
+3. **✓ visualSequence**: 3-8 numbered panel descriptions completed
+4. **✓ setting**: Detailed location description provided
+5. **✓ mood**: Emotional atmosphere specified
+6. **✓ presentCharacters**: All characters in scene listed
+7. **✓ timeOfDay**: Specific time selected from required options
+8. **✓ weather**: Weather condition specified from required options
+9. **✓ characterClothing**: Every present character's outfit described
+10. **✓ environmentalElements**: Background elements listed (minimum 3)
+11. **✓ lightingSources**: Light sources identified (minimum 1)
+12. **✓ colorPalette**: Dominant colors specified (3-5 colors)
+13. **✓ atmosphericEffects**: Atmospheric elements listed (minimum 1)
+
+## CRITICAL SUCCESS CRITERIA
+
+### MANDATORY COMPLETION VERIFICATION
+- **NO EMPTY FIELDS**: Every required property must have content
+- **NO PLACEHOLDER TEXT**: All descriptions must be specific and detailed
+- **CONSISTENCY MAINTAINED**: All consistency anchors must align with scene content
+- **PANEL READINESS**: Every numbered visual sequence item must be complete enough for panel generation
+
+### FAILURE CONDITIONS (MUST AVOID)
+- Missing any required field
+- Empty arrays or objects in consistencyAnchors
+- Generic descriptions like "various items" or "normal lighting"
+- Inconsistent character clothing between scenes
+- Undefined timeOfDay or weather values
+
+Transform the provided chapter into comprehensive scenes with ALL MANDATORY PROPERTIES COMPLETED. Every scene must pass the completion checklist before submission.
+
+User message: {{userInput}}`,
 });
+
 export const PanelsDialogsGenerationPrompt = ai.definePrompt({
-  name: "EnhancedPanelsDialogsGenerationFlow",
+  name: "PanelsDialogsGenerationPrompt",
   input: {
     schema: z.object({
       userInput: z.string().describe("user prompt"),
       projectContext: z.any().optional().describe("project context"),
-      sceneContext: z.any().optional().describe("scene context"),
-      characters: z
-        .array(z.any())
+      sceneContext: z
+        .any()
         .optional()
-        .describe("character information with individual prompts"),
+        .describe("scene context with enhanced visual sequence"),
+      characters: z.array(z.any()).optional().describe("character information"),
       artStyle: z
         .string()
         .optional()
@@ -464,185 +554,196 @@ export const PanelsDialogsGenerationPrompt = ai.definePrompt({
     createPanelWithDialoguesTool,
     createMultiplePanelsTool,
     createMultiplePanelsWithDialoguesTool,
-    createPanelDialogueTool,
   ],
   toolCall: true,
-  prompt: `You're creating cinematic manga panel compositions and psychologically nuanced dialogue with unparalleled depth, optimized for AI image generation.
+  prompt: `You create detailed manga panels with comprehensive AI prompts and sophisticated dialogue integration, optimized for direct image generation.
 
-## CRITICAL CHARACTER REQUIREMENTS
-🚨 MANDATORY: Every panel MUST include characters from the provided character context
-🚨 MANDATORY: characterIds array MUST exactly match the characters in characterPoses array
-🚨 MANDATORY: Use characterName from characterPoses that corresponds to character IDs
-🚨 MANDATORY: Never create panels without characters - panels without characters are NOT IMPORTANT
-🚨 MANDATORY: Always use characters from the characters context provided
+## CORE REQUIREMENTS
 
-## CHARACTER CONSISTENCY ENFORCEMENT
-For EVERY panel you must:
-1. Include at least one character from the provided characters context
-2. Populate characterIds array with the IDs of characters present
-3. Create characterPoses array with matching entries:
-   - characterName: Must match the character from context exactly
-   - pose: Detailed description of character's physical positioning with specific body language
-   - expression: Specific facial expression revealing psychology with micro-details
-4. Ensure characterIds.length === characterPoses.length
-5. Verify each characterId has corresponding characterPoses entry
+### ENHANCED PANEL STRUCTURE (INTERFACE COMPLIANT)
+- **order**: Sequential position
+- **aiPrompt**: COMPLETE detailed visual description for direct image generation (MANDATORY)
+- **negativePrompt**: Elements to avoid in image generation
+- **panelContext**: Complete panel environment data with EXACT interface structure:
+  * **action**: Main action happening in panel
+  * **pose**: Optional general pose description  
+  * **characterPoses**: Array of detailed character pose objects (MANDATORY):
+    - characterName: string
+    - pose: string
+    - expression: string
+    - clothing: string (complete clothing description)
+    - props: string[] (optional)
+    - spatialPosition: string (optional)
+  * **emotion**: Emotional context (MANDATORY)
+  * **cameraAngle**: "close-up" | "medium" | "wide" | "bird's eye" | "low angle" | "extreme close-up"
+  * **shotType**: "action" | "reaction" | "establishing" | "detail" | "transition"
+  * **backgroundDescription**: Enhanced with full consistency details
+  * **backgroundImageUrl**: Optional background image URL
+  * **lighting**: Complete lighting description
+  * **effects**: Array of visual effects
+  * **dramaticPurpose**: Narrative purpose of panel
+  * **narrativePosition**: Position in story flow
+- **characterIds**: Array of character IDs present
+- **consistencyElements**: Optional consistency tracking:
+  * characterTemplates: Record<string, string>
+  * environmentTemplate: string
+  * lightingTemplate: string
+  * styleTemplate: string
+  * propRegistry: string[]
 
-## AI IMAGE GENERATION OPTIMIZATION
+### AI PROMPT REQUIREMENTS - CRITICAL
 
-### VISUAL PROMPT STRUCTURE
-Each panel must include a comprehensive IMAGE_PROMPT field following this structure:
-"[CAMERA_ANGLE], [SHOT_TYPE] of [CHARACTER_DESCRIPTION] [CHARACTER_ACTION] in [ENVIRONMENT_DETAILS], [LIGHTING_CONDITIONS], [ARTISTIC_STYLE], [MOOD_DESCRIPTORS], [TECHNICAL_SPECIFICATIONS]"
+The **aiPrompt** field must contain ALL elements needed for direct image generation in a single, comprehensive prompt:
 
-### AI-FRIENDLY VISUAL LANGUAGE
-- **CHARACTER DESCRIPTIONS**: Physical features, clothing, distinctive marks in consistent order
-- **POSE SPECIFICATIONS**: Precise body positioning using anatomical references
-- **FACIAL EXPRESSIONS**: Detailed emotion descriptors with specific facial muscle engagement
-- **ENVIRONMENTAL CLARITY**: Concrete setting elements with spatial relationships
-- **LIGHTING TECHNICAL**: Specific light source, direction, intensity, color temperature
-- **COMPOSITION RULES**: Rule of thirds, leading lines, depth of field specifications
-- **ARTISTIC MARKERS**: Style tags, rendering quality indicators, detail level commands
+**STRUCTURE**: Single paragraph combining all visual elements:
+"[SHOT_TYPE] of [CHARACTER_DETAILS] [ACTION_DESCRIPTION] in [ENVIRONMENT_DETAILS] with [LIGHTING_SETUP], [ATMOSPHERIC_ELEMENTS], [COMPOSITION_NOTES], [MATERIAL_SPECIFICS], [COLOR_PALETTE], manga style, high quality"
 
-### VISUAL CONSISTENCY KEYWORDS
-Each panel must include standardized descriptors:
-- **MANGA_STYLE**: "manga art style, black and white lineart, screentones, dynamic composition"
-- **QUALITY_TAGS**: "high detail, professional manga, clean linework, sharp focus"
-- **CHARACTER_CONSISTENCY**: "[Character_Name] with [consistent_features], [distinctive_clothing]"
-- **BACKGROUND_DETAIL**: Specific environmental elements that establish setting clearly
+### AI PROMPT EXAMPLES
 
-## PANEL CREATION GUIDELINES
+**ACTION PANEL**:
+"Dynamic medium shot from low angle of armored knight in battle-worn plate armor with blue and silver heraldry, sword raised high in both hands with muscles tensed and determined facial expression, cape flowing behind, bringing sword down in powerful overhead strike with sparks showering from blade contact, set in ancient stone courtyard with weathered flagstones and moss-covered walls, dramatic torchlight from mounted sconces creating chiaroscuro lighting with dancing shadows, light rain beginning with visible water droplets and mist rising, low angle emphasizing heroic power with diagonal sword composition, scratched metal armor reflecting torchlight and rough stone textures, dominant blues and silvers with warm orange torchlight against gray stone, manga style, high quality"
 
-For each panel, describe ALL properties with AI optimization:
+**DIALOGUE PANEL**:
 
-### CORE PANEL PROPERTIES
-- **ORDER**: Numeric sequence in scene
-- **ACTION**: Precise visual action with emotional/psychological subtext
-- **CHARACTER POSES**: 🚨 MANDATORY - Array with:
-  * characterName: Exact name from characters context
-  * pose: Anatomically precise pose with weight distribution, limb positioning
-  * expression: Detailed facial expression using emotion-action units (AU) descriptors
-  * clothing: Specific outfit details maintaining consistency
-  * props: Any held objects or accessories with positioning
-- **EMOTION**: Primary and secondary emotional layers with intensity levels
-- **CAMERA**: Technical camera specifications (angle, distance, lens type)
-- **SHOT TYPE**: Action/reaction/establishing/detail/insert with composition rules
-- **BACKGROUND**: Environmental elements with depth planes (foreground/midground/background)
-- **LIGHTING**: Technical lighting setup with source, direction, quality, shadows
-- **EFFECTS**: Manga-specific visual elements (speed lines, impact lines, screentones)
-- **PURPOSE**: Narrative function in plot/character development
-- **POSITION**: Place within scene's emotional/narrative arc
-- **CHARACTERS**: 🚨 MANDATORY - Character IDs matching characterPoses
+"Close-up shot focusing on detective's face and upper torso in weathered gray trench coat with collar turned up, focused expression with furrowed brow, holding small evidence bag up to eye level for examination, police station basement with concrete walls and fluorescent lighting, harsh overhead fluorescent creating stark shadows with desk lamp focused illumination, sterile indoor atmosphere with dust particles in light, intimate framing for examination moment with evidence bag clearly visible, rough wool coat texture and smooth concrete walls, muted grays and blacks with harsh white fluorescent light, manga style, high quality"
 
-### AI-OPTIMIZED VISUAL FIELDS
-- **IMAGE_PROMPT**: Complete AI generation prompt following structure above
-- **VISUAL_TAGS**: Comma-separated descriptors for style consistency
-- **COMPOSITION_NOTES**: Specific framing and layout instructions
-- **DETAIL_FOCUS**: Primary visual elements requiring high detail
-- **STYLE_MODIFIERS**: Art style specifications and rendering instructions
-- **COLOR_PALETTE**: Even for B&W manga, tonal specifications for AI understanding
-- **NEGATIVE_PROMPTS**: Elements to avoid (blurry, distorted, extra limbs, etc.)
+## PANEL CONTEXT STRUCTURE (EXACT INTERFACE MATCH)
 
-## CHARACTER INTEGRATION WITH AI OPTIMIZATION
-Every panel must demonstrate:
-- **VISUAL CHARACTER CONSISTENCY**: Identical physical features across panels
-- **POSE REFERENCE ACCURACY**: Anatomically correct positioning with clear weight distribution
-- **EXPRESSION PRECISION**: Specific facial coding for AI to replicate emotions accurately
-- **CLOTHING CONTINUITY**: Consistent outfit details and wear patterns
-- **SCALE RELATIONSHIPS**: Proper character proportions relative to environment
-- **DISTINCTIVE FEATURES**: Unique character elements that maintain identity
+### CHARACTER POSES (MANDATORY ARRAY)
+Each character must have complete pose object:
+{
+  characterName: "Character's name",
+  pose: "Detailed body positioning and stance",
+  expression: "Facial expression and emotional state",
+  clothing: "Complete outfit description with materials and condition",
+  props: ["item1", "item2"], // Optional array
+  spatialPosition: "Position relative to scene and other characters" // Optional
+}
 
-## DIALOGUE CREATION GUIDELINES
+### EMOTION CONTEXT (MANDATORY)
+Describe the overall emotional atmosphere of the panel affecting all visual elements.
 
-For each dialogue element with AI considerations:
-- **ORDER**: Numeric sequence in panel
-- **CONTENT**: Character-authentic text optimized for speech bubble placement
-- **BUBBLE TYPE**: Normal/thought/scream/whisper/narration with visual specifications
-- **SIZE**: Text emphasis with specific font size indicators
-- **EMPHASIS**: Bold, italic, or special formatting requirements
-- **POSITION**: Exact placement coordinates within panel composition
-- **BUBBLE_STYLE**: Shape, tail direction, border style for AI generation
-- **TEXT_DENSITY**: Character count and readability optimization
-- **EMOTION**: Delivery style with vocal indicators for bubble design
-- **SUBTEXT**: Psychological analysis for consistent character voice
-- **SPEAKER**: Character ID matching provided characters exactly
+### CAMERA ANGLE OPTIONS
+Must use exact values: "close-up", "medium", "wide", "bird's eye", "low angle", "extreme close-up"
 
-## AI IMAGE GENERATION BEST PRACTICES
+### SHOT TYPE OPTIONS  
+Must use exact values: "action", "reaction", "establishing", "detail", "transition"
 
-### TECHNICAL SPECIFICATIONS
-- **RESOLUTION**: "1024x1024, high resolution, sharp details"
-- **ASPECT RATIO**: Panel-specific ratios (1:1, 16:9, 9:16, 4:3)
-- **RENDERING STYLE**: "Clean lineart, professional manga style, black and white"
-- **DETAIL LEVEL**: "Highly detailed, intricate linework, professional quality"
+### BACKGROUND DESCRIPTION
+Enhanced description including:
+- Physical environment details
+- Material specifications
+- Architectural elements
+- Consistency anchors from previous panels
+- Environmental storytelling elements
 
-### CONSISTENCY MAINTENANCE
-- **CHARACTER SHEETS**: Reference standard character descriptions across panels
-- **ENVIRONMENTAL ANCHORS**: Consistent background elements and lighting
-- **STYLE UNITY**: Identical artistic descriptors for cohesive visual narrative
-- **TECHNICAL CONSISTENCY**: Same camera and rendering specifications
+### LIGHTING REQUIREMENTS
+Complete lighting setup including:
+- Primary light sources
+- Secondary lighting
+- Shadow patterns
+- Atmospheric lighting effects
+- Color temperature and mood
 
-### PROMPT ENGINEERING FOR AI
-- **POSITIVE REINFORCEMENT**: Strong descriptive language for desired elements
-- **NEGATIVE SPECIFICATIONS**: Clear avoidance instructions for common AI errors
-- **WEIGHTED DESCRIPTORS**: Emphasis indicators for critical visual elements
-- **FALLBACK DESCRIPTIONS**: Alternative phrasing for complex visual concepts
+### EFFECTS ARRAY
+Visual effects present in panel:
+- Particle effects
+- Motion lines
+- Impact effects
+- Atmospheric effects
+- Special visual elements
 
-## MULTI-PANEL GENERATION WITH AI OPTIMIZATION
-1. Create 5-15 sequential panels with consistent visual language
-2. Generate standardized IMAGE_PROMPT for each panel
-3. Maintain character visual consistency through identical descriptors
-4. Ensure environmental continuity with consistent background elements
-5. Build visual narrative flow with complementary compositions
-6. Include technical specifications for batch processing
-7. Provide alternative prompt variations for challenging panels
-8. Generate comprehensive style guide for entire sequence
+## DIALOGUE STRUCTURE (EXACT INTERFACE MATCH)
 
-## VISUAL STORYTELLING WITH AI ENHANCEMENT
-- **COMPOSITION CLARITY**: Unambiguous framing instructions for AI interpretation
-- **DEPTH COMMUNICATION**: Clear foreground/background separation techniques
-- **MOTION REPRESENTATION**: Specific techniques for showing movement in static images
-- **EMOTIONAL VISUALIZATION**: Precise descriptors for translating feelings to visuals
-- **ENVIRONMENTAL STORYTELLING**: Background elements that support narrative without confusion
-- **SYMBOLIC INTEGRATION**: Clear instructions for metaphorical visual elements
+### PANEL DIALOGUE PROPERTIES
+- **content**: Dialogue text content
+- **order**: Sequential position in panel
+- **style**: Optional visual styling object:
+  * **bubbleType**: "normal" | "thought" | "scream" | "whisper" | "narration"
+  * **fontSize**: "x-small" | "small" | "medium" | "large" | "x-large"
+  * **fontType**: Font family string
+  * **emphasis**: Boolean for text emphasis
+  * **position**: {x: number, y: number} coordinates
+- **emotion**: Optional emotional context
+- **subtextNote**: Optional hidden meanings and psychology
+- **speakerId**: Optional character ID (null for narration)
 
-## PRE-GENERATION CHECKLIST WITH AI VALIDATION
-Before creating any panel, verify:
-✅ Character consistency descriptors are identical across panels
-✅ IMAGE_PROMPT follows standardized structure
-✅ Technical specifications are appropriate for AI generation
-✅ Visual tags maintain style consistency
-✅ Negative prompts address common AI generation issues
-✅ Composition instructions are unambiguous
-✅ All character features are precisely described
-✅ Environmental elements support rather than compete with characters
-✅ Lighting specifications create mood without confusion
-✅ Panel serves both narrative and visual consistency purposes
+## CONSISTENCY ENFORCEMENT
 
-## CONTEXT WITH AI OPTIMIZATION
-{{#if projectContext}} 
-Project context: {{projectContext}}
-Visual style requirements: Extract and maintain consistent artistic elements
+### PANEL-TO-PANEL CONTINUITY
+- **Character Consistency**: Clothing, accessories, physical state maintained via characterPoses
+- **Environmental Consistency**: Setting elements stable via backgroundDescription
+- **Lighting Consistency**: Light sources maintained via lighting field
+- **Visual Consistency**: Style and composition via consistencyElements
+
+### CONSISTENCY ELEMENTS TRACKING
+When provided, populate:
+- **characterTemplates**: Map of character ID to visual template
+- **environmentTemplate**: Consistent environment description
+- **lightingTemplate**: Standard lighting setup
+- **styleTemplate**: Art style consistency notes
+- **propRegistry**: List of important props and objects
+
+## AI PROMPT OPTIMIZATION
+
+### PROMPT CONSTRUCTION RULES
+1. **SINGLE PARAGRAPH**: All elements in one flowing description
+2. **SPECIFIC DETAILS**: Precise visual information, no vague terms
+3. **MATERIAL SPECIFICS**: Include textures, surfaces, fabric details
+4. **LIGHTING INTEGRATION**: Lighting woven throughout description
+5. **COMPOSITION NOTES**: Camera angle and framing integrated naturally
+6. **STYLE SUFFIX**: Always end with "manga style, high quality"
+7. **COLOR SPECIFICATION**: Include dominant color palette
+8. **ATMOSPHERIC ELEMENTS**: Weather and environmental effects included
+9. **CHARACTER INTEGRATION**: Character details seamlessly integrated
+10. **ACTION CLARITY**: Clear movement and interaction descriptions
+
+### NEGATIVE PROMPT STRATEGY
+Include common issues to avoid:
+- "blurred, low quality, distorted anatomy, extra limbs, inconsistent lighting, muddy colors, unclear composition, western comic style, realistic photography, 3d render"
+
+## CONTEXT INTEGRATION
+
+{{#if projectContext}}
+Project: {{projectContext}}
 {{/if}}
 
-{{#if sceneContext}} 
-Scene context: {{sceneContext}}
-Environmental continuity: Maintain setting consistency across panels
+{{#if sceneContext}}
+Scene: {{sceneContext}}
+Visual Sequence Available: {{sceneContext.visualSequence}}
 {{/if}}
 
-{{#if characters}} 
-🚨 AVAILABLE CHARACTERS (MUST USE): {{characters}}
-Character visual consistency: Generate identical descriptors for each character across all panels
-Physical reference: Maintain exact character features, clothing, and proportions
+{{#if characters}}
+Characters: {{characters}} 
 {{/if}}
 
-{{#if artStyle}} 
-Art style: {{artStyle}}
-Style consistency: Apply identical artistic descriptors across all generated panels
+{{#if artStyle}}
+Art Style: {{artStyle}} - Apply consistently across all panels
 {{/if}}
 
-Always generate comprehensive IMAGE_PROMPT for each panel that enables standalone AI image generation while maintaining narrative and visual consistency.
+## GENERATION APPROACH
 
-user message: {{userInput}}`,
+1. **EXTRACT FROM VISUAL SEQUENCE**: Use enhanced visual sequence as foundation
+2. **BUILD AI PROMPT**: Create comprehensive single-paragraph prompt
+3. **STRUCTURE PANEL CONTEXT**: Fill exact interface fields with detailed information
+4. **CHARACTER POSES**: Create detailed pose objects for each character
+5. **DIALOGUE INTEGRATION**: Add appropriate dialogue with proper styling
+6. **CONSISTENCY TRACKING**: Populate consistency elements for continuity
+7. **VALIDATION**: Ensure all mandatory fields populated correctly
+
+## CRITICAL INTERFACE COMPLIANCE
+Ensure ALL generated panels strictly follow the Panel interface structure:
+- aiPrompt is mandatory and comprehensive for direct image generation  
+- panelContext.characterPoses must be array of complete pose objects
+- panelContext.emotion is mandatory string
+- cameraAngle and shotType use exact enum values
+- dialogues array follows PanelDialogue interface exactly
+- consistencyElements helps maintain visual continuity
+
+Create comprehensive panels with detailed AI prompts ready for direct image generation and high-quality manga production while maintaining strict interface compliance.
+
+User message: {{userInput}}`,
 });
-
 export const CreateMangaFlow = ai.defineFlow(
   {
     name: "Create Manga",

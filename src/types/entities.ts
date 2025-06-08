@@ -134,13 +134,21 @@ export interface Scene {
   id: string;
   order: number;
   title: string;
-  narrative?: string;
+  visualSequence: string; // Now mandatory with consistency markers
   sceneContext: {
-    setting: string;
+    setting: string; // Enhanced with consistency anchors
     mood: string;
     presentCharacters: string[];
-    timeOfDay?: string;
-    weather?: string;
+    timeOfDay: string; // Now mandatory for lighting consistency
+    weather: string; // Now mandatory for atmospheric consistency
+    consistencyAnchors?: {
+      // New field for tracking consistency elements
+      characterClothing: Record<string, string>;
+      environmentalElements: string[];
+      lightingSources: string[];
+      colorPalette: string[];
+      atmosphericEffects: string[];
+    };
   };
   chapterId: string;
   dialogueOutline?: any;
@@ -157,17 +165,27 @@ export interface Panel {
   panelContext: {
     action: string;
     pose?: string;
-    characterPoses?: {
+    characterPoses: {
+      // Now mandatory
       characterName: string;
       pose: string;
-      expression?: string;
+      expression: string;
+      clothing: string; // Complete clothing description
+      props?: string[];
+      spatialPosition?: string;
     }[];
-    emotion?: string;
-    cameraAngle?: "close-up" | "medium" | "wide" | "bird's eye" | "low angle";
-    shotType?: "action" | "reaction" | "establishing" | "detail";
-    backgroundDescription?: string;
+    emotion: string; // Now mandatory
+    cameraAngle:
+      | "close-up"
+      | "medium"
+      | "wide"
+      | "bird's eye"
+      | "low angle"
+      | "extreme close-up";
+    shotType: "action" | "reaction" | "establishing" | "detail" | "transition";
+    backgroundDescription: string; // Enhanced with full consistency details
     backgroundImageUrl?: string;
-    lighting: string;
+    lighting: string; // Complete lighting description
     effects: string[];
     dramaticPurpose: string;
     narrativePosition: string;
@@ -175,14 +193,21 @@ export interface Panel {
   sceneId: string;
   characterIds: string[];
   isAiGenerated: boolean;
-  aiPrompt?: string;
+  aiPrompt: string; // Now complete and mandatory for direct generation
   negativePrompt: string;
+  consistencyElements?: {
+    // New field for tracking consistency
+    characterTemplates: Record<string, string>;
+    environmentTemplate: string;
+    lightingTemplate: string;
+    styleTemplate: string;
+    propRegistry: string[];
+  };
   createdAt: Date;
   updatedAt: Date;
   dialogues?: PanelDialogue[];
   characters?: Character[];
 }
-
 export interface PanelDialogue {
   id: string;
   content: string;
@@ -202,4 +227,5 @@ export interface PanelDialogue {
   createdAt: Date;
   updatedAt: Date;
   speaker?: Character | null;
+  config: any;
 }

@@ -598,59 +598,6 @@ export const createMultipleChaptersWithScenesTool = ai.defineTool(
   }
 );
 
-// --- Create Multiple Characters Tool ---
-export const createMultipleCharactersTool = ai.defineTool(
-  {
-    name: "createMultipleCharacters",
-    description:
-      "Creates multiple character profiles within a project in one operation.",
-    inputSchema: z.object({
-      mangaProjectId: z.string().describe("The ID of the parent project."),
-      characters: z
-        .array(
-          characterSchema.omit({
-            id: true,
-            createdAt: true,
-            updatedAt: true,
-            aiGenerationPrompt: true,
-            isAiGenerated: true,
-            imgUrl: true,
-            expressionImages: true,
-            referenceImageUrls: true,
-            expressionStyle: true,
-            mangaProjectId: true,
-          })
-        )
-        .describe("Array of character data to create"),
-    }),
-    outputSchema: z
-      .array(z.string())
-      .describe("The IDs of the newly created characters."),
-  },
-  async (input) => {
-    try {
-      const projectExists = await getProjectForContext(input.mangaProjectId);
-      if (!projectExists) {
-        throw new Error(`Parent project ${input.mangaProjectId} not found.`);
-      }
-
-      const characterIds = [];
-      for (const characterData of input.characters) {
-        const character = await createCharacterService({
-          ...characterData,
-          mangaProjectId: input.mangaProjectId,
-          isAiGenerated: true,
-        });
-        characterIds.push(character.id);
-      }
-
-      return characterIds;
-    } catch (error: any) {
-      throw new Error(`Failed to create multiple characters: ${error.message}`);
-    }
-  }
-);
-
 // --- Create Panel with Dialogues Tool ---
 export const createPanelWithDialoguesTool = ai.defineTool(
   {
@@ -686,6 +633,7 @@ export const createPanelWithDialoguesTool = ai.defineTool(
               isAiGenerated: true,
               panelId: true,
               speaker: true,
+              config: true,
             })
             .extend({
               speakerName: z
@@ -897,6 +845,7 @@ export const createMultiplePanelsWithDialoguesTool = ai.defineTool(
                     isAiGenerated: true,
                     panelId: true,
                     speaker: true,
+                    config: true,
                   })
                   .extend({
                     speakerName: z
@@ -997,6 +946,59 @@ export const createMultiplePanelsWithDialoguesTool = ai.defineTool(
       throw new Error(
         `Failed to create multiple panels with dialogues: ${error.message}`
       );
+    }
+  }
+);
+
+// --- Create Multiple Characters Tool ---
+export const createMultipleCharactersTool = ai.defineTool(
+  {
+    name: "createMultipleCharacters",
+    description:
+      "Creates multiple character profiles within a project in one operation.",
+    inputSchema: z.object({
+      mangaProjectId: z.string().describe("The ID of the parent project."),
+      characters: z
+        .array(
+          characterSchema.omit({
+            id: true,
+            createdAt: true,
+            updatedAt: true,
+            aiGenerationPrompt: true,
+            isAiGenerated: true,
+            imgUrl: true,
+            expressionImages: true,
+            referenceImageUrls: true,
+            expressionStyle: true,
+            mangaProjectId: true,
+          })
+        )
+        .describe("Array of character data to create"),
+    }),
+    outputSchema: z
+      .array(z.string())
+      .describe("The IDs of the newly created characters."),
+  },
+  async (input) => {
+    try {
+      const projectExists = await getProjectForContext(input.mangaProjectId);
+      if (!projectExists) {
+        throw new Error(`Parent project ${input.mangaProjectId} not found.`);
+      }
+
+      const characterIds = [];
+      for (const characterData of input.characters) {
+        const character = await createCharacterService({
+          ...characterData,
+          mangaProjectId: input.mangaProjectId,
+          isAiGenerated: true,
+        });
+        characterIds.push(character.id);
+      }
+
+      return characterIds;
+    } catch (error: any) {
+      throw new Error(`Failed to create multiple characters: ${error.message}`);
     }
   }
 );

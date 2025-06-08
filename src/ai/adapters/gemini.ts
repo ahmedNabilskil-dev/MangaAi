@@ -160,6 +160,7 @@ export class GeminiAdapter implements ChatAdapter {
       model: "gemini-2.0-flash-preview-image-generation",
       config: {
         responseModalities: [Modality.TEXT, Modality.IMAGE],
+        temperature: 0,
       },
       history,
     });

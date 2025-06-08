@@ -42,7 +42,11 @@ export async function updateProject(
 }
 
 export async function deleteProject(id: string): Promise<void> {
-  return activeDataService.deleteProject(id);
+  const chapters = await activeDataService.listChapters(id);
+  for (const chapter of chapters) {
+    await deleteChapter(chapter.id); // will cascade
+  }
+  await activeDataService.deleteProject(id);
 }
 
 // --- Chapter ---
@@ -62,7 +66,11 @@ export async function updateChapter(
 }
 
 export async function deleteChapter(id: string): Promise<void> {
-  return activeDataService.deleteChapter(id);
+  const scenes = await activeDataService.listScenes(id);
+  for (const scene of scenes) {
+    await deleteScene(scene.id); // will cascade
+  }
+  await activeDataService.deleteChapter(id);
 }
 
 export async function getChapterForContext(
@@ -88,7 +96,11 @@ export async function updateScene(
 }
 
 export async function deleteScene(id: string): Promise<void> {
-  return activeDataService.deleteScene(id);
+  const panels = await activeDataService.listPanels(id);
+  for (const panel of panels) {
+    await deletePanel(panel.id); // will cascade
+  }
+  await activeDataService.deleteScene(id);
 }
 
 export async function getSceneForContext(id: string): Promise<Scene | null> {
@@ -115,7 +127,11 @@ export async function updatePanel(
 }
 
 export async function deletePanel(id: string): Promise<void> {
-  return activeDataService.deletePanel(id);
+  const dialogues = await activeDataService.listPanelDialogues(id);
+  for (const dialogue of dialogues) {
+    await deletePanelDialogue(dialogue.id);
+  }
+  await activeDataService.deletePanel(id);
 }
 
 export async function assignCharacterToPanel(
@@ -217,6 +233,61 @@ export async function getPanelDialogues(
   panelId: string
 ): Promise<PanelDialogue[]> {
   return await activeDataService.listPanelDialogues(panelId);
+}
+
+//////////////////////////////////////////////////////////////////
+
+export async function cleanOrphanedData(): Promise<void> {
+  // --- Clean Chapters with missing Projects ---
+  const projects = await getAllProjects();
+  const projectIds = new Set(projects.map((p) => p.id));
+  const allChaptersRaw = await activeDataService.getAllChapters(); // Add this method if not exists
+
+  for (const chapter of allChaptersRaw) {
+    if (!projectIds.has(chapter.mangaProjectId)) {
+      await deleteChapter(chapter.id);
+    }
+  }
+
+  // --- Clean Scenes with missing Chapters ---
+  const chapterIds = new Set(
+    (await activeDataService.getAllChapters()).map((c) => c.id)
+  );
+  const allScenes = await activeDataService.getAllScenes(); // Add this method if not exists
+
+  for (const scene of allScenes) {
+    if (!chapterIds.has(scene.chapterId)) {
+      await deleteScene(scene.id);
+    }
+  }
+
+  // --- Clean Panels with missing Scenes ---
+  const sceneIds = new Set(allScenes.map((s) => s.id));
+  const allPanels = await activeDataService.getAllPanels(); // Add this method if not exists
+
+  for (const panel of allPanels) {
+    if (!sceneIds.has(panel.sceneId)) {
+      await deletePanel(panel.id);
+    }
+  }
+
+  // --- Clean Dialogues with missing Panels ---
+  const panelIds = new Set(allPanels.map((p) => p.id));
+  const allDialogues = await activeDataService.getAllPanelDialogues(); // Add this method if not exists
+
+  for (const dialogue of allDialogues) {
+    if (!panelIds.has(dialogue.panelId)) {
+      await deletePanelDialogue(dialogue.id);
+    }
+  }
+
+  // --- Clean Characters not linked to any Project  ---
+  const characterList = await activeDataService.getAllCharacters(); // Add this if needed
+  for (const character of characterList) {
+    if (!projectIds.has(character.mangaProjectId)) {
+      await deleteCharacter(character.id);
+    }
+  }
 }
 
 // --- Initialization ---

@@ -479,28 +479,41 @@ export const sceneSchema = z
       .string()
       .min(1, "Scene title is required")
       .describe("Descriptive title of the scene"),
-    narrative: z
+    visualSequence: z
       .string()
       .optional()
-      .describe("Complete literary prose narrative"),
+      .describe("Visual sequences of the scene with consistency markers"),
 
     // Context
-    sceneContext: z
-      .object({
-        setting: z
-          .string()
-          .optional()
-          .describe("Physical location of the scene"),
-        mood: z.string().optional().describe("Emotional atmosphere"),
-        presentCharacters: z
-          .array(z.string())
-          .optional()
-          .describe("IDs of characters appearing"),
-        timeOfDay: z.string().optional().describe("When the scene occurs"),
-        weather: z.string().optional().describe("Environmental conditions"),
-      })
-      .optional()
-      .describe("Contextual information"),
+    sceneContext: z.object({
+      setting: z
+        .string()
+        .optional()
+        .describe("Physical location of the scene with consistency anchors"),
+      mood: z.string().optional().describe("Emotional atmosphere"),
+      presentCharacters: z
+        .array(z.string())
+        .optional()
+        .describe("IDs of characters appearing"),
+      timeOfDay: z
+        .string()
+        .optional()
+        .describe("When the scene occurs for lighting consistency"),
+      weather: z
+        .string()
+        .optional()
+        .describe("Environmental conditions for atmospheric consistency"),
+      consistencyAnchors: z
+        .object({
+          characterClothing: z.record(z.string()).optional(),
+          environmentalElements: z.array(z.string()).optional(),
+          lightingSources: z.array(z.string()).optional(),
+          colorPalette: z.array(z.string()).optional(),
+          atmosphericEffects: z.array(z.string()).optional(),
+        })
+        .optional()
+        .describe("Tracking elements for visual consistency"),
+    }),
 
     // Relationships
     chapterId: z.string().uuid().describe("ID of the parent chapter"),
@@ -519,12 +532,10 @@ export const sceneSchema = z
     createdAt: z
       .date()
       .or(z.string().datetime())
-      .optional()
       .describe("Creation timestamp"),
     updatedAt: z
       .date()
       .or(z.string().datetime())
-      .optional()
       .describe("Last update timestamp"),
 
     // Children
@@ -551,50 +562,59 @@ export const panelSchema = z
       .describe("URL of the rendered panel image"),
 
     // Composition
-    panelContext: z
-      .object({
-        action: z.string().optional().describe("Primary action occurring"),
-        pose: z.string().optional().describe("Character stance/positioning"),
-        characterPoses: z
-          .array(
-            z.object({
-              characterName: z.string().describe("Name of character"),
-              pose: z.string().describe("Specific pose description"),
-              expression: z.string().optional().describe("Facial expression"),
-            })
-          )
-          .optional()
-          .describe("Detailed character positioning"),
-        emotion: z.string().optional().describe("Dominant emotional tone"),
-        cameraAngle: z
-          .enum(["close-up", "medium", "wide", "bird's eye", "low angle"])
-          .optional()
-          .describe("Perspective of view"),
-        shotType: z
-          .enum(["action", "reaction", "establishing", "detail"])
-          .optional()
-          .describe("Type of visual framing"),
-        backgroundDescription: z
-          .string()
-          .optional()
-          .describe("Backdrop details"),
-        backgroundImageUrl: z
-          .string()
-          .optional()
-          .describe("Reference background image"),
-        lighting: z.string().optional().describe("Illumination style"),
-        effects: z
-          .array(z.string())
-          .optional()
-          .describe("Special visual effects"),
-        dramaticPurpose: z.string().optional().describe("Narrative function"),
-        narrativePosition: z
-          .string()
-          .optional()
-          .describe("Placement within story flow"),
-      })
-      .optional()
-      .describe("Visual composition details"),
+    panelContext: z.object({
+      action: z.string().optional().describe("Primary action occurring"),
+      pose: z.string().optional().describe("Character stance/positioning"),
+      characterPoses: z
+        .array(
+          z.object({
+            characterName: z.string().describe("Name of character"),
+            pose: z.string().describe("Specific pose description"),
+            expression: z.string().optional().describe("Facial expression"),
+            clothing: z
+              .string()
+              .optional()
+              .describe("Complete clothing description"),
+            props: z.array(z.string()).optional(),
+            spatialPosition: z.string().optional(),
+          })
+        )
+        .describe("Detailed character positioning"),
+      emotion: z.string().optional().describe("Dominant emotional tone"),
+      cameraAngle: z
+        .enum([
+          "close-up",
+          "medium",
+          "wide",
+          "bird's eye",
+          "low angle",
+          "extreme close-up",
+        ])
+        .optional()
+        .describe("Perspective of view"),
+      shotType: z
+        .enum(["action", "reaction", "establishing", "detail", "transition"])
+        .optional()
+        .describe("Type of visual framing"),
+      backgroundDescription: z
+        .string()
+        .optional()
+        .describe("Backdrop details with full consistency details"),
+
+      lighting: z
+        .string()
+        .optional()
+        .describe("Complete illumination description"),
+      effects: z
+        .array(z.string())
+        .optional()
+        .describe("Special visual effects"),
+      dramaticPurpose: z.string().optional().describe("Narrative function"),
+      narrativePosition: z
+        .string()
+        .optional()
+        .describe("Placement within story flow"),
+    }),
 
     // Relationships
     sceneId: z.string().uuid().describe("ID of the parent scene"),
@@ -611,22 +631,32 @@ export const panelSchema = z
     aiPrompt: z
       .string()
       .optional()
-      .describe("Prompt used for generation if applicable"),
-
+      .describe("Complete prompt for direct generation"),
     negativePrompt: z
       .string()
-      .describe("the negative prompt that will feed to image ai generation"),
+      .optional()
+      .describe("Negative prompt for image generation"),
+
+    // Consistency
+    consistencyElements: z
+      .object({
+        characterTemplates: z.record(z.string()).optional(),
+        environmentTemplate: z.string().optional(),
+        lightingTemplate: z.string().optional(),
+        styleTemplate: z.string().optional(),
+        propRegistry: z.array(z.string()).optional(),
+      })
+      .optional()
+      .describe("Elements for maintaining visual consistency"),
 
     // Timestamps
     createdAt: z
       .date()
       .or(z.string().datetime())
-      .optional()
       .describe("Creation timestamp"),
     updatedAt: z
       .date()
       .or(z.string().datetime())
-      .optional()
       .describe("Last update timestamp"),
 
     // Children
@@ -640,7 +670,6 @@ export const panelSchema = z
       .describe("Character references appearing in panel"),
   })
   .describe("A single illustrated frame within a manga scene");
-
 // Panel Dialogue Schema
 export const panelDialogueSchema = z
   .object({
@@ -714,6 +743,7 @@ export const panelDialogueSchema = z
       .nullable()
       .optional()
       .describe("Resolved speaker character details"),
+    config: z.any(),
   })
   .describe("Dialogue text within a manga panel");
 

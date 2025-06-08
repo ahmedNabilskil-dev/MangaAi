@@ -12,7 +12,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { deleteProject, getAllProjects } from "@/services/data-service";
+import {
+  cleanOrphanedData,
+  deleteProject,
+  getAllProjects,
+} from "@/services/data-service";
 import { MangaProject } from "@/types/entities";
 import { MangaStatus } from "@/types/enums";
 import { AnimatePresence, motion } from "framer-motion";
@@ -167,6 +171,7 @@ const ProjectsPage = () => {
   const handleDeleteProject = async () => {
     try {
       await deleteProject(deleteConfirmation.projectId);
+      localStorage.removeItem(`messages-${deleteConfirmation.projectId}`);
       await fetchProjects();
       setDeleteConfirmation({
         isOpen: false,
@@ -185,6 +190,15 @@ const ProjectsPage = () => {
       projectTitle: "",
     });
   };
+
+  const [clean, setClean] = useState(false);
+
+  const handleClean = async () => {
+    setClean(true);
+    await cleanOrphanedData();
+    setClean(false);
+  };
+
   return (
     <div className="flex h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-800 overflow-hidden">
       {/* Sidebar */}
@@ -394,6 +408,9 @@ const ProjectsPage = () => {
               >
                 <Plus className="h-4 w-4 mr-2" />
                 New Project
+              </Button>
+              <Button onClick={handleClean} disabled={clean}>
+                clean Projects
               </Button>
             </div>
           </motion.div>

@@ -121,6 +121,12 @@ export interface IDataService {
   // ---- Characters ----
   listCharacters(projectId: string): Promise<Character[]>;
 
+  getAllChapters(): Promise<Chapter[]>;
+  getAllScenes(): Promise<Scene[]>;
+  getAllPanels(): Promise<Panel[]>;
+  getAllPanelDialogues(): Promise<PanelDialogue[]>;
+  getAllCharacters(): Promise<Character[]>;
+
   // --- Utility/Initialization (Optional but good practice) ---
   initialize?(): Promise<void>; // For any setup needed
 }

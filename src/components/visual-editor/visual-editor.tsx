@@ -8,7 +8,13 @@ import { type NodeData, NodeType } from "@/types/nodes";
 import * as d3 from "d3";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useParams } from "next/navigation";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import ReactFlow, {
   addEdge,
   applyEdgeChanges,
@@ -52,7 +58,15 @@ const defaultEdgeOptions: DefaultEdgeOptions = {
   type: "smoothstep",
 };
 
-// Helper function to create a unique key for comparison
+const nodeDimensions: Record<NodeType, { width: number; height: number }> = {
+  project: { width: 320, height: 350 },
+  chapter: { width: 300, height: 320 },
+  scene: { width: 300, height: 280 },
+  panel: { width: 280, height: 260 },
+  dialogue: { width: 260, height: 220 },
+  character: { width: 280, height: 380 },
+};
+
 function createNodeKey(node: any, type: NodeType): string {
   switch (type) {
     case "project":
@@ -76,20 +90,18 @@ function createNodeKey(node: any, type: NodeType): string {
   }
 }
 
-// Enhanced transformation function that preserves positions
-export function transformProjectToFlowOptimized(
+const transformProjectToFlowOptimized = (
   project: MangaProject | null,
   existingNodes: Node<NodeData>[] = []
 ): {
   nodes: Node<NodeData>[];
   edges: Edge[];
   hasStructuralChanges: boolean;
-} {
+} => {
   if (!project) {
     return { nodes: [], edges: [], hasStructuralChanges: true };
   }
 
-  // Create a map of existing positions and data
   const existingPositions = new Map<
     string,
     { x: number; y: number; key: string }
@@ -105,15 +117,6 @@ export function transformProjectToFlowOptimized(
     existingNodeKeys.set(node.id, node.data.dataKey || "");
   });
 
-  const nodeDimensions: Record<NodeType, { width: number; height: number }> = {
-    project: { width: 320, height: 350 },
-    chapter: { width: 300, height: 320 },
-    scene: { width: 300, height: 280 },
-    panel: { width: 280, height: 260 },
-    dialogue: { width: 260, height: 220 },
-    character: { width: 280, height: 380 },
-  };
-
   const hierarchyNodes: Array<{
     id: string;
     parentId: string | null;
@@ -124,7 +127,6 @@ export function transformProjectToFlowOptimized(
     dataKey: string;
   }> = [];
 
-  // Build hierarchy with data keys for change detection
   const projectKey = createNodeKey(project, "project");
   hierarchyNodes.push({
     id: project.id,
@@ -136,12 +138,11 @@ export function transformProjectToFlowOptimized(
     dataKey: projectKey,
   });
 
-  // Add characters
   (project.characters ?? []).forEach((character) => {
     const charKey = createNodeKey(character, "character");
     hierarchyNodes.push({
       id: character.id,
-      parentId: null,
+      parentId: project.id,
       type: "character",
       label: character.name,
       properties: character,
@@ -150,7 +151,6 @@ export function transformProjectToFlowOptimized(
     });
   });
 
-  // Add chapters and their children
   (project.chapters ?? []).forEach((chapter) => {
     const chapterKey = createNodeKey(chapter, "chapter");
     hierarchyNodes.push({
@@ -203,11 +203,9 @@ export function transformProjectToFlowOptimized(
     });
   });
 
-  // Check for structural changes
   const currentNodeIds = new Set(hierarchyNodes.map((n) => n.id));
   const existingNodeIds = new Set(existingNodes.map((n) => n.id));
 
-  // Check if we have new nodes, deleted nodes, or data changes
   const hasNewNodes = hierarchyNodes.some((n) => !existingNodeIds.has(n.id));
   const hasDeletedNodes = existingNodes.some((n) => !currentNodeIds.has(n.id));
   const hasDataChanges = hierarchyNodes.some((n) => {
@@ -217,11 +215,9 @@ export function transformProjectToFlowOptimized(
 
   const hasStructuralChanges = hasNewNodes || hasDeletedNodes || hasDataChanges;
 
-  // Only recalculate layout if there are structural changes or no existing positions
   let shouldRecalculateLayout =
     hasStructuralChanges || existingNodes.length === 0;
 
-  // Generate initial positions using D3 layout
   const storyNodes = hierarchyNodes.filter((n) => n.type !== "character");
   const root = d3
     .stratify<(typeof storyNodes)[0]>()
@@ -245,7 +241,6 @@ export function transformProjectToFlowOptimized(
 
   const treeData = treeLayout(root);
 
-  // Character positioning
   const characterNodes = hierarchyNodes.filter((n) => n.type === "character");
   const characterStartX = margin.left;
   const characterStartY = margin.top;
@@ -255,14 +250,12 @@ export function transformProjectToFlowOptimized(
   const nodes: Node<NodeData>[] = [];
   const edges: Edge[] = [];
 
-  // Create nodes, preserving existing positions when possible
   treeData.descendants().forEach((d) => {
     const nodeType = d.data.type as NodeType;
     const { width, height } = nodeDimensions[nodeType];
     const existingPos = existingPositions.get(d.id!);
     const currentDataKey = d.data.dataKey;
 
-    // Use existing position if node exists and data hasn't changed, otherwise use calculated position
     const shouldUseExistingPos =
       existingPos &&
       existingPos.key === currentDataKey &&
@@ -280,7 +273,7 @@ export function transformProjectToFlowOptimized(
         label: d.data.label,
         type: d.data.type,
         properties: d.data.properties,
-        dataKey: currentDataKey, // Store the data key for future comparisons
+        dataKey: currentDataKey,
       },
       style: {
         width,
@@ -299,7 +292,6 @@ export function transformProjectToFlowOptimized(
     }
   });
 
-  // Add character nodes
   characterNodes.forEach((char, i) => {
     const row = Math.floor(i / charactersPerRow);
     const col = i % charactersPerRow;
@@ -336,7 +328,6 @@ export function transformProjectToFlowOptimized(
     });
   });
 
-  // Only apply layout offset if we're recalculating layout
   if (shouldRecalculateLayout) {
     const storyNodePositions = nodes
       .filter((n) => n.type !== "character")
@@ -355,7 +346,6 @@ export function transformProjectToFlowOptimized(
       const offsetX = -minX + margin.left;
       const offsetY = -minY + margin.top + characterAreaHeight + 150;
 
-      // Apply offset only to story nodes
       nodes.forEach((node) => {
         if (node.type !== "character") {
           node.position.x += offsetX;
@@ -366,7 +356,7 @@ export function transformProjectToFlowOptimized(
   }
 
   return { nodes, edges, hasStructuralChanges };
-}
+};
 
 function VisualEditorInternal() {
   const { id } = useParams();
@@ -403,6 +393,11 @@ function VisualEditorInternal() {
     }
   }, [id]);
 
+  const transformationResult = useMemo(() => {
+    if (!projectData) return null;
+    return transformProjectToFlowOptimized(projectData, storeNodes);
+  }, [projectData, storeNodes]);
+
   useEffect(() => {
     if (!projectData) {
       setIsLoading(!error);
@@ -412,23 +407,17 @@ function VisualEditorInternal() {
     setIsLoading(false);
     setError(null);
 
-    // Transform project data with position preservation
+    if (!transformationResult) return;
+
     const {
       nodes: newNodes,
       edges: newEdges,
       hasStructuralChanges,
-    } = transformProjectToFlowOptimized(projectData, storeNodes);
+    } = transformationResult;
 
-    // Only update if there are actual changes
     if (hasStructuralChanges || storeNodes.length === 0) {
-      // Apply layout only to new nodes if needed
-      if (
-        newNodes.length > 0 &&
-        (!isInitialLayoutDone.current || hasStructuralChanges)
-      ) {
+      if (newNodes.length > 0) {
         const layoutEdges = newEdges.filter((edge) => !edge.data?.noLayout);
-
-        // Only apply layout to nodes that don't have preserved positions
         const needsLayout =
           hasStructuralChanges || !isInitialLayoutDone.current;
 
@@ -446,8 +435,6 @@ function VisualEditorInternal() {
 
         if (!isInitialLayoutDone.current) {
           isInitialLayoutDone.current = true;
-
-          // Fit view only on initial load
           const timer = setTimeout(() => {
             if (!viewportInitialized) {
               fitView({ padding: 0.2, duration: 600 });
@@ -462,8 +449,9 @@ function VisualEditorInternal() {
     lastProjectDataRef.current = projectData;
   }, [
     projectData,
+    transformationResult,
     error,
-    storeNodes,
+    storeNodes.length,
     setNodes,
     setEdges,
     fitView,
@@ -473,14 +461,7 @@ function VisualEditorInternal() {
 
   const onNodesChange: OnNodesChange = useCallback(
     (changes) => {
-      // Update positions immediately for smooth interaction
       setNodes(applyNodeChanges(changes, storeNodes));
-
-      // TODO: Debounce and persist position changes to backend
-      // const positionChanges = changes.filter(change => change.type === 'position');
-      // if (positionChanges.length > 0) {
-      //   debouncedSavePositions(positionChanges);
-      // }
     },
     [setNodes, storeNodes]
   );
@@ -502,6 +483,7 @@ function VisualEditorInternal() {
 
   const handleNodeClick = useCallback(
     (event: React.MouseEvent, node: Node<NodeData>) => {
+      event.stopPropagation();
       setSelectedNode(node);
     },
     [setSelectedNode]
@@ -555,10 +537,6 @@ function VisualEditorInternal() {
         panOnDrag={true}
         minZoom={0.1}
         maxZoom={2}
-        translateExtent={[
-          [-Infinity, -Infinity],
-          [Infinity, Infinity],
-        ]}
       >
         <Controls showInteractive={false} position="bottom-right" />
         <Background color="hsl(var(--border) / 0.3)" gap={24} size={1} />

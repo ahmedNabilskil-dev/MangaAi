@@ -94,6 +94,7 @@ export const ContentPlannerPrompt = ai.definePrompt({
         })
         .optional()
         .describe("The node currently selected by the user, if any"),
+      prevChats: z.array(z.any()),
     }),
   },
   output: {
@@ -348,6 +349,9 @@ Correct output:
 
 5- important treat delete as exactly update (the update action is used to delete content also)
 
+Previous chats:
+{{prevChats}}
+
 Now analyze this user input: {{userInput}}`,
 });
 
@@ -413,13 +417,14 @@ export const extractFullContexts = (project: MangaProject) => {
             id: scene.id,
             order: scene.order,
             title: scene.title,
-            narrative: scene.narrative,
+            visualSequence: scene.visualSequence,
             sceneContext: scene.sceneContext,
             panels: scene.panels?.map((panel) => ({
               id: panel.id,
               order: panel.order,
               panelContext: panel.panelContext,
               characterIds: panel.characterIds,
+              consistencyElements: panel.consistencyElements,
               dialogues: panel.dialogues?.map((dialogue) => ({
                 id: dialogue.id,
                 order: dialogue.order,
@@ -446,9 +451,12 @@ export const extractFullContexts = (project: MangaProject) => {
             order: panel.order,
             panelContext: panel.panelContext,
             characterIds: panel.characterIds,
+            consistencyElements: panel.consistencyElements,
             aiPrompt: panel.aiPrompt,
             negativePrompt: panel.negativePrompt,
-            characterNames: panel.characterNames,
+            characterNames: panel.panelContext.characterPoses?.map(
+              (ch) => ch.characterName
+            ),
             sceneId: scene.id,
           };
         }
@@ -471,7 +479,7 @@ export const extractFullContexts = (project: MangaProject) => {
           id: sc.id,
           order: sc.order,
           title: sc.title,
-          narrative: sc.narrative,
+          visualSequence: sc.visualSequence,
           sceneContext: sc.sceneContext,
         })),
       };
@@ -560,7 +568,7 @@ export const extractUpdateContexts = (project: MangaProject) => {
             id: scene.id,
             order: scene.order,
             title: scene.title,
-            narrative: scene.narrative,
+            visualSequence: scene.visualSequence,
             sceneContext: scene.sceneContext,
             // Include only basic panel information
             panelCount: scene.panels?.length || 0,
@@ -953,7 +961,7 @@ const handleGenerateImage = async (
     case "panel":
       const panelContext = extractPanelContext(imageContext.contentId);
       const charactersInPanel = charactersContext?.filter((ch) =>
-        panelContext?.characterNames.includes(ch.name)
+        panelContext?.characterNames?.includes(ch.name)
       );
 
       const charactersInPanelWithImage = await Promise.all(
@@ -1045,6 +1053,7 @@ export const ProcessMangaRequestFlow = ai.defineFlow(
       userInput: z.string(),
       selectedNode: z.any().nullable().optional(),
       projectId: z.string(),
+      prevChats: z.array(z.any()),
     }),
     outputSchema: z.object({
       type: z.string(),
@@ -1052,7 +1061,7 @@ export const ProcessMangaRequestFlow = ai.defineFlow(
       data: z.any().optional(),
     }),
   },
-  async ({ userInput, selectedNode, projectId }) => {
+  async ({ userInput, selectedNode, projectId, prevChats }) => {
     try {
       // Get the project with all its relations
       const project = await getProjectWithRelations(projectId);
@@ -1071,6 +1080,7 @@ export const ProcessMangaRequestFlow = ai.defineFlow(
         userInput,
         projectContext: slimProject,
         selectedNode,
+        prevChats,
       });
 
       // Parse the result

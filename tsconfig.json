@@ -28,7 +28,11 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     "src/types/react-flow-fix.d.ts", // Include the fix file
-    "src/types/react-draggable-fix.d.ts" // Include the draggable types fix
-],
+    "src/types/react-draggable-fix.d.ts", // Include the draggable types fix
+    "src/components/bubble/speech.tsx",
+    "src/components/bubble/Random.js",
+    "src/components/bubble/geometry.js",
+    "src/app/image/page.jsx"
+  ],
   "exclude": ["node_modules"]
 }

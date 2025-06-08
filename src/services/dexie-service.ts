@@ -387,6 +387,26 @@ class DexieDataService implements IDataService {
     return await db.dialogues.where("panelId").equals(panelId).toArray();
   }
 
+  async getAllChapters(): Promise<Chapter[]> {
+    return db.chapters.toArray();
+  }
+
+  async getAllScenes(): Promise<Scene[]> {
+    return db.scenes.toArray();
+  }
+
+  async getAllPanels(): Promise<Panel[]> {
+    return db.panels.toArray();
+  }
+
+  async getAllPanelDialogues(): Promise<PanelDialogue[]> {
+    return db.dialogues.toArray();
+  }
+
+  async getAllCharacters(): Promise<Character[]> {
+    return db.characters.toArray();
+  }
+
   // --- Initialization ---
   async initialize(): Promise<void> {
     try {
