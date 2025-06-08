@@ -28,21 +28,8 @@ import {
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { HexAlphaColorPicker } from "react-colorful";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
-interface ColorPickerProps {
-  value: string;
-  onChange: (value: string) => void;
-}
-
-export const ColorPicker = ({ value, onChange }: ColorPickerProps) => {
-  return (
-    <div className="p-2 border rounded-lg shadow-md bg-white w-fit">
-      <HexAlphaColorPicker color={value} onChange={onChange} />
-    </div>
-  );
-};
 
 type LayoutMode = "vertical" | "grid";
 
