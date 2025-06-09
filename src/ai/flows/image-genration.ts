@@ -111,7 +111,7 @@ export const GeneratePanelImage = ai.defineFlow(
         `panel-${panel.id}-${Date.now()}`
       );
 
-      updatePanel(panel.id, {
+      await updatePanel(panel.id, {
         imageUrl: url,
       });
       return res?.text;

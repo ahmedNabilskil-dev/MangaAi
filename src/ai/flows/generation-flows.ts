@@ -589,18 +589,12 @@ export const PanelsDialogsGenerationPrompt = ai.definePrompt({
 ## CRITICAL CHARACTER REQUIREMENTS - MANDATORY COMPLIANCE
 
 ### CHARACTER NAME & ID ENFORCEMENT
-- **EXACT MATCH REQUIRED**: Character names MUST match exactly from provided characters array
-- **CHARACTER ID VALIDATION**: All characterIds MUST correspond to actual character.id values
+- **EXACT MATCH REQUIRED**: Character names MUST match exactly from provided characters array not the scene
+- **CHARACTER ID VALIDATION**: All characterIds MUST correspond to actual character id values
 - **NO VARIATIONS**: No nicknames, abbreviations, or alternative names allowed
 - **CASE SENSITIVE**: Maintain exact capitalization and spelling
 - **MANDATORY PRESENCE**: If characters exist in scene, they MUST be referenced correctly
 
-### CHARACTER VALIDATION RULES
-CORRECT: characterName: "Akira Tanaka", characterIds: ["akira_tanaka"]
-INCORRECT: characterName: "Akira", characterIds: ["akira"]
-INCORRECT: characterName: "Tanaka", characterIds: ["tanaka"] 
-INCORRECT: characterName: "AKIRA TANAKA", characterIds: ["AKIRA_TANAKA"]
-INCORRECT: characterName: "AKIRA Yamato", characterIds: ["akira_Yamato"]
 
 ## ENHANCED PANEL STRUCTURE (STRICT INTERFACE COMPLIANCE)
 

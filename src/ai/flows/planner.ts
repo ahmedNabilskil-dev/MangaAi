@@ -961,8 +961,11 @@ const handleGenerateImage = async (
 
     case "panel":
       const panelContext = extractPanelContext(imageContext.contentId);
-      const charactersInPanel = charactersContext?.filter((ch) =>
-        panelContext?.characterNames?.includes(ch.name)
+      const charactersInPanel = charactersContext?.filter(
+        (ch) =>
+          panelContext?.panelContext.characterPoses?.findIndex((el) =>
+            ch.name.toLowerCase().includes(el.characterName.toLowerCase())
+          ) != -1
       );
 
       const charactersInPanelWithImage = await Promise.all(
