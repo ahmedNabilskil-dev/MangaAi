@@ -59,8 +59,7 @@ const steps = [
       },
       {
         step: "Add to Manga AI",
-        action:
-          "Go to Settings → Enter API key in both Text and Image generation tabs",
+        action: "Go to Settings → Enter API key in both Text generation tabs",
         detail: "The key works for both text and image generation",
         screenshot: "/images/screenshot/gemini-5.png",
       },
