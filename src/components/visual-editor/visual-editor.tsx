@@ -210,11 +210,11 @@ const transformProjectToFlowOptimized = (
   const hasDeletedNodes = existingNodes.some((n) => !currentNodeIds.has(n.id));
   const hasDataChanges = hierarchyNodes.some((n) => {
     const existingKey = existingNodeKeys.get(n.id);
+    console.log(n.dataKey == existingKey);
     return existingKey && existingKey !== n.dataKey;
   });
 
   const hasStructuralChanges = hasNewNodes || hasDeletedNodes || hasDataChanges;
-
   let shouldRecalculateLayout =
     hasStructuralChanges || existingNodes.length === 0;
 
@@ -309,7 +309,7 @@ const transformProjectToFlowOptimized = (
           y: characterStartY + row * (height + 50),
         };
 
-    nodes.push({
+    (nodes as any).push({
       id: char.id,
       type: char.type,
       position,
@@ -317,6 +317,7 @@ const transformProjectToFlowOptimized = (
         label: char.label,
         type: char.type,
         properties: char.properties,
+        dataKey: currentDataKey,
       },
       style: {
         width,
