@@ -46,6 +46,10 @@ const SettingsPage = () => {
     model: "gemini-2.0-flash-preview-image-generation",
   });
 
+  const [imgbbSettings, setImgbbSettings] = useState({
+    apiKey: "",
+  });
+
   // Load settings from localStorage on client-side only
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -65,6 +69,9 @@ const SettingsPage = () => {
           localStorage.getItem("image-model") ||
           "gemini-2.0-flash-preview-image-generation",
       });
+      setImgbbSettings({
+        apiKey: localStorage.getItem("image_hosting_api_key") || "",
+      });
     }
   }, []);
 
@@ -78,6 +85,8 @@ const SettingsPage = () => {
       localStorage.setItem("image-provider", imageSettings.provider);
       localStorage.setItem("image-model", imageSettings.model);
       localStorage.setItem("image-api-key", imageSettings.apiKey);
+
+      localStorage.setItem("image_hosting_api_key", imgbbSettings.apiKey);
     }
   };
 
@@ -231,11 +240,11 @@ const SettingsPage = () => {
                     Text Generation
                   </TabsTrigger>
                   <TabsTrigger
-                    value="image"
-                    className="data-[state=active]:bg-purple-600 data-[state=active]:text-white"
+                    value="imgbb"
+                    className="data-[state=active]:bg-blue-600 data-[state=active]:text-white"
                   >
                     <ImageIcon className="mr-2 h-4 w-4" />
-                    Image Generation
+                    Image Hosting
                   </TabsTrigger>
                 </TabsList>
 
@@ -408,6 +417,75 @@ const SettingsPage = () => {
                         }
                         className="bg-gray-800 border-gray-700 text-white"
                         placeholder="Enter your API key"
+                      />
+                      <p className="text-xs text-gray-500 mt-2">
+                        Your API key is stored locally and never sent to our
+                        servers.
+                      </p>
+                    </div>
+                  </motion.div>
+                </TabsContent>
+
+                <TabsContent value="imgbb" className="mt-6">
+                  <motion.div
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="space-y-6"
+                  >
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <Label
+                          htmlFor="imgbb-provider"
+                          className="text-gray-300 mb-2 flex items-center"
+                        >
+                          <Key className="h-4 w-4 mr-2" />
+                          Provider
+                        </Label>
+                        <Input
+                          id="imgbb-provider"
+                          value="ImgBB"
+                          disabled
+                          className="bg-gray-800 border-gray-700 text-gray-400"
+                        />
+                      </div>
+
+                      <div>
+                        <Label
+                          htmlFor="imgbb-model"
+                          className="text-gray-300 mb-2"
+                        >
+                          Service
+                        </Label>
+                        <Input
+                          id="imgbb-model"
+                          value="Image Hosting API"
+                          disabled
+                          className="bg-gray-800 border-gray-700 text-gray-400"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label
+                        htmlFor="imgbb-api-key"
+                        className="text-gray-300 mb-2 flex items-center"
+                      >
+                        <Key className="h-4 w-4 mr-2" />
+                        API Key
+                      </Label>
+                      <Input
+                        id="imgbb-api-key"
+                        type="password"
+                        value={imgbbSettings.apiKey}
+                        onChange={(e) =>
+                          setImgbbSettings({
+                            ...imgbbSettings,
+                            apiKey: e.target.value,
+                          })
+                        }
+                        className="bg-gray-800 border-gray-700 text-white"
+                        placeholder="Enter your ImgBB API key"
                       />
                       <p className="text-xs text-gray-500 mt-2">
                         Your API key is stored locally and never sent to our

@@ -111,7 +111,7 @@ const steps = [
         step: "Configure in App",
         action: "Add ImgBB API key to your app settings",
         detail: "This enables automatic image uploading and storage",
-        screenshot: "/images/screenshot/gemini-5.png",
+        screenshot: "/images/screenshot/image-4.png",
       },
     ],
     link: "https://imgbb.com/",
