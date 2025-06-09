@@ -265,7 +265,7 @@ const transformProjectToFlowOptimized = (
       ? { x: existingPos.x, y: existingPos.y }
       : { x: d.x - width / 2, y: d.y };
 
-    nodes.push({
+    (nodes as any).push({
       id: d.id!,
       type: d.data.type,
       position,
@@ -273,6 +273,7 @@ const transformProjectToFlowOptimized = (
         label: d.data.label,
         type: d.data.type,
         properties: d.data.properties,
+        dataKey: currentDataKey,
       },
       style: {
         width,
