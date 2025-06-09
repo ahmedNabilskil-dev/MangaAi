@@ -334,6 +334,17 @@ const SettingsPage = () => {
                         Your API key is stored locally and never sent to our
                         servers.
                       </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Need help getting an API key?{" "}
+                        <a
+                          href="https://manga-ai.vercel.app/documentation"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-pink-400 hover:underline"
+                        >
+                          View our setup guide
+                        </a>
+                      </p>
                     </div>
                   </motion.div>
                 </TabsContent>
@@ -491,6 +502,17 @@ const SettingsPage = () => {
                       <p className="text-xs text-gray-500 mt-2">
                         Your API key is stored locally and never sent to our
                         servers.
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        You can get a free API key from ImgBB.{" "}
+                        <a
+                          href="https://api.imgbb.com/"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-400 hover:underline"
+                        >
+                          Get your API key here
+                        </a>
                       </p>
                     </div>
                   </motion.div>
