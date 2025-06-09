@@ -11,7 +11,6 @@ import {
   getProject as getProjectService,
   getSceneForContext,
   getScenes,
-  getUser as getUserService,
   listCharacters,
 } from "@/services/data-service";
 import {
@@ -21,7 +20,6 @@ import {
   panelDialogueSchema,
   panelSchema,
   sceneSchema,
-  schemas,
 } from "@/types/schemas";
 import { z } from "zod";
 
@@ -159,28 +157,6 @@ export const getCharacterTool = ai.defineTool(
   }
 );
 
-export const getUserTool = ai.defineTool(
-  {
-    name: "getUser",
-    description: "Retrieves complete details of a user by ID.",
-    inputSchema: z.object({
-      userId: z.string().describe("ID of the user to retrieve"),
-    }),
-    outputSchema: schemas.user
-      .nullable()
-      .describe("Full user details or null if not found"),
-  },
-  async ({ userId }) => {
-    try {
-      const user = await getUserService(userId);
-      return schemas.user.nullable().parse(user);
-    } catch (error) {
-      console.error(`Error in getUserTool: ${error}`);
-      return null;
-    }
-  }
-);
-
 // --- List/Batch Fetch Tools ---
 
 export const listProjectsTool = ai.defineTool(
@@ -253,9 +229,9 @@ export const listChaptersForProjectTool = ai.defineTool(
           id: true,
           chapterNumber: true,
           title: true,
-          summary: true,
           isPublished: true,
           coverImageUrl: true,
+          narrative: true,
         })
       )
       .describe("Array of chapter summaries"),
@@ -271,7 +247,7 @@ export const listChaptersForProjectTool = ai.defineTool(
               id: true,
               chapterNumber: true,
               title: true,
-              summary: true,
+              narrative: true,
               isPublished: true,
               coverImageUrl: true,
             })
@@ -297,7 +273,6 @@ export const listScenesForChapterTool = ai.defineTool(
           id: true,
           order: true,
           title: true,
-          description: true,
         })
       )
       .describe("Array of scene summaries"),
@@ -311,7 +286,6 @@ export const listScenesForChapterTool = ai.defineTool(
             id: true,
             order: true,
             title: true,
-            description: true,
           })
           .parse(scene)
       );
