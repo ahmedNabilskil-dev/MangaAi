@@ -1,4 +1,4 @@
-import { Message } from "@/components/chatbox/chatbox";
+import { Message } from "@/ai/adapters/type";
 import type { NodeData } from "@/types/nodes"; // Assuming NodeData definition
 import type { Edge, Node, Viewport } from "reactflow";
 import { create } from "zustand";

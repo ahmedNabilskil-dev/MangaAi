@@ -238,7 +238,7 @@ export const ChapterViewerPanel = ({ chapter }: { chapter: Chapter }) => {
           </div>
           <div className="flex items-center gap-1">
             <Clock className="w-4 h-4" />
-            <span>{new Date(chapter.createdAt).toLocaleDateString()}</span>
+            <span>{new Date(chapter.createdAt!).toLocaleDateString()}</span>
           </div>
         </div>
 
@@ -296,7 +296,7 @@ export const ChapterViewerPanel = ({ chapter }: { chapter: Chapter }) => {
           <div className="bg-gray-800/50 p-4 rounded-lg flex items-center justify-between">
             <div>
               <h4 className="font-bold text-pink-400">Creation Date</h4>
-              <p>{new Date(chapter.createdAt).toLocaleDateString()}</p>
+              <p>{new Date(chapter.createdAt!).toLocaleDateString()}</p>
             </div>
             <Clock className="w-10 h-10 text-pink-400/30" />
           </div>

@@ -572,8 +572,5 @@ export const CustomNode = (props: CustomNodeProps) => {
       return <DialogueNode {...props} />;
     case "character":
       return <CharacterNode {...props} />;
-    default:
-      // Fallback to base node with empty content
-      return <BaseNode {...props}>{null}</BaseNode>;
   }
 };

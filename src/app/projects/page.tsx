@@ -367,7 +367,7 @@ const ProjectsPage = () => {
                           {genres.map((genre) => (
                             <button
                               key={genre}
-                              onClick={() => applyFilter("genre", genre)}
+                              onClick={() => applyFilter("genre", genre!)}
                               className={`px-2 py-1 text-xs rounded-full ${
                                 activeFilters.genre === genre
                                   ? "bg-pink-600 text-white"

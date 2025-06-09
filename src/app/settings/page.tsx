@@ -28,34 +28,56 @@ import {
   Text,
 } from "lucide-react";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const SettingsPage = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState("text");
   const [textSettings, setTextSettings] = useState({
     provider: "gemini",
-    apiKey: localStorage.getItem("api-key") || "",
+    apiKey: "",
     model: "gemini-2.0-flash",
-    temperature: localStorage.getItem("temperature")
-      ? Number(localStorage.getItem("temperature"))
-      : 0.7,
+    temperature: 0.7,
   });
   const [imageSettings, setImageSettings] = useState({
     provider: "gemini",
-    apiKey: localStorage.getItem("api-key") || "",
+    apiKey: "",
     model: "gemini-2.0-flash-preview-image-generation",
   });
 
-  const handleSave = () => {
-    localStorage.setItem("provider", textSettings.provider);
-    localStorage.setItem("model", textSettings.model);
-    localStorage.setItem("api-key", textSettings.apiKey);
-    localStorage.setItem("temperature", String(textSettings.temperature));
+  // Load settings from localStorage on client-side only
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setTextSettings({
+        provider: localStorage.getItem("provider") || "gemini",
+        apiKey: localStorage.getItem("api-key") || "",
+        model: localStorage.getItem("model") || "gemini-2.0-flash",
+        temperature: localStorage.getItem("temperature")
+          ? Number(localStorage.getItem("temperature"))
+          : 0.7,
+      });
 
-    localStorage.setItem("image-provider", imageSettings.provider);
-    localStorage.setItem("image-model", imageSettings.model);
-    localStorage.setItem("image-api-key", imageSettings.apiKey);
+      setImageSettings({
+        provider: localStorage.getItem("image-provider") || "gemini",
+        apiKey: localStorage.getItem("image-api-key") || "",
+        model:
+          localStorage.getItem("image-model") ||
+          "gemini-2.0-flash-preview-image-generation",
+      });
+    }
+  }, []);
+
+  const handleSave = () => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("provider", textSettings.provider);
+      localStorage.setItem("model", textSettings.model);
+      localStorage.setItem("api-key", textSettings.apiKey);
+      localStorage.setItem("temperature", String(textSettings.temperature));
+
+      localStorage.setItem("image-provider", imageSettings.provider);
+      localStorage.setItem("image-model", imageSettings.model);
+      localStorage.setItem("image-api-key", imageSettings.apiKey);
+    }
   };
 
   const toggleSidebar = () => {

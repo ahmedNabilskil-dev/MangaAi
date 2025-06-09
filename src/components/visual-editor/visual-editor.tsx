@@ -112,9 +112,9 @@ const transformProjectToFlowOptimized = (
     existingPositions.set(node.id, {
       x: node.position.x,
       y: node.position.y,
-      key: node.data.dataKey || "",
+      key: (node.data as any).dataKey || "",
     });
-    existingNodeKeys.set(node.id, node.data.dataKey || "");
+    existingNodeKeys.set(node.id, (node.data as any).dataKey || "");
   });
 
   const hierarchyNodes: Array<{
@@ -273,7 +273,6 @@ const transformProjectToFlowOptimized = (
         label: d.data.label,
         type: d.data.type,
         properties: d.data.properties,
-        dataKey: currentDataKey,
       },
       style: {
         width,
@@ -286,7 +285,6 @@ const transformProjectToFlowOptimized = (
         id: `e-${d.parent.id}-${d.id}`,
         source: d.parent.id!,
         target: d.id!,
-        animated: d.data.type === "character",
         type: "smoothstep",
       });
     }
@@ -319,7 +317,6 @@ const transformProjectToFlowOptimized = (
         label: char.label,
         type: char.type,
         properties: char.properties,
-        dataKey: currentDataKey,
       },
       style: {
         width,

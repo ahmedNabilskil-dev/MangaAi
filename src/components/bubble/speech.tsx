@@ -321,8 +321,9 @@ const ControlPoint: React.FC<ControlPointProps> = ({
   );
 };
 
-interface IndexedControlPointProps extends ControlPointProps {
+interface IndexedControlPointProps extends Omit<ControlPointProps, "onMove"> {
   idx: number;
+  onMove: (index: number, delta: { dx: number; dy: number }) => void;
 }
 
 const IndexedControlPoint: React.FC<IndexedControlPointProps> = ({
@@ -471,8 +472,8 @@ const getTailCornersFromTipToBubbleStart = ({
   const corners = [pairedNormals[0][0]]
     .concat(
       segmentsFromCorners(points.slice(1, -1))
-        .map(([a, b]) => midpoint(a, b))
-        .filter((p, i) => i % 2 === 0)
+        .map(([a, b]: any) => midpoint(a, b))
+        .filter((p: number, i: number) => i % 2 === 0)
         .concat(tip)
     )
     .reverse();
@@ -505,8 +506,8 @@ const getTailCornersFromBubbleEndToTip = ({
 
   const corners = [pairedNormals[0][0]].concat(
     segmentsFromCorners(points.slice(1, -1))
-      .map(([a, b]) => midpoint(a, b))
-      .filter((p, i) => i % 2 === 0)
+      .map(([a, b]: any) => midpoint(a, b))
+      .filter((p: number, i: number) => i % 2 === 0)
   );
 
   return { cornersToTip: corners };
@@ -519,7 +520,10 @@ const fitCurvesAndGeneratePathDirectives = (
   tip: Point
 ) => {
   return curvesToPathDirectives(
-    fitCurve(cornersFromTip.map(({ x, y }) => [x, y])).map(([a, b, c, d]) => [
+    fitCurve(
+      cornersFromTip.map(({ x, y }) => [x, y]),
+      0.01
+    ).map(([a, b, c, d]) => [
       { x: a[0], y: a[1] },
       { x: b[0], y: b[1] },
       { x: c[0], y: c[1] },
@@ -529,14 +533,15 @@ const fitCurvesAndGeneratePathDirectives = (
     .concat(cornersToTip[0])
     .concat(
       curvesToPathDirectives(
-        fitCurve(cornersToTip.concat(tip).map(({ x, y }) => [x, y])).map(
-          ([a, b, c, d]) => [
-            { x: a[0], y: a[1] },
-            { x: b[0], y: b[1] },
-            { x: c[0], y: c[1] },
-            { x: d[0], y: d[1] },
-          ]
-        ),
+        fitCurve(
+          cornersToTip.concat(tip).map(({ x, y }) => [x, y]),
+          0.01
+        ).map(([a, b, c, d]) => [
+          { x: a[0], y: a[1] },
+          { x: b[0], y: b[1] },
+          { x: c[0], y: c[1] },
+          { x: d[0], y: d[1] },
+        ]),
         false
       )
     )

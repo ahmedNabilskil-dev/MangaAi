@@ -5,6 +5,8 @@ export type Message = {
   content: any;
   contentKey?: string;
   imageUrl?: string;
+  id?: string;
+  timestamp?: any;
 };
 
 export type Tool = {

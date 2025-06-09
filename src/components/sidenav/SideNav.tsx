@@ -14,9 +14,33 @@ import {
   User,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useReactFlow } from "reactflow";
+import { Node, useReactFlow } from "reactflow";
 
-const ICON_MAP = {
+// Define types for our data structure
+type NodeType =
+  | "project"
+  | "chapter"
+  | "scene"
+  | "panel"
+  | "dialogue"
+  | "character";
+
+interface TreeNodeData {
+  label?: string;
+  type: NodeType;
+  [key: string]: any;
+}
+
+interface TreeNode extends Node {
+  data: TreeNodeData;
+  children: TreeNode[];
+}
+
+interface EnhancedSidebarProps {
+  // Add any props if needed
+}
+
+const ICON_MAP: Record<NodeType, JSX.Element> = {
   project: <Layers className="w-4 h-4" />,
   chapter: <FileText className="w-4 h-4" />,
   scene: <PanelLeft className="w-4 h-4" />,
@@ -25,23 +49,25 @@ const ICON_MAP = {
   character: <User className="w-4 h-4" />,
 };
 
-export default function EnhancedSidebar() {
+export default function EnhancedSidebar({}: EnhancedSidebarProps) {
   const { nodes, edges, selectedNode, setSelectedNode } =
     useVisualEditorStore();
   const { setCenter, getZoom } = useReactFlow();
-  const [expandedNodes, setExpandedNodes] = useState({});
+  const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>(
+    {}
+  );
   const [searchQuery, setSearchQuery] = useState("");
-  const scrollContainerRef = useRef(null);
-  const nodeRefs = useRef({});
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const nodeRefs = useRef<Record<string, HTMLDivElement>>({});
   const [isInternalSelection, setIsInternalSelection] = useState(false);
   const [isUserScrolling, setIsUserScrolling] = useState(false);
-  const scrollTimeoutRef = useRef(null);
-  const lastSelectedNodeRef = useRef(null);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSelectedNodeRef = useRef<string | null>(null);
 
   // Build tree structure from nodes and edges
   const buildTree = useCallback(() => {
-    const nodeMap = {};
-    const rootNodes = [];
+    const nodeMap: Record<string, TreeNode> = {};
+    const rootNodes: TreeNode[] = [];
 
     // Create all nodes
     nodes.forEach((node) => {
@@ -67,7 +93,7 @@ export default function EnhancedSidebar() {
     });
 
     // Sort nodes by type and label
-    const sortNodes = (nodes) => {
+    const sortNodes = (nodes: TreeNode[]) => {
       return nodes.sort((a, b) => {
         // Project first
         if (a.data.type === "project") return -1;
@@ -85,7 +111,7 @@ export default function EnhancedSidebar() {
     const sortedRoots = sortNodes(rootNodes);
 
     // Recursively sort children
-    const sortChildren = (node) => {
+    const sortChildren = (node: TreeNode) => {
       if (node.children && node.children.length > 0) {
         node.children = sortNodes(node.children);
         node.children.forEach(sortChildren);
@@ -99,8 +125,11 @@ export default function EnhancedSidebar() {
   const treeData = buildTree();
 
   // Find path to a node (returns array of node IDs from root to target)
-  const findPathToNode = useCallback((targetId, tree) => {
-    const findPath = (nodes, path = []) => {
+  const findPathToNode = useCallback((targetId: string, tree: TreeNode[]) => {
+    const findPath = (
+      nodes: TreeNode[],
+      path: string[] = []
+    ): string[] | null => {
       for (const node of nodes) {
         const currentPath = [...path, node.id];
         if (node.id === targetId) {
@@ -209,7 +238,7 @@ export default function EnhancedSidebar() {
   const filteredData = useMemo(() => {
     if (!searchQuery) return treeData;
 
-    const filterNodes = (nodes) => {
+    const filterNodes = (nodes: TreeNode[]): TreeNode[] => {
       return nodes
         .filter((node) => {
           const matches = node.data.label
@@ -226,10 +255,10 @@ export default function EnhancedSidebar() {
     };
 
     return filterNodes(treeData);
-  }, [JSON.stringify(treeData), searchQuery]);
+  }, [treeData, searchQuery]);
 
   // Toggle node expansion
-  const toggleExpand = useCallback((id) => {
+  const toggleExpand = useCallback((id: string) => {
     setExpandedNodes((prev) => ({
       ...prev,
       [id]: !prev[id],
@@ -238,7 +267,7 @@ export default function EnhancedSidebar() {
 
   // Focus on node in the editor
   const focusNode = useCallback(
-    (node) => {
+    (node: Node) => {
       // Mark this as an internal selection
       setIsInternalSelection(true);
       setSelectedNode(node);
@@ -250,8 +279,14 @@ export default function EnhancedSidebar() {
     [setCenter, getZoom, setSelectedNode]
   );
 
+  // Define TreeNode component props
+  interface TreeNodeProps {
+    node: TreeNode;
+    depth?: number;
+  }
+
   // Render a single tree node
-  const TreeNode = ({ node, depth = 0 }) => {
+  const TreeNode: React.FC<TreeNodeProps> = ({ node, depth = 0 }) => {
     const isExpanded = expandedNodes[node.id] ?? depth < 1;
     const hasChildren = node.children && node.children.length > 0;
     const isSelected = selectedNode?.id === node.id;
@@ -259,7 +294,7 @@ export default function EnhancedSidebar() {
     return (
       <div className="space-y-1">
         <motion.div
-          ref={(el) => {
+          ref={(el: HTMLDivElement | null) => {
             if (el) {
               nodeRefs.current[node.id] = el;
             }

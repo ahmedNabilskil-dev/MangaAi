@@ -55,7 +55,7 @@ const MessageItem = memo(
           }`}
         >
           <button
-            onClick={() => copyMessage(message.id, message.content)}
+            onClick={() => copyMessage(message.id!, message.content)}
             className={`absolute top-2 right-2 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${
               message.role === "user"
                 ? "hover:bg-blue-700 text-blue-100"

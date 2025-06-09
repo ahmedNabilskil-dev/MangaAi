@@ -122,7 +122,7 @@ const DialogBubble = ({
       config={config.config}
       onUpdateCentre={
         editMode
-          ? ({ dx, dy }) =>
+          ? ({ dx, dy }: { dx: number; dy: number }) =>
               handleUpdate({
                 c: { x: config.c.x + dx, y: config.c.y + dy },
               })
@@ -720,7 +720,7 @@ const MangaComponent: React.FC<MangaWebtoonProps> = ({
         return {
           ...panel,
           dialogues:
-            panel.dialogues?.map((dialogue) => {
+            panel.dialogues?.map((dialogue: any) => {
               if (dialogue.id !== dialogueId) return dialogue;
               return { ...dialogue, config: newConfig };
             }) || [],
@@ -909,8 +909,9 @@ const MangaComponent: React.FC<MangaWebtoonProps> = ({
                 editMode={editMode}
                 selected={selectedDialogue === dialogue.id}
                 character={
-                  panel.characters?.find((c) => c.id === dialogue.speakerId) ||
-                  null
+                  panel.characters?.find(
+                    (c: any) => c.id === dialogue.speakerId
+                  ) || null
                 }
                 onConfigChange={(newConfig) => {
                   updateDialogueConfig(panel.id, dialogue.id, newConfig);
@@ -948,19 +949,21 @@ const MangaComponent: React.FC<MangaWebtoonProps> = ({
 
         {/* Preview dialog bubbles (simplified) */}
         <div className="absolute inset-0">
-          {panel.dialogues?.slice(0, 2).map((dialogue, dialogueIndex) => (
-            <div
-              key={dialogue.id}
-              className="absolute bg-white bg-opacity-90 rounded-lg px-2 py-1 text-xs max-w-24 truncate shadow-md"
-              style={{
-                left: `${20 + dialogueIndex * 30}%`,
-                top: `${30 + dialogueIndex * 20}%`,
-                transform: "translate(-50%, -50%)",
-              }}
-            >
-              {dialogue.content.substring(0, 20)}...
-            </div>
-          ))}
+          {panel.dialogues
+            ?.slice(0, 2)
+            .map((dialogue: any, dialogueIndex: number) => (
+              <div
+                key={dialogue.id}
+                className="absolute bg-white bg-opacity-90 rounded-lg px-2 py-1 text-xs max-w-24 truncate shadow-md"
+                style={{
+                  left: `${20 + dialogueIndex * 30}%`,
+                  top: `${30 + dialogueIndex * 20}%`,
+                  transform: "translate(-50%, -50%)",
+                }}
+              >
+                {dialogue.content.substring(0, 20)}...
+              </div>
+            ))}
         </div>
       </div>
 
