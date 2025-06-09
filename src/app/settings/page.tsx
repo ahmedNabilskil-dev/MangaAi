@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
 import {
   BookMarked,
+  BookOpen,
   Home,
   Image as ImageIcon,
   Key,
@@ -130,6 +131,13 @@ const SettingsPage = () => {
             isActive={true}
             isSidebarOpen={isSidebarOpen}
             href="/settings"
+          />
+          <SidebarItem
+            icon={<BookOpen className="h-5 w-5" />}
+            text="Documentation"
+            isActive={false}
+            isSidebarOpen={isSidebarOpen}
+            href="/documentation"
           />
           <SidebarItem
             icon={<Shield className="h-5 w-5" />}

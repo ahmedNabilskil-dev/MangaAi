@@ -7,7 +7,7 @@ interface ImgBBResponse {
 }
 
 export class ImageStorage {
-  private static STORAGE_KEY = "image_api_key";
+  private static STORAGE_KEY = "image_hosting_api_key";
 
   /**
    * Set the API key in local storage

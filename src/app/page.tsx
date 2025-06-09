@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   BookMarked,
+  BookOpen,
   Home,
   Info,
   Key,
@@ -110,6 +111,13 @@ const HomePage = () => {
             isActive={false}
             isSidebarOpen={isSidebarOpen}
             href="/settings"
+          />
+          <SidebarItem
+            icon={<BookOpen className="h-5 w-5" />}
+            text="Documentation"
+            isActive={false}
+            isSidebarOpen={isSidebarOpen}
+            href="/documentation"
           />
           <SidebarItem
             icon={<Shield className="h-5 w-5" />}

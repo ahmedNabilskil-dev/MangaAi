@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   BookMarked,
+  BookOpen,
   CheckCircle,
   Eye,
   Home,
@@ -74,6 +75,13 @@ const TermsPage = () => {
             isActive={false}
             isSidebarOpen={isSidebarOpen}
             href="/settings"
+          />
+          <SidebarItem
+            icon={<BookOpen className="h-5 w-5" />}
+            text="Documentation"
+            isActive={false}
+            isSidebarOpen={isSidebarOpen}
+            href="/documentation"
           />
           <SidebarItem
             icon={<Shield className="h-5 w-5" />}
