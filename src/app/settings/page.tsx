@@ -87,6 +87,7 @@ const SettingsPage = () => {
       localStorage.setItem("image-api-key", imageSettings.apiKey);
 
       localStorage.setItem("image_hosting_api_key", imgbbSettings.apiKey);
+      window.location.reload();
     }
   };
 
