@@ -14,6 +14,7 @@ import {
   Plus,
   Send,
   Sparkles,
+  Trash,
   User,
   X,
 } from "lucide-react";
@@ -138,47 +139,65 @@ export default function ChatBox() {
           ? [{ text: "Create next chapter", icon: Plus }]
           : [{ text: "Create first chapter", icon: Plus }];
 
-      case "chapter":
+      case "chapter": {
         const hasScenes = !!(nodeData.properties as any)?.scenes?.length;
-        return hasScenes
-          ? [
-              {
-                text: "Create remaining scenes for this chapter",
-                icon: FileText,
-              },
-              { text: "Create next scene for this chapter", icon: Plus },
-            ]
-          : [
-              { text: "Create all scenes for this chapter", icon: FileText },
-              { text: "Create first scene for this chapter", icon: Plus },
-            ];
+        return [
+          ...(hasScenes
+            ? [
+                {
+                  text: "Create remaining scenes for this chapter",
+                  icon: FileText,
+                },
+                { text: "Create next scene for this chapter", icon: Plus },
+              ]
+            : [
+                { text: "Create all scenes for this chapter", icon: FileText },
+                { text: "Create first scene for this chapter", icon: Plus },
+              ]),
+          { text: "Delete this chapter", icon: Trash },
+        ];
+      }
 
-      case "scene":
+      case "scene": {
         const hasPanels = !!(nodeData.properties as any)?.panels?.length;
-        return hasPanels
-          ? [
-              {
-                text: "Create remaining panels for this scene with dialogs",
-                icon: FileText,
-              },
-              { text: "Create next panel with dialogs", icon: Plus },
-            ]
-          : [
-              {
-                text: "Create all panels for this scene with dialogs",
-                icon: FileText,
-              },
-              { text: "Create first panel with dialogs", icon: Plus },
-            ];
+        return [
+          ...(hasPanels
+            ? [
+                {
+                  text: "Create remaining panels for this scene with dialogs",
+                  icon: FileText,
+                },
+                { text: "Create next panel with dialogs", icon: Plus },
+              ]
+            : [
+                {
+                  text: "Create all panels for this scene with dialogs",
+                  icon: FileText,
+                },
+                { text: "Create first panel with dialogs", icon: Plus },
+              ]),
+          { text: "Delete this scene", icon: Trash },
+        ];
+      }
 
       case "panel":
         return [
           { text: "Generate image for this panel", icon: Image },
           { text: "Create dialogs for this panel", icon: FileText },
+          { text: "Delete this panel", icon: Trash },
+        ];
+
+      case "dialog":
+        return [
+          { text: "Edit this dialog", icon: FileText },
+          { text: "Delete this dialog", icon: Trash },
         ];
 
       case "character":
-        return [{ text: "Generate image for this character", icon: Image }];
+        return [
+          { text: "Generate image for this character", icon: Image },
+          { text: "Delete this character", icon: Trash },
+        ];
 
       default:
         return [];
@@ -368,27 +387,28 @@ export default function ChatBox() {
         </div>
       )}
 
-      {/* Suggested Actions */}
       {suggestedActions.length > 0 && (
-        <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
-          <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-            Quick actions:
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {suggestedActions.map((action, index) => {
-              const IconComponent = action.icon;
-              return (
-                <button
-                  key={index}
-                  onClick={() => handleSuggestionClick(action.text)}
-                  disabled={isLoading}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-full text-xs font-medium hover:bg-blue-200 dark:hover:bg-blue-900/70 transition-colors disabled:opacity-50"
-                >
-                  <IconComponent className="w-3 h-3" />
-                  {action.text}
-                </button>
-              );
-            })}
+        <div className="flex justify-center px-4 py-6 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
+          <div className="w-full max-w-md">
+            <div className="text-base font-semibold text-center text-gray-700 dark:text-gray-200 mb-4">
+              Quick Actions
+            </div>
+            <div className="flex flex-col gap-3">
+              {suggestedActions.map((action, index) => {
+                const IconComponent = action.icon;
+                return (
+                  <button
+                    key={index}
+                    onClick={() => handleSuggestionClick(action.text)}
+                    disabled={isLoading}
+                    className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  >
+                    <IconComponent className="w-5 h-5" />
+                    {action.text}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
