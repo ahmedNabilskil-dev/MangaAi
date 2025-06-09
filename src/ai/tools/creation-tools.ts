@@ -13,6 +13,7 @@ import {
   getSceneForContext,
   listCharacters,
 } from "@/services/data-service";
+import { Character } from "@/types/entities";
 import { MangaStatus } from "@/types/enums";
 import {
   chapterSchema,
@@ -233,6 +234,88 @@ export const createPanelTool = ai.defineTool(
 );
 
 // --- Create Panel Dialogue Tool ---
+export const createPanelDialoguesTool = ai.defineTool(
+  {
+    name: "createPanelDialogues",
+    description:
+      "Creates multiple dialogue entries associated with a specific panel.",
+    inputSchema: z.object({
+      panelId: z.string().describe("The ID of the parent panel."),
+      dialogues: z
+        .array(
+          panelDialogueSchema
+            .omit({
+              id: true,
+              createdAt: true,
+              updatedAt: true,
+              isAiGenerated: true,
+              panelId: true,
+              speaker: true,
+            })
+            .extend({
+              speakerName: z
+                .string()
+                .optional()
+                .describe("Name of the character speaking."),
+            })
+        )
+        .describe("Array of dialogues to create"),
+    }),
+    outputSchema: z
+      .array(z.string())
+      .describe("The IDs of the newly created dialogues."),
+  },
+  async (input) => {
+    try {
+      const { panelId, dialogues } = input;
+
+      // Verify panel exists
+      const panelExists = await getPanelForContext(panelId);
+      if (!panelExists) {
+        throw new Error(`Parent panel ${panelId} not found.`);
+      }
+
+      // Get project and characters once (optimization)
+      const projectId = await getProjectIdForContext({ panelId });
+      let characters: Character[] = [];
+      if (projectId) {
+        characters = await listCharacters(projectId);
+      }
+
+      // Process all dialogues
+      const createdIds = await Promise.all(
+        dialogues.map(async (dialogueInput) => {
+          let speakerId: string | undefined | null = null;
+
+          // Find speaker if name was provided
+          if (dialogueInput.speakerName && projectId) {
+            const found = characters.find(
+              (c) =>
+                c.name.toLowerCase() ===
+                dialogueInput.speakerName?.toLowerCase()
+            );
+            speakerId = found?.id;
+          }
+
+          // Create the dialogue
+          const dialogue = await createPanelDialogueService({
+            ...dialogueInput,
+            panelId,
+            speakerId,
+            isAiGenerated: true,
+          });
+
+          return dialogue.id;
+        })
+      );
+
+      return createdIds;
+    } catch (error: any) {
+      throw new Error(`Failed to create dialogues: ${error.message}`);
+    }
+  }
+);
+
 export const createPanelDialogueTool = ai.defineTool(
   {
     name: "createPanelDialogue",

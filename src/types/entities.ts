@@ -163,9 +163,9 @@ export interface Panel {
   order: number;
   imageUrl?: string;
   panelContext: {
-    action: string;
+    action?: string;
     pose?: string;
-    characterPoses: {
+    characterPoses?: {
       // Now mandatory
       characterName: string;
       pose: string;
@@ -176,34 +176,34 @@ export interface Panel {
       physicalState?: string;
       gestureDetails?: string;
     }[];
-    emotion: string; // Now mandatory
-    cameraAngle:
+    emotion?: string; // Now mandatory
+    cameraAngle?:
       | "close-up"
       | "medium"
       | "wide"
       | "bird's eye"
       | "low angle"
       | "extreme close-up";
-    shotType: "action" | "reaction" | "establishing" | "detail" | "transition";
-    backgroundDescription: string; // Enhanced with full consistency details
+    shotType?: "action" | "reaction" | "establishing" | "detail" | "transition";
+    backgroundDescription?: string; // Enhanced with full consistency details
     backgroundImageUrl?: string;
-    lighting: string; // Complete lighting description
-    effects: string[];
-    dramaticPurpose: string;
-    narrativePosition: string;
+    lighting?: string; // Complete lighting description
+    effects?: string[];
+    dramaticPurpose?: string;
+    narrativePosition?: string;
   };
   sceneId: string;
-  characterIds: string[];
+  characterIds?: string[];
   isAiGenerated: boolean;
-  aiPrompt: string; // Now complete and mandatory for direct generation
-  negativePrompt: string;
+  aiPrompt?: string; // Now complete and mandatory for direct generation
+  negativePrompt?: string;
   consistencyElements?: {
     // New field for tracking consistency
-    characterTemplates: Record<string, string>;
-    environmentTemplate: string;
-    lightingTemplate: string;
-    styleTemplate: string;
-    propRegistry: string[];
+    characterTemplates?: Record<string, string>;
+    environmentTemplate?: string;
+    lightingTemplate?: string;
+    styleTemplate?: string;
+    propRegistry?: string[];
   };
   createdAt: Date;
   updatedAt: Date;

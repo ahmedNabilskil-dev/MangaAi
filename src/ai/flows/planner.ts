@@ -216,6 +216,7 @@ For "generateContent" action, use this mapping:
    - parentId: [scene ID]
    - contentType: "panel"
 
+
 # CRITICAL ID EXTRACTION RULES
 
 ## For "updateContent" action:

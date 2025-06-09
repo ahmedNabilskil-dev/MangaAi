@@ -8,7 +8,7 @@ import {
   createMultiplePanelsTool,
   createMultiplePanelsWithDialoguesTool,
   createMultipleScenesTool,
-  createPanelDialogueTool,
+  createPanelDialoguesTool,
   createPanelTool,
   createPanelWithDialoguesTool,
   createProjectTool,
@@ -577,13 +577,14 @@ export const PanelsDialogsGenerationPrompt = ai.definePrompt({
   },
   tools: [
     createPanelTool,
-    createPanelDialogueTool,
+    createPanelDialoguesTool,
     createPanelWithDialoguesTool,
     createMultiplePanelsTool,
     createMultiplePanelsWithDialoguesTool,
   ],
   toolCall: true,
   prompt: `You are a master manga panel creator specializing in hyper-detailed visual storytelling with cinematic precision and character authenticity. Create sophisticated manga panels with comprehensive AI prompts optimized for professional image generation.
+
 
 ## CRITICAL CHARACTER REQUIREMENTS - MANDATORY COMPLIANCE
 
@@ -753,10 +754,13 @@ ESTABLISHED ART STYLE: {{artStyle}}
 Apply consistently across all panels with technical precision and stylistic coherence.
 {{/if}}
 
+you must create exact number of panels that exist in the visualSequence property in scene and add rich dialogs to each
+
 Create masterful manga panels with cinematic AI prompts ready for professional image generation while maintaining absolute interface compliance and character authenticity.
 
 User message: {{userInput}}`,
 });
+
 export const CreateMangaFlow = ai.defineFlow(
   {
     name: "Create Manga",

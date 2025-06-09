@@ -510,7 +510,7 @@ export const panelSchema = z
       .uuid()
       .optional()
       .describe("Unique identifier for the panel"),
-    order: z.number().int().min(0).describe("Sequence position within scene"),
+    order: z.number().describe("Sequence position within scene"),
     imageUrl: z
       .string()
       .url()
@@ -519,26 +519,23 @@ export const panelSchema = z
 
     // Composition
     panelContext: z.object({
-      action: z.string().describe("Primary action occurring"),
-      pose: z.string().describe("Character stance/positioning"),
+      action: z.string().optional().describe("Primary action occurring"),
       characterPoses: z
         .array(
           z.object({
             characterName: z.string().describe("Name of character"),
             pose: z.string().describe("Specific pose description"),
             expression: z.string().describe("Facial expression"),
-            clothing: z
-              .string()
-
-              .describe("Complete clothing description"),
-            props: z.array(z.string()),
-            spatialPosition: z.string(),
-            physicalState: z.string(),
-            gestureDetails: z.string(),
+            clothing: z.string().describe("Complete clothing description"),
+            props: z.array(z.string()).optional(),
+            spatialPosition: z.string().optional(),
+            physicalState: z.string().optional(),
+            gestureDetails: z.string().optional(),
           })
         )
+        .optional()
         .describe("Detailed character positioning"),
-      emotion: z.string().describe("Dominant emotional tone"),
+      emotion: z.string().optional().describe("Dominant emotional tone"),
       cameraAngle: z
         .enum([
           "close-up",
@@ -548,42 +545,63 @@ export const panelSchema = z
           "low angle",
           "extreme close-up",
         ])
+        .optional()
         .describe("Perspective of view"),
       shotType: z
         .enum(["action", "reaction", "establishing", "detail", "transition"])
+        .optional()
         .describe("Type of visual framing"),
       backgroundDescription: z
         .string()
+        .optional()
         .describe("Backdrop details with full consistency details"),
 
-      lighting: z.string().describe("Complete illumination description"),
-      effects: z.array(z.string()).describe("Special visual effects"),
-      dramaticPurpose: z.string().describe("Narrative function"),
-      narrativePosition: z.string().describe("Placement within story flow"),
+      lighting: z
+        .string()
+        .optional()
+        .describe("Complete illumination description"),
+      effects: z
+        .array(z.string())
+        .optional()
+        .describe("Special visual effects"),
+      dramaticPurpose: z.string().optional().describe("Narrative function"),
+      narrativePosition: z
+        .string()
+        .optional()
+        .describe("Placement within story flow"),
     }),
 
     // Relationships
     sceneId: z.string().uuid().describe("ID of the parent scene"),
-    characterIds: z.array(z.string()).describe("IDs of characters featured"),
+    characterIds: z
+      .array(z.string())
+      .optional()
+      .describe("IDs of characters featured"),
 
     // Generation
     isAiGenerated: z
       .boolean()
       .default(true)
       .describe("Whether panel was automatically generated"),
-    aiPrompt: z.string().describe("Complete prompt for direct generation"),
-    negativePrompt: z.string().describe("Negative prompt for image generation"),
+    aiPrompt: z
+      .string()
+      .optional()
+      .describe("Complete prompt for direct generation"),
+    negativePrompt: z
+      .string()
+      .optional()
+      .describe("Negative prompt for image generation"),
 
     // Consistency
     consistencyElements: z
       .object({
-        characterTemplates: z.record(z.string()),
-        environmentTemplate: z.string(),
-        lightingTemplate: z.string(),
-        styleTemplate: z.string(),
-        propRegistry: z.array(z.string()),
-        continuityNotes: z.string(),
+        characterTemplates: z.record(z.string()).optional(),
+        environmentTemplate: z.string().optional(),
+        lightingTemplate: z.string().optional(),
+        styleTemplate: z.string().optional(),
+        propRegistry: z.array(z.string()).optional(),
       })
+      .optional()
       .describe("Elements for maintaining visual consistency"),
 
     // Timestamps
