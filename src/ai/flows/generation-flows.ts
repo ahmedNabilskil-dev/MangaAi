@@ -397,6 +397,29 @@ export const SceneGenerationPrompt = ai.definePrompt({
     - **colorPalette**: Array of dominant colors for scene consistency
     - **atmosphericEffects**: Array of atmospheric elements (fog, rain, dust, etc.)
 
+## CRITICAL OUTFIT CONTINUITY SYSTEM
+
+### INTER-SCENE OUTFIT CONSISTENCY RULES (MANDATORY)
+- **LOGICAL CONTINUITY**: Characters maintain same outfits across related scenes unless logically justified
+- **LOCATION-BASED LOGIC**: Outfit changes only occur when story logic demands (sports, formal events, home/school, weather changes)
+- **CONSISTENCY TRACKING**: Previous scene outfits MUST be referenced and maintained
+- **ZERO ARBITRARY CHANGES**: No random outfit variations without narrative justification
+
+### OUTFIT CHANGE AUTHORIZATION MATRIX
+**ALLOWED CHANGES:**
+- School uniform → Sports/PE uniform (physical education)
+- Casual clothes → Formal wear (events, ceremonies)
+- Day clothes → Sleepwear (bedtime scenes)
+- Clean clothes → Work clothes (labor, training)
+- Dry clothes → Wet clothes (rain, swimming)
+- Seasonal changes (winter coat added/removed)
+
+**FORBIDDEN CHANGES:**
+- Random color variations of same outfit type
+- Arbitrary style changes within same location/time
+- Unexplained accessory additions/removals
+- Inconsistent fabric or pattern changes
+
 ## TOOL SELECTION
 - SINGLE scene: Use createSceneTool
 - MULTIPLE scenes: Use createMultipleScenesTool (PREFERRED for comprehensive chapter coverage)
@@ -541,7 +564,11 @@ export const PanelsDialogsGenerationPrompt = ai.definePrompt({
         .any()
         .optional()
         .describe("scene context with enhanced visual sequence"),
-      characters: z.array(z.any()).optional().describe("character information"),
+      characters: z
+        .array(z.any())
+        .describe(
+          "REQUIRED: Complete character information with exact names and IDs"
+        ),
       artStyle: z
         .string()
         .optional()
@@ -556,191 +583,177 @@ export const PanelsDialogsGenerationPrompt = ai.definePrompt({
     createMultiplePanelsWithDialoguesTool,
   ],
   toolCall: true,
-  prompt: `You create detailed manga panels with comprehensive AI prompts and sophisticated dialogue integration, optimized for direct image generation.
+  prompt: `You are a master manga panel creator specializing in hyper-detailed visual storytelling with cinematic precision and character authenticity. Create sophisticated manga panels with comprehensive AI prompts optimized for professional image generation.
 
-## CORE REQUIREMENTS
+## CRITICAL CHARACTER REQUIREMENTS - MANDATORY COMPLIANCE
 
-### ENHANCED PANEL STRUCTURE (INTERFACE COMPLIANT)
-- **order**: Sequential position
-- **aiPrompt**: COMPLETE detailed visual description for direct image generation (MANDATORY)
-- **negativePrompt**: Elements to avoid in image generation
+### CHARACTER NAME & ID ENFORCEMENT
+- **EXACT MATCH REQUIRED**: Character names MUST match exactly from provided characters array
+- **CHARACTER ID VALIDATION**: All characterIds MUST correspond to actual character.id values
+- **NO VARIATIONS**: No nicknames, abbreviations, or alternative names allowed
+- **CASE SENSITIVE**: Maintain exact capitalization and spelling
+- **MANDATORY PRESENCE**: If characters exist in scene, they MUST be referenced correctly
+
+### CHARACTER VALIDATION RULES
+CORRECT: characterName: "Akira Tanaka", characterIds: ["akira_tanaka"]
+INCORRECT: characterName: "Akira", characterIds: ["akira"]
+INCORRECT: characterName: "Tanaka", characterIds: ["tanaka"] 
+INCORRECT: characterName: "AKIRA TANAKA", characterIds: ["AKIRA_TANAKA"]
+INCORRECT: characterName: "AKIRA Yamato", characterIds: ["akira_Yamato"]
+
+## ENHANCED PANEL STRUCTURE (STRICT INTERFACE COMPLIANCE)
+
+### MANDATORY CORE FIELDS
+- **order**: Sequential position (integer, required)
+- **aiPrompt**: ULTRA-DETAILED visual description for direct image generation (MANDATORY, minimum 200 words)
+- **negativePrompt**: Comprehensive elements to avoid (MANDATORY)
+- **characterIds**: Array of EXACT character IDs present (REQUIRED when characters appear)
+
+### PANEL CONTEXT (EXACT INTERFACE STRUCTURE)
 - **panelContext**: Complete panel environment data with EXACT interface structure:
-  * **action**: Main action happening in panel
+  * **action**: Specific, detailed action happening in panel (REQUIRED)
   * **pose**: Optional general pose description  
-  * **characterPoses**: Array of detailed character pose objects (MANDATORY):
-    - characterName: string
-    - pose: string
-    - expression: string
-    - clothing: string (complete clothing description)
-    - props: string[] (optional)
-    - spatialPosition: string (optional)
-  * **emotion**: Emotional context (MANDATORY)
-  * **cameraAngle**: "close-up" | "medium" | "wide" | "bird's eye" | "low angle" | "extreme close-up"
-  * **shotType**: "action" | "reaction" | "establishing" | "detail" | "transition"
-  * **backgroundDescription**: Enhanced with full consistency details
-  * **backgroundImageUrl**: Optional background image URL
-  * **lighting**: Complete lighting description
-  * **effects**: Array of visual effects
-  * **dramaticPurpose**: Narrative purpose of panel
-  * **narrativePosition**: Position in story flow
-- **characterIds**: Array of character IDs present
-- **consistencyElements**: Optional consistency tracking:
-  * characterTemplates: Record<string, string>
-  * environmentTemplate: string
-  * lightingTemplate: string
-  * styleTemplate: string
-  * propRegistry: string[]
+  * **characterPoses**: Array of hyper-detailed character pose objects (MANDATORY when characters present):
+    - **characterName**: EXACT character name from characters array (REQUIRED)
+    - **pose**: Comprehensive body positioning, stance, and movement (REQUIRED)
+    - **expression**: Detailed facial expression with micro-expressions (REQUIRED)
+    - **clothing**: Complete outfit description with materials, condition, fit, and style (REQUIRED)
+    - **props**: Detailed array of held/interacting objects (optional but encouraged)
+    - **spatialPosition**: Precise position relative to scene and other characters (REQUIRED)
+    - **physicalState**: Energy level, fatigue, injuries, breathing pattern (REQUIRED)
+    - **gestureDetails**: Hand positions, finger placement, body language nuances (REQUIRED)
+  * **emotion**: Multi-layered emotional atmosphere affecting all visual elements (MANDATORY)
+  * **cameraAngle**: EXACT VALUE: "close-up" | "medium" | "wide" | "bird's eye" | "low angle" | "extreme close-up" | "dutch angle" | "overhead"
+  * **shotType**: EXACT VALUE: "action" | "reaction" | "establishing" | "detail" | "transition" | "dramatic" | "intimate"
+  * **backgroundDescription**: Ultra-enhanced environment with architectural precision (REQUIRED)
+  * **lighting**: Master-level lighting setup with technical precision (REQUIRED)
+  * **effects**: Comprehensive array of visual effects with intensity levels (REQUIRED)
+  * **dramaticPurpose**: Clear narrative purpose and emotional impact (REQUIRED)
+  * **narrativePosition**: Specific position in story flow and pacing (REQUIRED)
+  * **atmosphericElements**: Weather, air quality, environmental mood (REQUIRED)
+  * **compositionalNotes**: Rule of thirds, leading lines, visual balance (REQUIRED)
 
-### AI PROMPT REQUIREMENTS - CRITICAL
+### ULTRA-DETAILED AI PROMPT REQUIREMENTS - CRITICAL
 
-The **aiPrompt** field must contain ALL elements needed for direct image generation in a single, comprehensive prompt:
+The **aiPrompt** field must be a COMPREHENSIVE, CINEMATIC description containing ALL visual elements in precise detail:
 
-**STRUCTURE**: Single paragraph combining all visual elements:
-"[SHOT_TYPE] of [CHARACTER_DETAILS] [ACTION_DESCRIPTION] in [ENVIRONMENT_DETAILS] with [LIGHTING_SETUP], [ATMOSPHERIC_ELEMENTS], [COMPOSITION_NOTES], [MATERIAL_SPECIFICS], [COLOR_PALETTE], manga style, high quality"
+**ENHANCED STRUCTURE**: Multi-layered paragraph combining all visual elements with technical precision:
+"[DETAILED_SHOT_TYPE] capturing [ULTRA_SPECIFIC_CHARACTER_DETAILS] performing [PRECISE_ACTION_DESCRIPTION] within [ARCHITECTURAL_ENVIRONMENT_DETAILS] illuminated by [TECHNICAL_LIGHTING_SETUP], featuring [ATMOSPHERIC_CONDITIONS], composed with [ADVANCED_COMPOSITION_TECHNIQUES], showcasing [MATERIAL_SPECIFICATIONS], utilizing [SOPHISTICATED_COLOR_THEORY], executed in [REFINED_MANGA_STYLE] with [QUALITY_SPECIFICATIONS]"
 
-### AI PROMPT EXAMPLES
+### MASTER-LEVEL AI PROMPT EXAMPLES
 
-**ACTION PANEL**:
-"Dynamic medium shot from low angle of armored knight in battle-worn plate armor with blue and silver heraldry, sword raised high in both hands with muscles tensed and determined facial expression, cape flowing behind, bringing sword down in powerful overhead strike with sparks showering from blade contact, set in ancient stone courtyard with weathered flagstones and moss-covered walls, dramatic torchlight from mounted sconces creating chiaroscuro lighting with dancing shadows, light rain beginning with visible water droplets and mist rising, low angle emphasizing heroic power with diagonal sword composition, scratched metal armor reflecting torchlight and rough stone textures, dominant blues and silvers with warm orange torchlight against gray stone, manga style, high quality"
+**CINEMATIC ACTION PANEL**:
+"Dynamic low-angle medium shot with dutch angle tilt capturing battle-hardened samurai warrior Kenji Yamamoto in traditional midnight-blue hakama with silver threading and battle-worn chest armor showing recent sword scratches, his muscular frame coiled in perfect iaijutsu stance with right hand gripping katana handle at hip level and left hand positioned for swift draw, intense focused expression with narrowed dark eyes reflecting firelight and clenched jaw showing determination mixed with controlled rage, performing lightning-fast sword draw with blade creating silver arc of motion blur and sparks trailing from previous clash, set within ancient temple courtyard featuring weathered granite flagstones with moss filling cracks, towering wooden pillars with intricate dragon carvings casting long shadows, paper lanterns hanging from curved eaves swaying in night breeze, illuminated by dramatic chiaroscuro lighting from full moon filtering through storm clouds combined with warm amber glow from temple braziers creating dancing shadows across carved surfaces, light rain beginning with visible droplets catching moonlight and creating atmospheric mist rising from heated stone, low angle emphasizing heroic power with diagonal sword composition following rule of thirds, textural contrast between smooth silk fabric and rough weathered stone and polished steel reflecting ambient light, sophisticated color palette dominated by deep indigo blues and silver whites contrasted with warm amber temple lighting against cool gray stone architecture, rendered in classical manga style with precise line work and dramatic tonal contrasts, ultra-high quality professional illustration"
 
-**DIALOGUE PANEL**:
+**INTIMATE DIALOGUE PANEL**:
+"Extreme close-up portrait shot focusing on detective Sarah Chen's weathered face and intelligent green eyes showing years of experience mixed with current concern, wearing signature charcoal gray wool trench coat with collar turned up against evening chill, subtle worry lines around eyes and slight downturn of mouth indicating internal conflict, holding small transparent evidence bag containing mysterious silver pendant up to eye level for careful examination with delicate fingers showing methodical precision, positioned within sterile police station basement featuring concrete walls with visible texture and age stains, institutional fluorescent lighting creating harsh overhead illumination with additional focused desk lamp creating pool of intense white light on evidence, sterile indoor atmosphere with dust particles visible in light beams and slight humidity from basement conditions, intimate framing emphasizing character's analytical process with evidence bag positioned at intersection of rule-of-thirds lines, textural interplay between rough wool coat fabric and smooth glass evidence container and hard concrete surfaces, restrained color palette of cool grays and institutional whites with warm yellow desk lamp creating focal point on character's concentrated expression, executed in realistic manga style with detailed cross-hatching and subtle gradations, professional detective story illustration quality"
 
-"Close-up shot focusing on detective's face and upper torso in weathered gray trench coat with collar turned up, focused expression with furrowed brow, holding small evidence bag up to eye level for examination, police station basement with concrete walls and fluorescent lighting, harsh overhead fluorescent creating stark shadows with desk lamp focused illumination, sterile indoor atmosphere with dust particles in light, intimate framing for examination moment with evidence bag clearly visible, rough wool coat texture and smooth concrete walls, muted grays and blacks with harsh white fluorescent light, manga style, high quality"
+## ADVANCED CHARACTER POSE REQUIREMENTS
 
-## PANEL CONTEXT STRUCTURE (EXACT INTERFACE MATCH)
-
-### CHARACTER POSES (MANDATORY ARRAY)
-Each character must have complete pose object:
+### MANDATORY CHARACTER POSE STRUCTURE
+Each character MUST have ultra-detailed pose object with ALL fields:
+javascript
 {
-  characterName: "Character's name",
-  pose: "Detailed body positioning and stance",
-  expression: "Facial expression and emotional state",
-  clothing: "Complete outfit description with materials and condition",
-  props: ["item1", "item2"], // Optional array
-  spatialPosition: "Position relative to scene and other characters" // Optional
+  characterName: "EXACT_CHARACTER_NAME_FROM_ARRAY", // REQUIRED - NO VARIATIONS
+  pose: "Comprehensive body positioning including spine alignment, weight distribution, muscle tension, and movement dynamics",
+  expression: "Multi-layered facial expression including primary emotion, secondary micro-expressions, eye direction, mouth position, and eyebrow positioning",
+  clothing: "Complete outfit specification including fabric types, fit details, wear patterns, color variations, accessories, and current condition",
+  props: ["detailed_item_1", "specific_object_2"], // Optional but encouraged for story depth
+  spatialPosition: "Precise 3D positioning relative to environment boundaries and other characters with distance specifications",
+  physicalState: "Current energy level, breathing pattern, muscle tension, fatigue indicators, and any physical conditions",
+  gestureDetails: "Specific hand positions, finger placement, arm angles, shoulder positioning, and subtle body language cues"
 }
 
-### EMOTION CONTEXT (MANDATORY)
-Describe the overall emotional atmosphere of the panel affecting all visual elements.
+### CHARACTER CONSISTENCY VALIDATION
+- Cross-reference character appearance with provided character data
+- Maintain clothing consistency unless story requires changes
+- Preserve character personality through body language
+- Ensure character relationships reflected in spatial positioning
 
-### CAMERA ANGLE OPTIONS
-Must use exact values: "close-up", "medium", "wide", "bird's eye", "low angle", "extreme close-up"
+## SOPHISTICATED DIALOGUE STRUCTURE
 
-### SHOT TYPE OPTIONS  
-Must use exact values: "action", "reaction", "establishing", "detail", "transition"
+### ENHANCED DIALOGUE PROPERTIES
+- **content**: Dialogue text with character voice authenticity (REQUIRED)
+- **order**: Sequential position in panel reading flow (REQUIRED)
+- **style**: Advanced visual styling object (REQUIRED):
+  * **bubbleType**: "normal" | "thought" | "scream" | "whisper" | "narration" | "electronic" | "telepathic" | "flashback"
+  * **fontSize**: "x-small" | "small" | "medium" | "large" | "x-large" | "dynamic"
+  * **fontType**: Specific font family matching character personality
+  * **emphasis**: Boolean for text weight and styling
+  * **position**: {x: number, y: number} precise bubble placement coordinates
+  * **bubbleStyle**: Custom bubble appearance parameters
+- **emotion**: Emotional undertone affecting visual presentation (REQUIRED)
+- **subtextNote**: Hidden meanings, psychology, and character development notes (ENCOURAGED)
+- **speakerId**: EXACT character ID from characters array (REQUIRED for character dialogue, null for narration)
+- **characterVoice**: Unique speech patterns and vocabulary reflecting character personality (REQUIRED)
 
-### BACKGROUND DESCRIPTION
-Enhanced description including:
-- Physical environment details
-- Material specifications
-- Architectural elements
-- Consistency anchors from previous panels
-- Environmental storytelling elements
+## MASTER-LEVEL CONSISTENCY ENFORCEMENT
 
-### LIGHTING REQUIREMENTS
-Complete lighting setup including:
-- Primary light sources
-- Secondary lighting
-- Shadow patterns
-- Atmospheric lighting effects
-- Color temperature and mood
+### PANEL-TO-PANEL CONTINUITY SYSTEMS
+- **Character Consistency**: Physical appearance, clothing state, accessories, injuries maintained via characterPoses
+- **Environmental Consistency**: Lighting conditions, weather, time of day, setting elements via backgroundDescription
+- **Lighting Consistency**: Light source positions, intensity, color temperature via lighting field
+- **Visual Consistency**: Art style, line weight, tonal values via consistencyElements
+- **Narrative Consistency**: Character development, emotional state, story progression
 
-### EFFECTS ARRAY
-Visual effects present in panel:
-- Particle effects
-- Motion lines
-- Impact effects
-- Atmospheric effects
-- Special visual elements
+### ADVANCED CONSISTENCY ELEMENTS TRACKING
+When provided, meticulously populate:
+- **characterTemplates**: Detailed visual template for each character ID including signature features
+- **environmentTemplate**: Comprehensive environment description with landmark details
+- **lightingTemplate**: Technical lighting setup with source specifications
+- **styleTemplate**: Art style consistency parameters and rendering techniques
+- **propRegistry**: Comprehensive catalog of props with condition and ownership tracking
+- **continuityNotes**: Panel-to-panel transition requirements and visual bridges
 
-## DIALOGUE STRUCTURE (EXACT INTERFACE MATCH)
+## PROFESSIONAL AI PROMPT OPTIMIZATION
 
-### PANEL DIALOGUE PROPERTIES
-- **content**: Dialogue text content
-- **order**: Sequential position in panel
-- **style**: Optional visual styling object:
-  * **bubbleType**: "normal" | "thought" | "scream" | "whisper" | "narration"
-  * **fontSize**: "x-small" | "small" | "medium" | "large" | "x-large"
-  * **fontType**: Font family string
-  * **emphasis**: Boolean for text emphasis
-  * **position**: {x: number, y: number} coordinates
-- **emotion**: Optional emotional context
-- **subtextNote**: Optional hidden meanings and psychology
-- **speakerId**: Optional character ID (null for narration)
+### MASTER PROMPT CONSTRUCTION RULES
+1. **COMPREHENSIVE SINGLE PARAGRAPH**: All elements seamlessly integrated (minimum 200 words)
+2. **ULTRA-SPECIFIC DETAILS**: Precise measurements, technical specifications, no ambiguous terms
+3. **MATERIAL MASTERY**: Include fabric weights, surface textures, material properties, wear patterns
+4. **ADVANCED LIGHTING INTEGRATION**: Technical lighting terms, shadow patterns, reflection properties
+5. **CINEMATIC COMPOSITION**: Professional camera techniques, framing rules, visual balance
+6. **STYLE SPECIFICATION**: Always conclude with "rendered in [specific manga style] with [quality level]"
+7. **SOPHISTICATED COLOR THEORY**: Include color temperature, saturation levels, harmonic relationships
+8. **ATMOSPHERIC INTEGRATION**: Weather effects, air quality, environmental storytelling
+9. **CHARACTER INTEGRATION**: Seamless character description woven throughout environmental context
+10. **DYNAMIC ACTION CLARITY**: Precise movement vectors, energy flow, impact visualization
+11. **EMOTIONAL RESONANCE**: Visual elements supporting emotional narrative
+12. **TECHNICAL PRECISION**: Professional illustration terminology and specifications
 
-## CONSISTENCY ENFORCEMENT
+### ENHANCED NEGATIVE PROMPT STRATEGY
+Comprehensive avoidance list including:
+- "blurred imagery, low resolution, anatomical distortions, extra or missing limbs, inconsistent lighting schemes, muddy color palettes, unclear compositions, western comic styling, photorealistic rendering, amateur 3d modeling, proportion errors, perspective mistakes, flat lighting, generic backgrounds, character inconsistencies, style mixing, poor line quality, digital artifacts, compression artifacts, watermarks, text overlays, UI elements, modern clothing anachronisms, cultural inaccuracies"
 
-### PANEL-TO-PANEL CONTINUITY
-- **Character Consistency**: Clothing, accessories, physical state maintained via characterPoses
-- **Environmental Consistency**: Setting elements stable via backgroundDescription
-- **Lighting Consistency**: Light sources maintained via lighting field
-- **Visual Consistency**: Style and composition via consistencyElements
-
-### CONSISTENCY ELEMENTS TRACKING
-When provided, populate:
-- **characterTemplates**: Map of character ID to visual template
-- **environmentTemplate**: Consistent environment description
-- **lightingTemplate**: Standard lighting setup
-- **styleTemplate**: Art style consistency notes
-- **propRegistry**: List of important props and objects
-
-## AI PROMPT OPTIMIZATION
-
-### PROMPT CONSTRUCTION RULES
-1. **SINGLE PARAGRAPH**: All elements in one flowing description
-2. **SPECIFIC DETAILS**: Precise visual information, no vague terms
-3. **MATERIAL SPECIFICS**: Include textures, surfaces, fabric details
-4. **LIGHTING INTEGRATION**: Lighting woven throughout description
-5. **COMPOSITION NOTES**: Camera angle and framing integrated naturally
-6. **STYLE SUFFIX**: Always end with "manga style, high quality"
-7. **COLOR SPECIFICATION**: Include dominant color palette
-8. **ATMOSPHERIC ELEMENTS**: Weather and environmental effects included
-9. **CHARACTER INTEGRATION**: Character details seamlessly integrated
-10. **ACTION CLARITY**: Clear movement and interaction descriptions
-
-### NEGATIVE PROMPT STRATEGY
-Include common issues to avoid:
-- "blurred, low quality, distorted anatomy, extra limbs, inconsistent lighting, muddy colors, unclear composition, western comic style, realistic photography, 3d render"
-
-## CONTEXT INTEGRATION
+## CONTEXT INTEGRATION SYSTEM
 
 {{#if projectContext}}
-Project: {{projectContext}}
+PROJECT FOUNDATION: {{projectContext}}
+Apply project-specific visual standards and narrative requirements throughout all panels.
 {{/if}}
 
 {{#if sceneContext}}
-Scene: {{sceneContext}}
-Visual Sequence Available: {{sceneContext.visualSequence}}
+SCENE FOUNDATION: {{sceneContext}}
+Enhanced Visual Sequence Available: {{sceneContext.visualSequence}}
+Maintain scene continuity and emotional progression across panel sequence.
 {{/if}}
 
 {{#if characters}}
-Characters: {{characters}} 
+CHARACTER REGISTRY: {{JSON.stringify(characters)}}
+CRITICAL: Use EXACT character names and IDs from this registry. No variations permitted.
+Character Validation Rules:
+- Match characterName exactly from characters array
+- Use precise character.id values for characterIds
+- Maintain character personality and appearance consistency
+- Reference character relationships and history
 {{/if}}
 
 {{#if artStyle}}
-Art Style: {{artStyle}} - Apply consistently across all panels
+ESTABLISHED ART STYLE: {{artStyle}}
+Apply consistently across all panels with technical precision and stylistic coherence.
 {{/if}}
 
-## GENERATION APPROACH
-
-1. **EXTRACT FROM VISUAL SEQUENCE**: Use enhanced visual sequence as foundation
-2. **BUILD AI PROMPT**: Create comprehensive single-paragraph prompt
-3. **STRUCTURE PANEL CONTEXT**: Fill exact interface fields with detailed information
-4. **CHARACTER POSES**: Create detailed pose objects for each character
-5. **DIALOGUE INTEGRATION**: Add appropriate dialogue with proper styling
-6. **CONSISTENCY TRACKING**: Populate consistency elements for continuity
-7. **VALIDATION**: Ensure all mandatory fields populated correctly
-
-## CRITICAL INTERFACE COMPLIANCE
-Ensure ALL generated panels strictly follow the Panel interface structure:
-- aiPrompt is mandatory and comprehensive for direct image generation  
-- panelContext.characterPoses must be array of complete pose objects
-- panelContext.emotion is mandatory string
-- cameraAngle and shotType use exact enum values
-- dialogues array follows PanelDialogue interface exactly
-- consistencyElements helps maintain visual continuity
-
-Create comprehensive panels with detailed AI prompts ready for direct image generation and high-quality manga production while maintaining strict interface compliance.
+Create masterful manga panels with cinematic AI prompts ready for professional image generation while maintaining absolute interface compliance and character authenticity.
 
 User message: {{userInput}}`,
 });

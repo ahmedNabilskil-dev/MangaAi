@@ -577,6 +577,8 @@ export const panelSchema = z
               .describe("Complete clothing description"),
             props: z.array(z.string()).optional(),
             spatialPosition: z.string().optional(),
+            physicalState: z.string().optional(),
+            gestureDetails: z.string().optional(),
           })
         )
         .describe("Detailed character positioning"),
@@ -645,6 +647,7 @@ export const panelSchema = z
         lightingTemplate: z.string().optional(),
         styleTemplate: z.string().optional(),
         propRegistry: z.array(z.string()).optional(),
+        continuityNotes: z.string().optional(),
       })
       .optional()
       .describe("Elements for maintaining visual consistency"),

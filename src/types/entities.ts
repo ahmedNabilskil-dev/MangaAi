@@ -173,6 +173,8 @@ export interface Panel {
       clothing: string; // Complete clothing description
       props?: string[];
       spatialPosition?: string;
+      physicalState?: string;
+      gestureDetails?: string;
     }[];
     emotion: string; // Now mandatory
     cameraAngle:
