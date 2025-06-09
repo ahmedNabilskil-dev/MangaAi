@@ -1,6 +1,6 @@
 "use client";
 
-import { SidebarItem } from "@/app/page";
+import SidebarItem from "@/components/side-item/SideItem";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import {

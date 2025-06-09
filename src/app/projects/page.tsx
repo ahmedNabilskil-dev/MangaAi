@@ -1,7 +1,7 @@
 "use client";
 
 import { CreateMangaFlow } from "@/ai/flows/generation-flows";
-import { SidebarItem } from "@/app/page";
+import SidebarItem from "@/components/side-item/SideItem";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import {
