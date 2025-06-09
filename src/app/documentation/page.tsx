@@ -14,6 +14,7 @@ import {
   Settings,
   Sparkles,
 } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 
 const steps = [
@@ -474,21 +475,25 @@ const DocumentationPage = () => {
                 features!
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button
-                  size="lg"
-                  className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-bold py-6 px-8 rounded-full shadow-lg hover:shadow-xl transition-all"
-                >
-                  <Settings className="mr-2 h-5 w-5" />
-                  Go to Settings
-                </Button>
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white py-6 px-8 rounded-full transition-all"
-                >
-                  <Sparkles className="mr-2 h-5 w-5" />
-                  Start Creating
-                </Button>
+                <Link href="/settings">
+                  <Button
+                    size="lg"
+                    className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-bold py-6 px-8 rounded-full shadow-lg hover:shadow-xl transition-all"
+                  >
+                    <Settings className="mr-2 h-5 w-5" />
+                    Go to Settings
+                  </Button>
+                </Link>
+                <Link href="/">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white py-6 px-8 rounded-full transition-all"
+                  >
+                    <Sparkles className="mr-2 h-5 w-5" />
+                    Start Creating
+                  </Button>
+                </Link>
               </div>
             </CardContent>
           </Card>
