@@ -93,22 +93,18 @@ export const mangaProjectSchema = z
       .describe("Official title of the manga series"),
     description: z
       .string()
-      .optional()
       .describe("Brief summary of the manga's premise and setting"),
     status: z
       .nativeEnum(MangaStatus)
       .describe("Current development phase of the project"),
     initialPrompt: z
       .string()
-      .optional()
       .describe("Original concept or inspiration for the manga"),
     genre: z
       .string()
-      .optional()
       .describe("Primary genre classification (e.g., shonen, shojo, seinen)"),
     artStyle: z
       .string()
-      .optional()
       .describe("Visual style description or artistic reference"),
     coverImageUrl: z
       .string()
@@ -117,7 +113,6 @@ export const mangaProjectSchema = z
       .describe("URL pointing to the cover artwork image"),
     targetAudience: z
       .enum(["children", "teen", "young-adult", "adult"])
-      .optional()
       .describe("Intended demographic readership"),
 
     // World Building
@@ -125,66 +120,44 @@ export const mangaProjectSchema = z
       .object({
         summary: z
           .string()
-          .optional()
           .describe("High-level overview of the manga's universe"),
         history: z
           .string()
-          .optional()
           .describe("Historical background and major past events"),
         society: z
           .string()
-          .optional()
           .describe("Cultural norms, social structures, and factions"),
         uniqueSystems: z
           .string()
-          .optional()
           .describe("Special rules governing magic, technology, or powers"),
       })
       .optional()
       .describe("Detailed setting information for the manga world"),
 
     // Narrative Elements
-    concept: z
-      .string()
-      .optional()
-      .describe("Core thematic idea or central conflict"),
+    concept: z.string().describe("Core thematic idea or central conflict"),
     plotStructure: z
       .object({
         incitingIncident: z
           .string()
-          .optional()
           .describe("Event that triggers the main storyline"),
-        plotTwist: z
-          .string()
-          .optional()
-          .describe("Major unexpected development"),
-        climax: z
-          .string()
-          .optional()
-          .describe("Pivotal confrontation or crisis point"),
-        resolution: z
-          .string()
-          .optional()
-          .describe("How the central conflict concludes"),
+        plotTwist: z.string().describe("Major unexpected development"),
+        climax: z.string().describe("Pivotal confrontation or crisis point"),
+        resolution: z.string().describe("How the central conflict concludes"),
       })
-      .optional()
       .describe("Key structural elements of the narrative"),
 
     themes: z
       .array(z.string())
-      .optional()
       .describe("Recurring ideas or messages explored"),
     motifs: z
       .array(z.string())
-      .optional()
       .describe("Recurring symbolic elements or imagery"),
     symbols: z
       .array(z.string())
-      .optional()
       .describe("Objects representing abstract concepts"),
     tags: z
       .array(z.string())
-      .optional()
       .describe("Keywords for categorization and discovery"),
 
     // Ownership
@@ -222,18 +195,11 @@ export const chapterSchema = z
       .string()
       .min(1, "Chapter title is required")
       .describe("Official title of the chapter"),
-    narrative: z
-      .string()
-      .optional()
-      .describe("Complete literary prose narrative"),
-    purpose: z
-      .string()
-      .optional()
-      .describe("Narrative function this chapter serves"),
-    tone: z.string().optional().describe("Dominant mood or atmosphere"),
+    narrative: z.string().describe("Complete literary prose narrative"),
+    purpose: z.string().describe("Narrative function this chapter serves"),
+    tone: z.string().describe("Dominant mood or atmosphere"),
     keyCharacters: z
       .array(z.string())
-      .optional()
       .describe("IDs of characters prominently featured"),
     coverImageUrl: z
       .string()
@@ -288,54 +254,54 @@ export const characterSchema = z
       .min(1, "Character name is required")
       .describe("Full name of the character"),
     age: z.number().int().optional().describe("Age in years (if applicable)"),
-    gender: z.string().optional().describe("Gender identity"),
+    gender: z.string().describe("Gender identity"),
 
     // Physical Attributes
     bodyAttributes: z
       .object({
-        height: z.string().optional().describe("Height measurement with units"),
+        height: z.string().describe("Height measurement with units"),
         bodyType: z
           .string()
-          .optional()
+
           .describe("General physique description"),
         proportions: z
           .string()
-          .optional()
+
           .describe("Notable proportional features"),
       })
-      .optional()
+
       .describe("Physical body characteristics"),
 
     facialAttributes: z
       .object({
-        faceShape: z.string().optional().describe("Shape of the face"),
-        skinTone: z.string().optional().describe("Skin color description"),
-        eyeColor: z.string().optional().describe("Color of eyes"),
-        eyeShape: z.string().optional().describe("Shape of eyes"),
-        noseType: z.string().optional().describe("Nose shape"),
-        mouthType: z.string().optional().describe("Mouth/lip shape"),
-        jawline: z.string().optional().describe("Jaw structure"),
+        faceShape: z.string().describe("Shape of the face"),
+        skinTone: z.string().describe("Skin color description"),
+        eyeColor: z.string().describe("Color of eyes"),
+        eyeShape: z.string().describe("Shape of eyes"),
+        noseType: z.string().describe("Nose shape"),
+        mouthType: z.string().describe("Mouth/lip shape"),
+        jawline: z.string().describe("Jaw structure"),
       })
-      .optional()
+
       .describe("Facial features"),
 
     hairAttributes: z
       .object({
-        hairColor: z.string().optional().describe("Color of hair"),
-        hairstyle: z.string().optional().describe("Style of hair"),
-        hairLength: z.string().optional().describe("Length of hair"),
-        hairTexture: z.string().optional().describe("Texture of hair"),
+        hairColor: z.string().describe("Color of hair"),
+        hairstyle: z.string().describe("Style of hair"),
+        hairLength: z.string().describe("Length of hair"),
+        hairTexture: z.string().describe("Texture of hair"),
         specialHairFeatures: z
           .string()
-          .optional()
+
           .describe("Notable hair characteristics"),
       })
-      .optional()
+
       .describe("Hair characteristics"),
 
     distinctiveFeatures: z
       .array(z.string())
-      .optional()
+
       .describe("Unique identifying physical traits"),
 
     // Behavioral Attributes
@@ -343,18 +309,18 @@ export const characterSchema = z
       .object({
         defaultExpression: z
           .string()
-          .optional()
+
           .describe("Character's typical facial expression"),
         emotionalRange: z
           .string()
-          .optional()
+
           .describe("Breadth of emotional expression"),
         facialTics: z
           .array(z.string())
-          .optional()
+
           .describe("Recurring facial movements"),
       })
-      .optional()
+
       .describe("Expressive characteristics"),
 
     // Style Attributes
@@ -362,57 +328,53 @@ export const characterSchema = z
       .object({
         defaultOutfit: z
           .string()
-          .optional()
+
           .describe("Primary clothing ensemble"),
         outfitVariations: z
           .array(z.string())
-          .optional()
+
           .describe("Alternate clothing sets"),
         colorPalette: z
           .array(z.string())
-          .optional()
+
           .describe("Character's color scheme"),
         accessories: z
           .array(z.string())
-          .optional()
+
           .describe("Regularly worn items"),
         signatureItem: z
           .string()
-          .optional()
+
           .describe("Distinctive carried/worn item"),
       })
-      .optional()
+
       .describe("Costuming and style"),
 
     physicalMannerisms: z
       .array(z.string())
-      .optional()
+
       .describe("Characteristic body movements"),
-    posture: z.string().optional().describe("Typical stance or bearing"),
+    posture: z.string().describe("Typical stance or bearing"),
 
     // Art Direction
     styleGuide: z
       .object({
-        artStyle: z
-          .string()
-          .optional()
-          .describe("Preferred artistic treatment"),
-        lineweight: z.string().optional().describe("Line art characteristics"),
-        shadingStyle: z.string().optional().describe("Shading technique"),
-        colorStyle: z.string().optional().describe("Coloring approach"),
+        artStyle: z.string().describe("Preferred artistic treatment"),
+        lineweight: z.string().describe("Line art characteristics"),
+        shadingStyle: z.string().describe("Shading technique"),
+        colorStyle: z.string().describe("Coloring approach"),
       })
-      .optional()
+
       .describe("Artistic guidelines"),
 
     // Narrative Attributes
     role: z
       .enum(["protagonist", "antagonist", "supporting", "minor"])
-      .optional()
       .describe("Narrative importance level"),
-    briefDescription: z.string().optional().describe("Short character summary"),
-    personality: z.string().optional().describe("Psychological profile"),
-    abilities: z.string().optional().describe("Special skills or powers"),
-    backstory: z.string().optional().describe("Historical background"),
+    briefDescription: z.string().describe("Short character summary"),
+    personality: z.string().describe("Psychological profile"),
+    abilities: z.string().describe("Special skills or powers"),
+    backstory: z.string().describe("Historical background"),
 
     // Visual References
     imgUrl: z.string().url().optional().describe("Primary reference image URL"),
@@ -426,11 +388,11 @@ export const characterSchema = z
       .describe("Additional visual references"),
 
     // Development
-    traits: z.array(z.string()).optional().describe("Personality traits"),
-    arcs: z.array(z.string()).optional().describe("Character development arcs"),
+    traits: z.array(z.string()).describe("Personality traits"),
+    arcs: z.array(z.string()).describe("Character development arcs"),
     isAiGenerated: z
       .boolean()
-      .default(false)
+      .default(true)
       .describe("Whether character was automatically generated"),
     aiGenerationPrompt: z
       .string()
@@ -481,37 +443,34 @@ export const sceneSchema = z
       .describe("Descriptive title of the scene"),
     visualSequence: z
       .string()
-      .optional()
       .describe("Visual sequences of the scene with consistency markers"),
 
     // Context
     sceneContext: z.object({
       setting: z
         .string()
-        .optional()
         .describe("Physical location of the scene with consistency anchors"),
-      mood: z.string().optional().describe("Emotional atmosphere"),
+      mood: z.string().describe("Emotional atmosphere"),
       presentCharacters: z
         .array(z.string())
-        .optional()
+
         .describe("IDs of characters appearing"),
       timeOfDay: z
         .string()
-        .optional()
+
         .describe("When the scene occurs for lighting consistency"),
       weather: z
         .string()
-        .optional()
+
         .describe("Environmental conditions for atmospheric consistency"),
       consistencyAnchors: z
         .object({
-          characterClothing: z.record(z.string()).optional(),
-          environmentalElements: z.array(z.string()).optional(),
-          lightingSources: z.array(z.string()).optional(),
-          colorPalette: z.array(z.string()).optional(),
-          atmosphericEffects: z.array(z.string()).optional(),
+          characterClothing: z.record(z.string()),
+          environmentalElements: z.array(z.string()),
+          lightingSources: z.array(z.string()),
+          colorPalette: z.array(z.string()),
+          atmosphericEffects: z.array(z.string()),
         })
-        .optional()
         .describe("Tracking elements for visual consistency"),
     }),
 
@@ -519,10 +478,7 @@ export const sceneSchema = z
     chapterId: z.string().uuid().describe("ID of the parent chapter"),
 
     // Content
-    dialogueOutline: z
-      .any()
-      .optional()
-      .describe("Structural breakdown of dialogue"),
+    dialogueOutline: z.any().describe("Structural breakdown of dialogue"),
     isAiGenerated: z
       .boolean()
       .default(false)
@@ -563,26 +519,26 @@ export const panelSchema = z
 
     // Composition
     panelContext: z.object({
-      action: z.string().optional().describe("Primary action occurring"),
-      pose: z.string().optional().describe("Character stance/positioning"),
+      action: z.string().describe("Primary action occurring"),
+      pose: z.string().describe("Character stance/positioning"),
       characterPoses: z
         .array(
           z.object({
             characterName: z.string().describe("Name of character"),
             pose: z.string().describe("Specific pose description"),
-            expression: z.string().optional().describe("Facial expression"),
+            expression: z.string().describe("Facial expression"),
             clothing: z
               .string()
-              .optional()
+
               .describe("Complete clothing description"),
-            props: z.array(z.string()).optional(),
-            spatialPosition: z.string().optional(),
-            physicalState: z.string().optional(),
-            gestureDetails: z.string().optional(),
+            props: z.array(z.string()),
+            spatialPosition: z.string(),
+            physicalState: z.string(),
+            gestureDetails: z.string(),
           })
         )
         .describe("Detailed character positioning"),
-      emotion: z.string().optional().describe("Dominant emotional tone"),
+      emotion: z.string().describe("Dominant emotional tone"),
       cameraAngle: z
         .enum([
           "close-up",
@@ -592,64 +548,42 @@ export const panelSchema = z
           "low angle",
           "extreme close-up",
         ])
-        .optional()
         .describe("Perspective of view"),
       shotType: z
         .enum(["action", "reaction", "establishing", "detail", "transition"])
-        .optional()
         .describe("Type of visual framing"),
       backgroundDescription: z
         .string()
-        .optional()
         .describe("Backdrop details with full consistency details"),
 
-      lighting: z
-        .string()
-        .optional()
-        .describe("Complete illumination description"),
-      effects: z
-        .array(z.string())
-        .optional()
-        .describe("Special visual effects"),
-      dramaticPurpose: z.string().optional().describe("Narrative function"),
-      narrativePosition: z
-        .string()
-        .optional()
-        .describe("Placement within story flow"),
+      lighting: z.string().describe("Complete illumination description"),
+      effects: z.array(z.string()).describe("Special visual effects"),
+      dramaticPurpose: z.string().describe("Narrative function"),
+      narrativePosition: z.string().describe("Placement within story flow"),
     }),
 
     // Relationships
     sceneId: z.string().uuid().describe("ID of the parent scene"),
-    characterIds: z
-      .array(z.string())
-      .optional()
-      .describe("IDs of characters featured"),
+    characterIds: z.array(z.string()).describe("IDs of characters featured"),
 
     // Generation
     isAiGenerated: z
       .boolean()
-      .default(false)
+      .default(true)
       .describe("Whether panel was automatically generated"),
-    aiPrompt: z
-      .string()
-      .optional()
-      .describe("Complete prompt for direct generation"),
-    negativePrompt: z
-      .string()
-      .optional()
-      .describe("Negative prompt for image generation"),
+    aiPrompt: z.string().describe("Complete prompt for direct generation"),
+    negativePrompt: z.string().describe("Negative prompt for image generation"),
 
     // Consistency
     consistencyElements: z
       .object({
-        characterTemplates: z.record(z.string()).optional(),
-        environmentTemplate: z.string().optional(),
-        lightingTemplate: z.string().optional(),
-        styleTemplate: z.string().optional(),
-        propRegistry: z.array(z.string()).optional(),
-        continuityNotes: z.string().optional(),
+        characterTemplates: z.record(z.string()),
+        environmentTemplate: z.string(),
+        lightingTemplate: z.string(),
+        styleTemplate: z.string(),
+        propRegistry: z.array(z.string()),
+        continuityNotes: z.string(),
       })
-      .optional()
       .describe("Elements for maintaining visual consistency"),
 
     // Timestamps

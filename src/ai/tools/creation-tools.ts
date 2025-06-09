@@ -71,9 +71,7 @@ export const createProjectTool = ai.defineTool(
       coverImageUrl: true,
       status: true,
       tags: true,
-      symbols: true,
       creatorId: true,
-      motifs: true,
       initialPrompt: true,
     }),
     outputSchema: z.object({
@@ -124,6 +122,7 @@ export const createChapterTool = ai.defineTool(
 
       const chapter = await createChapterService({
         ...input,
+        isAiGenerated: true,
       });
       return chapter.id;
     } catch (error: any) {
@@ -160,6 +159,7 @@ export const createSceneTool = ai.defineTool(
 
       const scene = await createSceneService({
         ...input,
+        isAiGenerated: true,
       });
       return scene.id;
     } catch (error: any) {
@@ -223,7 +223,7 @@ export const createPanelTool = ai.defineTool(
       const panel = await createPanelService({
         ...input,
         characterIds,
-        isAiGenerated: input.isAiGenerated ?? true,
+        isAiGenerated: true,
       });
       return panel.id;
     } catch (error: any) {
@@ -322,7 +322,7 @@ export const createCharacterTool = ai.defineTool(
 
       const character = await createCharacterService({
         ...input,
-        isAiGenerated: input.isAiGenerated ?? true,
+        isAiGenerated: true,
       });
       return character.id;
     } catch (error: any) {
@@ -440,6 +440,7 @@ export const createChapterWithScenesTool = ai.defineTool(
         const scene = await createSceneService({
           ...sceneData,
           chapterId: chapter.id,
+          isAiGenerated: true,
         });
         sceneIds.push(scene.id);
       }
@@ -494,6 +495,7 @@ export const createMultipleScenesTool = ai.defineTool(
         const scene = await createSceneService({
           ...sceneData,
           chapterId: existedChapter.id,
+          isAiGenerated: true,
         });
         sceneIds.push(scene.id);
       }
@@ -579,6 +581,7 @@ export const createMultipleChaptersWithScenesTool = ai.defineTool(
           const scene = await createSceneService({
             ...sceneData,
             chapterId: chapter.id,
+            isAiGenerated: true,
           });
           sceneIds.push(scene.id);
         }
@@ -685,7 +688,7 @@ export const createPanelWithDialoguesTool = ai.defineTool(
         ...input.panelData,
         sceneId: input.sceneId,
         characterIds,
-        isAiGenerated: input.panelData.isAiGenerated ?? true,
+        isAiGenerated: true,
       });
 
       // Then create all dialogues within that panel
@@ -795,7 +798,7 @@ export const createMultiplePanelsTool = ai.defineTool(
           ...panelData,
           sceneId: input.sceneId,
           characterIds,
-          isAiGenerated: panelData.isAiGenerated ?? true,
+          isAiGenerated: true,
         });
         panelIds.push(panel.id);
       }
@@ -910,7 +913,7 @@ export const createMultiplePanelsWithDialoguesTool = ai.defineTool(
           ...panelData,
           sceneId: input.sceneId,
           characterIds,
-          isAiGenerated: panelData.isAiGenerated ?? true,
+          isAiGenerated: true,
         });
 
         // Create all dialogues for this panel
@@ -930,7 +933,7 @@ export const createMultiplePanelsWithDialoguesTool = ai.defineTool(
             ...dialogueData,
             panelId: panel.id,
             speakerId,
-            isAiGenerated: dialogueData.isAiGenerated ?? true,
+            isAiGenerated: true,
           });
           dialogueIds.push(dialogue.id);
         }

@@ -393,13 +393,7 @@ export const updateCharacterTool = ai.defineTool(
           .split(",")
           .map((t) => t.trim());
       }
-      if (typeof updates.referenceImageUrls === "string") {
-        processedUpdates.referenceImageUrls = (
-          updates.referenceImageUrls as string
-        )
-          .split(",")
-          .map((t) => t.trim());
-      }
+
       if (typeof updates.traits === "string") {
         processedUpdates.traits = (updates.traits as string)
           .split(",")

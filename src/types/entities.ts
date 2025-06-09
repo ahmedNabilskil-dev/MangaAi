@@ -56,11 +56,11 @@ export interface Chapter {
   keyCharacters?: string[];
   coverImageUrl?: string;
   mangaProjectId: string;
-  isAiGenerated: boolean;
-  isPublished: boolean;
-  viewCount: number;
-  createdAt: Date;
-  updatedAt: Date;
+  isAiGenerated?: boolean;
+  isPublished?: boolean;
+  viewCount?: number;
+  createdAt?: Date;
+  updatedAt?: Date;
   scenes?: Scene[];
 }
 
@@ -229,5 +229,5 @@ export interface PanelDialogue {
   createdAt: Date;
   updatedAt: Date;
   speaker?: Character | null;
-  config: any;
+  config?: any;
 }
