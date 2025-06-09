@@ -339,7 +339,7 @@ class DexieDataService implements IDataService {
         await Promise.all(
           panels.map((panel) =>
             db.panels.update(panel.id, {
-              characterIds: panel.characterIds.filter(
+              characterIds: (panel.characterIds || []).filter(
                 (charId) => charId !== id
               ),
               updatedAt: new Date(),
