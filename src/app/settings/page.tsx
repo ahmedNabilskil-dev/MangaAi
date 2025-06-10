@@ -144,7 +144,7 @@ const SettingsPage = () => {
           />
           <SidebarItem
             icon={<BookOpen className="h-5 w-5" />}
-            text="Documentation"
+            text="Setup Api Key Guide"
             isActive={false}
             isSidebarOpen={isSidebarOpen}
             href="/documentation"

@@ -46,13 +46,23 @@ const HomePage = () => {
     setMangaIdea("");
   };
 
+  const [isApiKeyDialogOpen, setIsApiKeyDialogOpen] = useState(false);
+
+  // Updated handleSubmit function
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!mangaIdea.trim()) return;
 
+    // Check if API key exists in localStorage
+    const apiKey = localStorage.getItem("api-key");
+
+    if (!apiKey) {
+      setIsApiKeyDialogOpen(true);
+      return;
+    }
+
     setIsGenerating(true);
     try {
-      // Here you would call your AI manga generation function
       const { projectId, initialMessages } = await CreateMangaFlow({
         userPrompt: mangaIdea,
       });
@@ -62,6 +72,11 @@ const HomePage = () => {
       setIsGenerating(false);
       closeDialog();
     }
+  };
+
+  // Add this function to close the API key dialog
+  const closeApiKeyDialog = () => {
+    setIsApiKeyDialogOpen(false);
   };
 
   return (
@@ -114,7 +129,7 @@ const HomePage = () => {
           />
           <SidebarItem
             icon={<BookOpen className="h-5 w-5" />}
-            text="Documentation"
+            text="Setup Api Key Guide"
             isActive={false}
             isSidebarOpen={isSidebarOpen}
             href="/documentation"
@@ -359,6 +374,68 @@ const HomePage = () => {
                   </Button>
                 </div>
               </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {isApiKeyDialogOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50"
+            onClick={(e) => e.target === e.currentTarget && closeApiKeyDialog()}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-gray-800 rounded-xl max-w-md w-full p-6 shadow-2xl border border-gray-700"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <Key className="h-5 w-5 text-red-400" />
+                  API Key Required
+                </h2>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={closeApiKeyDialog}
+                  className="text-gray-400 hover:text-white hover:bg-gray-700"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+
+              <div className="mb-6">
+                <p className="text-gray-300 mb-4">
+                  You need to configure your API key before generating manga
+                  content.
+                </p>
+                <div className="bg-red-900/30 border border-red-700 rounded-lg p-3">
+                  <p className="text-red-200 text-sm">
+                    Please add your Gemini API key in the settings to continue.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-3 justify-end">
+                <Button
+                  variant="ghost"
+                  onClick={closeApiKeyDialog}
+                  className="text-gray-400 hover:text-white"
+                >
+                  Cancel
+                </Button>
+                <Link href="/settings">
+                  <Button className="bg-blue-600 hover:bg-blue-700">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Go to Settings
+                  </Button>
+                </Link>
+              </div>
             </motion.div>
           </motion.div>
         )}
