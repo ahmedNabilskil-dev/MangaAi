@@ -477,7 +477,7 @@ const ProjectsPage = () => {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="w-8 h-8 bg-gray-800/80 hover:bg-gray-700/80 text-gray-300 hover:text-white"
+                                  className="w-8 h-8 bg-white hover:bg-gray-700/80 text-gray-800 hover:text-white"
                                 >
                                   <MoreVertical className="h-4 w-4" />
                                 </Button>

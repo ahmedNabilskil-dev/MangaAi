@@ -255,7 +255,9 @@ const Header: React.FC<{
                   }`}
                 >
                   {editMode ? <Save size={16} /> : <Edit3 size={16} />}
-                  <span>{editMode ? "Save Changes" : "Edit Mode"}</span>
+                  <span>
+                    {editMode ? "Save Changes" : "Edit Dialog Position"}
+                  </span>
                 </button>
 
                 <div className="flex items-center gap-1 p-1 rounded-lg bg-gray-100 dark:bg-gray-800">
