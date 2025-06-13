@@ -32,7 +32,8 @@
     "src/components/bubble/speech.tsx",
     "src/components/bubble/Random.js",
     "src/components/bubble/geometry.js",
-    "src/app/image/page.jsx"
+    "src/app/image/page.jsx",
+    "src/middleware.js"
   ],
   "exclude": ["node_modules"]
 }
