@@ -277,89 +277,37 @@ export const AnimeCharacterPortraitPrompt = ai.definePrompt({
     schema: z.object({
       imagePrompt: z
         .string()
-        .describe(
-          "Ultra-detailed anime character portrait prompt optimized for facial precision and reference creation"
-        ),
+        .describe("Detailed anime character portrait prompt"),
     }),
   },
-  prompt: `You are a master anime character visualizer creating ultra-detailed portrait references for maximum facial consistency and detail.
+  prompt: `Create a detailed anime character portrait prompt for consistent character reference.
 
-## CORE MISSION: PORTRAIT REFERENCE CREATION
-Generate character portrait prompts optimized for creating detailed facial references that will be used to maintain consistency across all future character appearances.
+## BASE QUALITY
+High-quality anime portrait, detailed facial features, upper body shot, studio lighting, sharp focus on face.
 
-## TECHNICAL EXCELLENCE FOUNDATION
-Begin with premium portrait specifications:
-"8K ultra-detailed portrait masterpiece, perfect facial anatomy, award-winning anime character design, professional portrait photography quality, razor-sharp facial features, flawless facial proportions, studio portrait lighting, reference portrait perfection, close-up character study. Portrait shot, upper body composition, face-focused framing, shoulders and chest visible, maximum facial detail retention, professional headshot quality."
+## CHARACTER DETAILS
+- {{character.gender}} with {{character.personality}} personality
+- Role: {{character.role}}
 
-## CHARACTER DATA INTEGRATION
+## FACIAL FEATURES
+- Face: {{character.facialAttributes.faceShape}} face with {{character.facialAttributes.skinTone}} skin
+- Eyes: {{character.facialAttributes.eyeColor}} {{character.facialAttributes.eyeShape}} eyes
+- Hair: {{character.hairAttributes.hairColor}} {{character.hairAttributes.hairstyle}}, {{character.hairAttributes.hairLength}}
+- Expression: {{character.expressionStyle.defaultExpression}}
 
-### BASIC IDENTITY
-- {{character.gender}} with {{character.personality}} demeanor, {{character.role}} character
+## OUTFIT & STYLE
+- Clothing: {{character.style.defaultOutfit}} (upper body visible)
+- Art style: {{character.styleGuide.artStyle}}
+{{#if seriesStyle}}
+- Series style: {{seriesStyle}} aesthetic
+{{/if}}
 
+## DISTINCTIVE FEATURES
+{{character.distinctiveFeatures}}
 
-### FACIAL ARCHITECTURE - MAXIMUM DETAIL
-**Face Structure:**
-- Face shape: {{character.facialAttributes.faceShape}} with {{character.facialAttributes.jawline}} jawline, perfectly symmetrical features
-- Skin: {{character.facialAttributes.skinTone}} complexion with flawless texture, subtle skin highlights, natural skin depth, pore-level detail
+Generate a focused portrait prompt (200-250 words) emphasizing facial consistency and character recognition.
 
-**Eyes (Priority Detail):**
-- {{character.facialAttributes.eyeColor}} {{character.facialAttributes.eyeShape}} eyes with crystalline iris detail, individual eyelash definition, realistic light reflection, emotional depth, perfect eye symmetry
-- Perfectly shaped {{character.hairAttributes.hairColor}} eyebrows with natural arch, individual hair strands visible
-
-**Facial Features:**
-- {{character.facialAttributes.noseType}} nose with subtle shadow definition, perfect nostril symmetry
-- {{character.facialAttributes.mouthType}} mouth with detailed lip texture, natural lip color, subtle lip highlights, {{character.expressionStyle.defaultExpression}} with micro-expression details
-
-**Hair (Portrait Optimized):**
-- Hair color {{character.hairAttributes.hairColor}} with realistic color gradients and natural highlights
-- {{character.hairAttributes.hairstyle}}, {{character.hairAttributes.hairLength}} hair perfectly framing the face
-- {{character.hairAttributes.hairTexture}} texture with individual strand physics, natural hair movement, realistic hair volume
-- Natural hairline, sideburns, hair shadows on face. {{character.hairAttributes.specialHairFeatures}} with realistic hair behavior and lighting
-
-### UPPER BODY COMPOSITION
-**Body Structure:**
-- {{character.bodyAttributes.bodyType}} build shoulder structure, natural shoulder slope
-- {{character.posture}} reflected in head tilt and shoulder position
-
-**Upper Torso Outfit:**
-- {{character.style.defaultOutfit}} (chest/shoulder area only)
-- Collar detail: High, upturned collar framing the neck, fabric texture, color harmonizing with facial features
-
-### DISTINCTIVE FEATURES
-- Unique facial features: {{character.distinctiveFeatures}} serves as a distinctive mark
-- Character traits: {{character.traits}} expressed through facial characteristics, especially through {{character.expressionStyle.defaultExpression}} and the intense gaze in the eyes
-
-### SERIES STYLE INTEGRATION
-Apply {{seriesStyle}} aesthetic with portrait focus:
-- Sharp angular facial features, piercing glowing eyes with magical depth, modern upper body fashion, crystalline eye effects, clean precise facial lineart, manhwa-style facial shading
-
-**Art Style Specifications:**
-- Art style: {{character.styleGuide.artStyle}}, optimized for facial detail
-- Facial line weight with emphasis on eye and lip definition
-- Facial shading with portrait lighting emphasizing bone structure and subtle skin texture
-- Color focus prioritizing natural skin tones and {{character.facialAttributes.eyeColor}} eye colors
-
-### LIGHTING SETUP
-- Studio portrait lighting showcasing facial features
-- Soft key light eliminating harsh facial shadows
-- Natural skin tone rendering, Eye light for life-like gaze, Hair light for texture definition
-- {{seriesStyle}} universe atmospheric elements as subtle background
-
-Generate a comprehensive portrait imagePrompt (350-400 words) focused on creating the perfect character reference face.
-
-<!-- 
-The character's age is {{character.age}}, but it must never be explicitly stated as a number in the output.
-
-The image should reflect the character's **true age visually** using descriptive cues (e.g., youthful energy, mature expression, aged features, life-worn gaze). Do not say the age numerically, and never include phrases like "40 years old" or "teenage".
-
-Use visual storytelling and physical traits to **imply** the age (e.g., soft round cheeks for youth, fine smile lines for adults, sagging eyelids for elderly), depending on the character.
-
-⚠️ ABSOLUTELY DO NOT mention any number representing age in any form. Age must be visually inferred through descriptive details only. This rule applies to all ages.
--->
-
-
-Character Data: {{character}}
-Series Style: {{seriesStyle}}`,
+Character Data: {{character}}`,
 });
 
 // FULL BODY VERSION - For creating complete character illustrations

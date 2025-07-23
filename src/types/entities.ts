@@ -1,9 +1,87 @@
 import { MangaStatus } from "@/types/enums";
 
-export interface User {
+export interface PoseTemplate {
   id: string;
-  username: string;
-  email: string;
+  name: string; // "Standing", "Running", "Crossed Arms", etc.
+  description: string;
+  characterId?: string; // optional: use for character-specific poses
+  imageUrl: string; // preview or sprite
+  tags: string[]; // e.g., ["neutral", "dynamic", "angry"]
+  angle?: "front" | "side" | "back";
+  viewType?: "full-body" | "bust" | "headshot";
+  emotionOverlayId?: string; // for combining expressions
+  isDefault?: boolean;
+}
+
+export interface EffectTemplate {
+  id: string;
+  name: string; // "Rain", "Speed Lines", "Magic Aura"
+  description?: string;
+  imageUrl: string;
+  type: "weather" | "motion" | "magic" | "emotion" | "ui";
+  tags?: string[];
+  blendMode?: "overlay" | "multiply" | "screen";
+  opacity?: number;
+  animation?: boolean; // optional for animated support later
+}
+
+export interface OutfitTemplate {
+  id: string;
+  name: string; // e.g., "School Uniform", "Casual"
+  characterId: string;
+  description: string; // Short, visual-friendly summary
+  aiPrompt: string; // Detailed and composable prompt for AI
+  isDefault?: boolean; // Marks main outfit
+  tags: string[]; // e.g., ["uniform", "blue", "skirt"]
+
+  category:
+    | "school"
+    | "casual"
+    | "formal"
+    | "sports"
+    | "sleepwear"
+    | "work"
+    | "special"
+    | "fantasy"
+    | "historical"; // <-- NEW: allows genre expansion
+
+  season?: "spring" | "summer" | "fall" | "winter" | "any";
+
+  materialTags?: string[]; // <-- NEW: ["cotton", "leather", "silk"] for realism
+  colorPalette?: string[]; // <-- NEW: ["navy", "white", "red"] helps AI and filtering
+  layers?: string[]; // <-- NEW: ["shirt", "jacket", "tie"] (good for sprite separation)
+
+  referenceImages: {
+    id: string;
+    url: string;
+    description: string; // "front view", "side view", etc.
+    isMain: boolean;
+    metadata?: {
+      angle?: string;
+      lighting?: string;
+      resolution?: string;
+    }; // <-- NEW: helpful for AI training or consistency
+  }[];
+}
+
+export interface LocationTemplate {
+  id: string;
+  name: string; // e.g., "Classroom", "Park"
+  basePrompt: string; // Foundational scene elements
+  type: "interior" | "exterior";
+  cameraAngles: {
+    id: string;
+    name: string; // e.g., "corner_view", "doorway_view"
+    aiPrompt: string; // Full prompt for rendering
+    referenceImage?: {
+      url: string;
+      description: string;
+      metadata?: {
+        resolution?: string;
+        lighting?: string;
+      }; // <-- NEW
+    };
+  }[];
 }
 
 export interface MangaProject {
@@ -30,6 +108,8 @@ export interface MangaProject {
     climax: string;
     resolution: string;
   };
+  outfitTemplates?: OutfitTemplate[];
+  locationTemplates?: LocationTemplate[];
   // Key events now directly part of project
   themes?: string[];
   motifs?: string[];
@@ -44,24 +124,6 @@ export interface MangaProject {
   updatedAt: Date;
   chapters?: Chapter[];
   characters?: Character[];
-}
-
-export interface Chapter {
-  id: string;
-  chapterNumber: number;
-  title: string;
-  narrative: string;
-  purpose?: string;
-  tone?: string;
-  keyCharacters?: string[];
-  coverImageUrl?: string;
-  mangaProjectId: string;
-  isAiGenerated?: boolean;
-  isPublished?: boolean;
-  viewCount?: number;
-  createdAt?: Date;
-  updatedAt?: Date;
-  scenes?: Scene[];
 }
 
 export interface Character {
@@ -91,18 +153,6 @@ export interface Character {
     specialHairFeatures: string;
   };
   distinctiveFeatures?: string[];
-  expressionStyle?: {
-    defaultExpression: string;
-    emotionalRange: string;
-    facialTics: string[];
-  };
-  style?: {
-    defaultOutfit: string;
-    outfitVariations: string[];
-    colorPalette: string[];
-    accessories: string[];
-    signatureItem: string;
-  };
   physicalMannerisms?: string[];
   posture?: string;
   styleGuide?: {
@@ -111,47 +161,61 @@ export interface Character {
     shadingStyle: string;
     colorStyle: string;
   };
+  defaultOutfitId?: string; // Their main outfit
+  outfitHistory?: { sceneId: string; outfitId: string }[];
   consistencyPrompt?: string;
   negativePrompt?: string;
-  referenceImageUrls?: string[];
   role?: "protagonist" | "antagonist" | "supporting" | "minor";
   briefDescription?: string;
   personality?: string;
   abilities?: string;
   backstory?: string;
   imgUrl?: string;
-  expressionImages?: { [expression: string]: string };
   traits?: string[];
   arcs?: string[];
   isAiGenerated: boolean;
-  aiGenerationPrompt?: string;
   mangaProjectId: string;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface Chapter {
+  id: string;
+  chapterNumber: number;
+  title: string;
+  narrative: string;
+  purpose?: string;
+  tone?: string;
+  keyCharacters?: string[];
+  coverImageUrl?: string;
+  mangaProjectId: string;
+  isAiGenerated?: boolean;
+  isPublished?: boolean;
+  viewCount?: number;
+  createdAt?: Date;
+  updatedAt?: Date;
+  scenes?: Scene[];
 }
 
 export interface Scene {
   id: string;
   order: number;
   title: string;
-  visualSequence: string; // Now mandatory with consistency markers
+  description: string;
   sceneContext: {
-    setting: string; // Enhanced with consistency anchors
+    locationId?: string;
+    outfitOverrides?: {
+      characterId: string;
+      outfitId: string;
+      reason?: string;
+    }[];
+    setting: string;
     mood: string;
     presentCharacters: string[];
-    timeOfDay: string; // Now mandatory for lighting consistency
-    weather: string; // Now mandatory for atmospheric consistency
-    consistencyAnchors?: {
-      // New field for tracking consistency elements
-      characterClothing: Record<string, string>;
-      environmentalElements: string[];
-      lightingSources: string[];
-      colorPalette: string[];
-      atmosphericEffects: string[];
-    };
+    timeOfDay: string;
+    weather: string;
   };
   chapterId: string;
-  dialogueOutline?: any;
   isAiGenerated: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -164,47 +228,24 @@ export interface Panel {
   imageUrl?: string;
   panelContext: {
     action?: string;
-    pose?: string;
     characterPoses?: {
-      // Now mandatory
       characterName: string;
+      characterId: string;
       pose: string;
       expression: string;
-      clothing: string; // Complete clothing description
-      props?: string[];
-      spatialPosition?: string;
-      physicalState?: string;
-      gestureDetails?: string;
+      outfitId: string;
     }[];
-    emotion?: string; // Now mandatory
-    cameraAngle?:
-      | "close-up"
-      | "medium"
-      | "wide"
-      | "bird's eye"
-      | "low angle"
-      | "extreme close-up";
+    emotion?: string;
+    cameraAngle?: "close-up" | "medium" | "wide" | "bird's eye" | "low angle";
     shotType?: "action" | "reaction" | "establishing" | "detail" | "transition";
-    backgroundDescription?: string; // Enhanced with full consistency details
-    backgroundImageUrl?: string;
-    lighting?: string; // Complete lighting description
+    locationId: string;
+    cameraAngelId: string;
+    lighting?: string;
     effects?: string[];
-    dramaticPurpose?: string;
-    narrativePosition?: string;
   };
   sceneId: string;
-  characterIds?: string[];
   isAiGenerated: boolean;
-  aiPrompt?: string; // Now complete and mandatory for direct generation
   negativePrompt?: string;
-  consistencyElements?: {
-    // New field for tracking consistency
-    characterTemplates?: Record<string, string>;
-    environmentTemplate?: string;
-    lightingTemplate?: string;
-    styleTemplate?: string;
-    propRegistry?: string[];
-  };
   createdAt: Date;
   updatedAt: Date;
   dialogues?: PanelDialogue[];
@@ -216,10 +257,6 @@ export interface PanelDialogue {
   order: number;
   style?: {
     bubbleType?: "normal" | "thought" | "scream" | "whisper" | "narration";
-    fontSize?: "x-small" | "small" | "medium" | "large" | "x-large";
-    fontType?: string;
-    emphasis?: boolean;
-    position?: { x: number; y: number };
   };
   emotion?: string;
   subtextNote?: string;

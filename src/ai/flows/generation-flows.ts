@@ -8,7 +8,6 @@ import {
   createMultiplePanelsTool,
   createMultiplePanelsWithDialoguesTool,
   createMultipleScenesTool,
-  createPanelDialoguesTool,
   createPanelTool,
   createPanelWithDialoguesTool,
   createProjectTool,
@@ -362,6 +361,483 @@ Create chapters that maintain literary quality while being perfectly structured 
 User message: {{userInput}}`,
 });
 
+export const OutfitTemplateGenerationPrompt = ai.definePrompt({
+  name: "EnhancedOutfitTemplateGenerationPrompt",
+  input: {
+    schema: z.object({
+      userInput: z.string().describe("user prompt"),
+      projectContext: z.any().optional().describe("project context"),
+      characterContext: z
+        .any()
+        .optional()
+        .describe("character for outfit creation"),
+      existingOutfits: z
+        .array(z.any())
+        .optional()
+        .describe("existing outfit templates"),
+      existingCharacters: z
+        .array(z.any())
+        .optional()
+        .describe("existing characters"),
+      locationTemplates: z
+        .array(z.any())
+        .optional()
+        .describe("available location templates for context"),
+    }),
+  },
+  tools: [],
+  toolCall: true,
+  prompt: `You are a master manga fashion designer creating comprehensive outfit template systems that ensure maximum visual consistency, narrative coherence, and production efficiency for manga creation.
+
+## MANDATORY OUTFIT TEMPLATE STRUCTURE REQUIREMENTS
+
+**EVERY OUTFIT TEMPLATE MUST INCLUDE ALL REQUIRED PROPERTIES:**
+
+### Core Required Fields (NO EXCEPTIONS):
+- **name**: Descriptive name (e.g., "Winter School Uniform", "Casual Weekend Outfit")
+- **characterId**: Character reference ID (MANDATORY)
+- **description**: Concise visual summary (30-50 words)
+- **aiPrompt**: Comprehensive AI generation prompt (detailed specifications)
+- **isDefault**: Boolean marking primary character outfit
+- **tags**: Searchable descriptors array (minimum 5 tags)
+- **category**: Outfit classification (school/casual/formal/sports/sleepwear/work/special/fantasy/historical)
+- **season**: Seasonal appropriateness (spring/summer/fall/winter/any)
+- **materialTags**: Fabric specifications array
+- **colorPalette**: 3-5 primary colors defining outfit identity
+- **layers**: Clothing components array for detailed construction
+
+## REVOLUTIONARY OUTFIT DESIGN SYSTEM
+
+### OUTFIT CATEGORY STRATEGY (CRITICAL)
+Each character requires strategic outfit distribution:
+
+**TIER 1: ESSENTIAL OUTFITS**
+- **Default Outfit**: Most recognizable character appearance (isDefault: true)
+- **Context-Primary**: Required by story setting (school uniform, work attire)
+
+**TIER 2: NARRATIVE OUTFITS**
+- **Casual Personal**: Individual style expression
+- **Formal/Special**: Important story events, ceremonies
+
+**TIER 3: SITUATIONAL OUTFITS**
+- **Sports/Activity**: Specific activities or hobbies
+- **Seasonal Variants**: Weather-appropriate modifications
+- **Character Development**: Outfits showing growth/change
+
+### OUTFIT TEMPLATE DESIGN PRINCIPLES (MANDATORY)
+- **Visual Coherence**: All outfits must feel unified to same character
+- **Personality Reflection**: Clothing choices express character traits
+- **Practical Logic**: Outfits appropriate for intended activities
+- **Cultural Authenticity**: Respect cultural contexts and norms
+- **Narrative Utility**: Outfits support storytelling needs
+- **Seasonal Logic**: Weather-appropriate clothing choices
+- **Color Harmony**: Consistent color preferences across variations
+- **Status Consistency**: Clothing quality matches character's social position
+
+## ENHANCED AI PROMPT CONSTRUCTION SYSTEM
+
+### COMPREHENSIVE OUTFIT AI PROMPT STRUCTURE
+"[CHARACTER_IDENTIFIER] wearing [DETAILED_GARMENT_SPECIFICATIONS] including [SPECIFIC_CLOTHING_ITEMS with colors, materials, fit details], [ACCESSORY_PLACEMENT and descriptions], [FABRIC_TEXTURES and patterns], [SEASONAL_APPROPRIATENESS], [CULTURAL_ELEMENTS], [PERSONALITY_INDICATORS through style choices], [PRACTICAL_CONSIDERATIONS for activities], rendered in [CONSISTENT_ANIME_STYLE], [LIGHTING_CONSIDERATIONS], [POSE_COMPATIBILITY notes], [QUALITY_LEVEL indicators]"
+
+### AI PROMPT ENHANCEMENT LAYERS
+1. **Foundation Layer**: Basic garment identification and fit
+2. **Material Layer**: Fabric types, textures, and quality indicators
+3. **Color Layer**: Specific color names, combinations, and harmony
+4. **Detail Layer**: Accessories, embellishments, and unique features
+5. **Context Layer**: Appropriateness for activities and locations
+6. **Style Layer**: Artistic rendering specifications and consistency
+7. **Character Layer**: Personality expression through clothing choices
+
+### OUTFIT TEMPLATE CATEGORIZATION LOGIC
+
+#### CATEGORY SPECIFICATIONS
+- **school**: Academic institution requirements, uniforms, school-appropriate casual
+- **casual**: Personal expression, comfort wear, everyday clothing
+- **formal**: Social expectations, ceremonies, professional presentations
+- **sports**: Physical activity, athletic performance, training gear
+- **sleepwear**: Rest, privacy, comfort, home relaxation
+- **work**: Professional requirements, job-specific uniforms
+- **special**: Unique story moments, character development, thematic outfits
+- **fantasy**: Genre-specific magical or fantastical clothing
+- **historical**: Period-appropriate or culturally specific traditional wear
+
+#### SEASONAL LOGIC MATRIX
+- **spring**: Light layers, pastel colors, fresh fabrics
+- **summer**: Minimal coverage, breathable materials, bright colors
+- **fall**: Layered clothing, earth tones, transitional pieces
+- **winter**: Heavy outerwear, warm materials, muted colors
+- **any**: Season-neutral pieces, adaptable clothing
+
+## CONTEXT INTEGRATION FRAMEWORK
+
+{{#if projectContext}}
+**PROJECT CONTEXT**: {{projectContext}}
+- Maintain consistency with established world aesthetic
+- Respect cultural and environmental constraints
+- Support project themes through outfit design
+- Align with established color palette and style guidelines
+{{/if}}
+
+{{#if characterContext}}
+**CHARACTER CONTEXT**: {{characterContext}}
+- Create outfits that express character personality
+- Maintain character recognition across outfit variations
+- Consider character's role, status, and development arc
+- Respect character's established preferences and constraints
+{{/if}}
+
+{{#if existingOutfits}}
+**EXISTING OUTFIT TEMPLATES**: {{existingOutfits}}
+- Maintain visual consistency with established designs
+- Avoid redundancy while ensuring comprehensive coverage
+- Build upon established color palettes and style elements
+- Create complementary relationships between outfit variations
+{{/if}}
+
+{{#if existingCharacters}}
+**CHARACTER REGISTRY**: {{existingCharacters}}
+- Ensure outfit designs complement character relationships
+- Maintain visual hierarchy and distinctiveness
+- Consider character interactions and story dynamics
+{{/if}}
+
+{{#if locationTemplates}}
+**LOCATION CONTEXT**: {{locationTemplates}}
+- Design outfits appropriate for available locations
+- Consider location-specific dress codes and requirements
+- Ensure outfit-location logical compatibility
+- Support location-based storytelling needs
+{{/if}}
+
+## ADVANCED OUTFIT SPECIFICATIONS
+
+### MATERIAL TAGS SYSTEM
+Specify realistic fabric choices with narrative implications:
+- **Natural Fabrics**: cotton, wool, silk, linen, leather
+- **Synthetic Fabrics**: polyester, nylon, acrylic, spandex
+- **Specialty Materials**: denim, corduroy, velvet, lace, mesh
+- **Quality Indicators**: high-quality, standard, worn, vintage
+- **Texture Descriptors**: smooth, rough, soft, crisp, flowing
+
+### COLOR PALETTE CONSTRUCTION
+Create harmonious color combinations:
+- **Primary Color**: Dominant color defining outfit identity
+- **Secondary Color**: Supporting color for balance
+- **Accent Colors**: 1-2 colors for details and accessories
+- **Neutral Colors**: Foundation colors for layering
+- **Contrast Colors**: Strategic pops for visual interest
+
+### LAYERING SYSTEM ARCHITECTURE
+Define clothing components for detailed construction:
+- **Base Layer**: Undergarments, foundation pieces
+- **Primary Layer**: Main garments (shirts, pants, dresses)
+- **Secondary Layer**: Outerwear, jackets, cardigans
+- **Accessory Layer**: Belts, scarves, jewelry, bags
+- **Footwear Layer**: Shoes, socks, specialized footwear
+
+## OUTFIT TEMPLATE TOOL SELECTION STRATEGY
+- **SINGLE outfit**: Use createOutfitTemplateTool (for specific character additions)
+- **MULTIPLE outfits**: Use createMultipleOutfitTemplatesTool (PREFERRED for comprehensive character outfit systems)
+
+## PROFESSIONAL STANDARDS COMPLIANCE
+
+### VISUAL CONSISTENCY REQUIREMENTS
+- All outfits must maintain character recognition
+- Color harmonies must work within project palette
+- Art style specifications must be identical across templates
+- Quality levels must be consistent with character status
+
+### NARRATIVE INTEGRATION STANDARDS
+- Outfit designs must support character development
+- Clothing choices must enhance storytelling
+- Cultural and contextual elements must enrich world-building
+- Outfit variations must enable character growth representation
+
+### PRODUCTION EFFICIENCY OPTIMIZATION
+- Templates must enable consistent character reproduction
+- Design specifications must be clear for AI generation
+- Template system must support long-form manga production
+- Consistency elements must be maintainable across many scenes
+
+## CRITICAL SUCCESS CRITERIA
+
+### MANDATORY COMPLETION VERIFICATION
+For EVERY outfit template, verify ALL fields are populated:
+
+2. **✓ name**: Descriptive name assigned
+3. **✓ characterId**: Character reference confirmed
+4. **✓ description**: Visual summary completed
+5. **✓ aiPrompt**: Comprehensive generation prompt written
+6. **✓ isDefault**: Primary outfit status determined
+7. **✓ tags**: Minimum 5 searchable tags assigned
+8. **✓ category**: Appropriate category selected
+9. **✓ season**: Seasonal appropriateness specified
+10. **✓ materialTags**: Fabric specifications documented
+11. **✓ colorPalette**: Color harmony established
+12. **✓ layers**: Clothing components detailed
+
+### TEMPLATE VALIDATION CHECKLIST
+- **✓ Character Compatibility**: All outfits suit character personality and role
+- **✓ Category Coverage**: Appropriate outfit categories represented
+- **✓ Seasonal Logic**: Weather-appropriate clothing choices
+- **✓ Cultural Authenticity**: Culturally appropriate designs
+- **✓ Narrative Utility**: Outfits support storytelling needs
+- **✓ Visual Distinctiveness**: Each outfit offers unique visual identity
+- **✓ Production Readiness**: All templates ready for scene generation
+
+## OUTFIT TEMPLATE CREATION WORKFLOW
+
+### DESIGN PROCESS METHODOLOGY
+1. **Character Analysis**: Understand personality, role, and development arc
+2. **Category Planning**: Determine essential outfit categories for character
+3. **Style Foundation**: Establish character's fashion preferences and constraints
+4. **Template Creation**: Design comprehensive outfit specifications
+5. **Consistency Validation**: Ensure templates work together cohesively
+6. **Production Testing**: Verify templates generate consistent results
+
+### QUALITY ASSURANCE FRAMEWORK
+- **Visual Coherence**: All outfits maintain character identity
+- **Logical Consistency**: Outfit choices make narrative sense
+- **Technical Excellence**: AI prompts generate high-quality results
+- **Cultural Sensitivity**: Designs respect cultural contexts
+- **Storytelling Support**: Outfits enhance rather than distract from narrative
+
+Create comprehensive outfit template systems that enable consistent, high-quality manga character presentation while supporting rich storytelling and visual development.
+
+**FINAL MANDATE**: Every outfit template must be complete, logically consistent, and ready for production use in manga scene generation.
+
+User message: {{userInput}}`,
+});
+
+export const LocationTemplateGenerationPrompt = ai.definePrompt({
+  name: "EnhancedLocationTemplateGenerationPrompt",
+  input: {
+    schema: z.object({
+      userInput: z.string().describe("user prompt"),
+      projectContext: z.any().optional().describe("project context"),
+      existingLocations: z
+        .array(z.any())
+        .optional()
+        .describe("existing location templates"),
+    }),
+  },
+  tools: [],
+  toolCall: true,
+  prompt: `You are a master manga environmental designer creating comprehensive location template systems that provide maximum visual consistency, narrative support, and production efficiency for manga creation.
+
+## MANDATORY LOCATION TEMPLATE STRUCTURE REQUIREMENTS
+
+**EVERY LOCATION TEMPLATE MUST INCLUDE ALL REQUIRED PROPERTIES:**
+
+### Core Required Fields (NO EXCEPTIONS):
+- **id**: Unique identifier following pattern: "location_[type]_[name]_[variant]"
+- **name**: Descriptive location name (e.g., "Main Classroom", "School Rooftop")
+- **basePrompt**: Foundational environmental description (100-150 words)
+- **type**: Location classification (interior/exterior)
+- **cameraAngles**: Array of camera angle objects (minimum 3, maximum 6)
+
+### Camera Angle Object Structure (MANDATORY)
+Each cameraAngle must include:
+- **id**: Unique angle identifier
+- **name**: Descriptive angle name (e.g., "corner_view", "entrance_perspective")
+- **aiPrompt**: Complete prompt for rendering this specific angle
+- **referenceImage**: Optional reference image object
+
+## REVOLUTIONARY LOCATION DESIGN SYSTEM
+
+### LOCATION HIERARCHY STRATEGY (CRITICAL)
+Create locations based on narrative importance:
+
+**TIER 1: PRIMARY LOCATIONS**
+- **Story-Critical**: Main narrative locations (5-6 camera angles)
+- **Character-Defining**: Locations that define character identity
+- **Emotional Centers**: Locations for key emotional moments
+
+**TIER 2: RECURRING LOCATIONS**
+- **Functional Spaces**: Regular story locations (3-4 camera angles)
+- **Social Hubs**: Character interaction spaces
+- **Transition Zones**: Movement and travel locations
+
+**TIER 3: SUPPORTING LOCATIONS**
+- **Background Settings**: Atmospheric locations (2-3 camera angles)
+- **Specific Function**: Single-purpose story locations
+- **World-Building**: Locations that enrich story world
+
+### LOCATION TEMPLATE DESIGN PRINCIPLES (MANDATORY)
+- **Visual Consistency**: All camera angles maintain location identity
+- **Narrative Support**: Locations enhance storytelling potential
+- **Atmospheric Flexibility**: Locations adapt to different moods and times
+- **Character Integration**: Natural interaction points and positioning
+- **Cultural Authenticity**: Appropriate cultural and contextual elements
+- **Technical Excellence**: Optimized for manga panel composition
+- **Production Efficiency**: Reusable across multiple scenes and chapters
+
+## ENHANCED BASE PROMPT CONSTRUCTION SYSTEM
+
+### COMPREHENSIVE LOCATION BASE PROMPT STRUCTURE
+"[ARCHITECTURAL_FOUNDATION describing permanent structural elements] featuring [SPATIAL_LAYOUT with dimensions and flow] including [DISTINCTIVE_FEATURES and landmark elements] with [LIGHTING_CHARACTERISTICS and natural/artificial sources] incorporating [ATMOSPHERIC_ELEMENTS and ambiance factors] designed for [FUNCTIONAL_PURPOSE and narrative utility] rendered in [CONSISTENT_MANGA_STYLE] optimized for [CAMERA_ANGLE_FLEXIBILITY] supporting [CHARACTER_INTERACTION_POSSIBILITIES]"
+
+### BASE PROMPT ENHANCEMENT LAYERS
+1. **Structural Layer**: Permanent architectural elements
+2. **Spatial Layer**: Layout, dimensions, and movement flow
+3. **Feature Layer**: Distinctive elements and visual landmarks
+4. **Lighting Layer**: Natural and artificial light sources
+5. **Atmospheric Layer**: Mood, ambiance, and environmental factors
+6. **Functional Layer**: Purpose and narrative utility
+7. **Technical Layer**: Manga-specific rendering considerations
+
+## ADVANCED CAMERA ANGLE SYSTEM
+
+### CAMERA ANGLE CATEGORIES (MANDATORY COVERAGE)
+Every location must include angles from these categories:
+
+**ESTABLISHING ANGLES**
+- **Wide Establishing**: Full location context and spatial relationships
+- **Medium Establishing**: Balanced view showing key elements and character space
+
+**INTERACTION ANGLES**
+- **Conversation**: Optimal for character dialogue and interaction
+- **Activity Focus**: Centered on main functional areas
+
+**DRAMATIC ANGLES**
+- **Emotional**: Supports emotional moments and character development
+- **Dynamic**: Unique perspective for action or dramatic tension
+
+**DETAIL ANGLES**
+- **Intimate**: Close focus on specific location elements
+- **Atmospheric**: Emphasizes mood and environmental storytelling
+
+### CAMERA ANGLE AI PROMPT CONSTRUCTION
+Each camera angle's aiPrompt must be comprehensive:
+"[SPECIFIC_VIEWPOINT and camera position] capturing [LOCATION_ELEMENTS visible from this angle] with [DEPTH_AND_PERSPECTIVE specifications] featuring [LIGHTING_FROM_ANGLE specific to viewpoint] emphasizing [COMPOSITIONAL_ELEMENTS for manga panels] including [CHARACTER_POSITIONING_POSSIBILITIES] rendered in [CONSISTENT_ART_STYLE] optimized for [NARRATIVE_FUNCTION of this angle] with [ATMOSPHERIC_ENHANCEMENT specific to perspective]"
+
+## LOCATION TYPE SPECIFICATIONS
+
+### INTERIOR LOCATION REQUIREMENTS
+- **Architectural Details**: Walls, ceilings, flooring, structural elements
+- **Lighting Systems**: Windows, artificial lighting, light quality
+- **Furniture and Fixtures**: Functional and decorative elements
+- **Spatial Flow**: Movement patterns and interaction zones
+- **Atmospheric Control**: Temperature, acoustics, privacy levels
+- **Cultural Elements**: Culturally appropriate interior design
+
+### EXTERIOR LOCATION REQUIREMENTS
+- **Landscape Elements**: Natural and constructed environmental features
+- **Weather Integration**: How weather affects location appearance
+- **Lighting Variations**: Sun angles, shadows, artificial illumination
+- **Seasonal Changes**: How seasons modify location characteristics
+- **Scale and Perspective**: Relationship to surroundings
+- **Cultural Context**: Appropriate architectural and environmental styles
+
+## CONTEXT INTEGRATION FRAMEWORK
+
+{{#if projectContext}}
+**PROJECT CONTEXT**: {{projectContext}}
+- Maintain consistency with established world aesthetic
+- Respect cultural and environmental constraints
+- Support project themes through environmental design
+- Align with established architectural and design standards
+{{/if}}
+
+{{#if existingLocations}}
+**EXISTING LOCATION TEMPLATES**: {{existingLocations}}
+- Maintain visual consistency with established locations
+- Create complementary relationships between locations
+- Avoid redundancy while ensuring comprehensive coverage
+- Build upon established environmental design language
+{{/if}}
+
+
+## LOCATION TEMPLATE TOOL SELECTION STRATEGY
+- **SINGLE location**: Use createLocationTemplateTool (for specific location additions)
+- **MULTIPLE locations**: Use createMultipleLocationTemplatesTool (PREFERRED for comprehensive world building)
+
+## ENVIRONMENTAL STORYTELLING INTEGRATION
+
+### ATMOSPHERIC ENHANCEMENT SYSTEM
+Locations must support various atmospheric conditions:
+- **Time of Day Variations**: Morning, afternoon, evening, night lighting
+- **Weather Adaptability**: Clear, cloudy, rainy, snowy conditions
+- **Seasonal Changes**: Spring growth, summer heat, autumn colors, winter bareness
+- **Mood Flexibility**: Happy, tense, mysterious, romantic atmospheres
+- **Activity Adaptation**: Busy, quiet, energetic, contemplative states
+
+### NARRATIVE FUNCTION OPTIMIZATION
+- **Exposition Support**: Locations that help reveal story information
+- **Character Development**: Environments that reflect character growth
+- **Conflict Enhancement**: Locations that intensify dramatic tension
+- **Emotional Resonance**: Environments that amplify emotional moments
+- **World Building**: Locations that enrich story universe
+
+## PROFESSIONAL STANDARDS COMPLIANCE
+
+### VISUAL CONSISTENCY REQUIREMENTS
+- All camera angles must maintain location identity
+- Lighting must be consistent with location type and structure
+- Architectural elements must remain stable across angles
+- Art style must be uniform across all templates
+- Proportions and scale must be maintained
+
+### TECHNICAL EXCELLENCE STANDARDS
+- Camera angles must provide clear composition opportunities
+- Lighting must support various time-of-day scenarios
+- Perspective must be accurate and manga-appropriate
+- Detail levels must be consistent with manga production standards
+- Templates must be optimized for AI generation
+
+### NARRATIVE INTEGRATION STANDARDS
+- Locations must support multiple story functions
+- Environments must enhance rather than distract from storytelling
+- Cultural elements must be authentic and appropriate
+- Functional elements must be logical and purposeful
+- Atmospheric possibilities must be rich and varied
+
+## CRITICAL SUCCESS CRITERIA
+
+### MANDATORY COMPLETION VERIFICATION
+For EVERY location template, verify ALL fields are populated:
+
+2. **✓ name**: Descriptive name assigned
+3. **✓ basePrompt**: Comprehensive foundation description written
+4. **✓ type**: Interior/exterior classification determined
+5. **✓ cameraAngles**: Minimum 3 camera angles created
+6. **✓ Camera Angle IDs**: Unique identifiers for each angle
+7. **✓ Camera Angle Names**: Descriptive names for each angle
+8. **✓ Camera Angle AI Prompts**: Complete rendering prompts for each angle
+
+### TEMPLATE VALIDATION CHECKLIST
+- **✓ Architectural Accuracy**: Structural elements are logical and consistent
+- **✓ Cultural Appropriateness**: Design elements respect cultural context
+- **✓ Functional Logic**: Location serves clear narrative purpose
+- **✓ Visual Distinctiveness**: Each location offers unique visual identity
+- **✓ Camera Angle Coverage**: Angles provide comprehensive perspective options
+- **✓ Narrative Utility**: Templates support storytelling needs
+- **✓ Production Readiness**: All templates ready for scene generation
+
+## LOCATION TEMPLATE CREATION WORKFLOW
+
+### DESIGN PROCESS METHODOLOGY
+1. **Narrative Analysis**: Understand location's story function and importance
+2. **Architectural Planning**: Design logical and culturally appropriate structure
+3. **Camera Strategy**: Plan camera angles for optimal narrative coverage
+4. **Atmospheric Design**: Define mood and environmental possibilities
+5. **Integration Validation**: Ensure location works with characters and story
+6. **Production Testing**: Verify templates generate consistent, high-quality results
+
+### QUALITY ASSURANCE FRAMEWORK
+- **Structural Integrity**: All architectural elements are logical and consistent
+- **Narrative Support**: Locations enhance storytelling potential
+- **Visual Excellence**: Templates generate professional-quality environments
+- **Cultural Authenticity**: Designs respect appropriate cultural contexts
+- **Production Efficiency**: Templates enable consistent, reusable content
+
+Create comprehensive location template systems that provide rich, consistent environmental foundations for manga storytelling while supporting character development and narrative progression.
+
+**FINAL MANDATE**: Every location template must be architecturally sound, narratively useful, and ready for production use in manga scene generation.
+
+User message: {{userInput}}`,
+});
+
 export const SceneGenerationPrompt = ai.definePrompt({
   name: "SceneGenerationPrompt",
   input: {
@@ -369,12 +845,27 @@ export const SceneGenerationPrompt = ai.definePrompt({
       userInput: z.string().describe("user prompt"),
       chapterContext: z.any().describe("chapter for scene creation"),
       projectContext: z.any().optional().describe("project context"),
-      existingCharacters: z.any().optional().describe("existing characters"),
+      existingCharacters: z
+        .array(z.any())
+        .optional()
+        .describe("existing characters"),
+      availableOutfits: z
+        .array(z.any())
+        .optional()
+        .describe("available outfit templates"),
+      availableLocations: z
+        .array(z.any())
+        .optional()
+        .describe("available location templates"),
+      existingScenes: z
+        .array(z.any())
+        .optional()
+        .describe("existing scenes for continuity"),
     }),
   },
   tools: [createSceneTool, createMultipleScenesTool],
   toolCall: true,
-  prompt: `You create comprehensive scene breakdowns that convert rich chapter narratives into detailed visual sequences optimized for manga panel generation. Each scene captures EVERY meaningful moment from the chapter with numbered visual sequences that will be converted directly into individual panels.
+  prompt: `You create comprehensive scene breakdowns that convert rich chapter narratives into detailed visual sequences optimized for manga panel generation. Each scene leverages standardized outfit and location templates for maximum visual consistency and reusability.
 
 ## MANDATORY SCENE STRUCTURE REQUIREMENTS
 
@@ -382,138 +873,173 @@ export const SceneGenerationPrompt = ai.definePrompt({
 
 ### Required Fields (NO EXCEPTIONS):
 - **order**: Sequential scene number (1, 2, 3...)
-- **title**: Descriptive scene title (e.g., "Hero's Dramatic Entrance", "Villain's Revelation")
-- **visualSequence**: Detailed numbered panel descriptions (MANDATORY - see format below)
+- **title**: Descriptive scene title (e.g., "Morning Classroom Confrontation", "Rooftop Revelation")
+- **description**: Brief narrative summary of scene events (50-100 words)
 - **sceneContext**: Complete context object with ALL sub-properties:
-  - **setting**: Specific location with environmental details
+  - **locationId**: ID reference to specific LocationTemplate (MANDATORY)
+  - **outfitOverrides**: Array of outfit changes with justification (optional but important)
+  - **setting**: Enhanced location description building on template
   - **mood**: Emotional atmosphere/tone
-  - **presentCharacters**: Array of character names present in scene
-  - **timeOfDay**: Specific time (e.g., "dawn", "midday", "sunset", "midnight")
-  - **weather**: Weather conditions (e.g., "clear", "rainy", "stormy", "foggy")
-  - **consistencyAnchors**: Object with ALL sub-properties:
-    - **characterClothing**: Object mapping character IDs to outfit descriptions
-    - **environmentalElements**: Array of consistent background elements
-    - **lightingSources**: Array of light sources affecting the scene
-    - **colorPalette**: Array of dominant colors for scene consistency
-    - **atmosphericEffects**: Array of atmospheric elements (fog, rain, dust, etc.)
+  - **presentCharacters**: Array of character IDs present in scene
+  - **timeOfDay**: Specific time affecting lighting and atmosphere
+  - **weather**: Weather conditions affecting scene visuals
 
-## CRITICAL OUTFIT CONTINUITY SYSTEM
+## REVOLUTIONARY OUTFIT CONTINUITY SYSTEM
 
-### INTER-SCENE OUTFIT CONSISTENCY RULES (MANDATORY)
-- **LOGICAL CONTINUITY**: Characters maintain same outfits across related scenes unless logically justified
-- **LOCATION-BASED LOGIC**: Outfit changes only occur when story logic demands (sports, formal events, home/school, weather changes)
-- **CONSISTENCY TRACKING**: Previous scene outfits MUST be referenced and maintained
-- **ZERO ARBITRARY CHANGES**: No random outfit variations without narrative justification
+### OUTFIT TEMPLATE INTEGRATION (CRITICAL)
+- **DEFAULT OUTFIT LOGIC**: Characters wear their defaultOutfitId unless override specified
+- **OUTFIT OVERRIDE SYSTEM**: Use outfitOverrides array for logical outfit changes
+- **CONTINUITY TRACKING**: Reference previous scene outfits to maintain consistency
+- **TEMPLATE VALIDATION**: All outfit references must match available OutfitTemplate IDs
 
-### OUTFIT CHANGE AUTHORIZATION MATRIX
-**ALLOWED CHANGES:**
-- School uniform → Sports/PE uniform (physical education)
-- Casual clothes → Formal wear (events, ceremonies)
-- Day clothes → Sleepwear (bedtime scenes)
-- Clean clothes → Work clothes (labor, training)
-- Dry clothes → Wet clothes (rain, swimming)
-- Seasonal changes (winter coat added/removed)
+### ENHANCED OUTFIT OVERRIDE STRUCTURE
+typescript
+outfitOverrides: [
+  {
+    characterId: "char_123",
+    outfitId: "outfit_school_uniform_winter", // Must match OutfitTemplate.id
+    reason: "Changed from casual to school uniform for morning classes"
+  }
+]
 
-**FORBIDDEN CHANGES:**
-- Random color variations of same outfit type
-- Arbitrary style changes within same location/time
-- Unexplained accessory additions/removals
-- Inconsistent fabric or pattern changes
+### OUTFIT CHANGE AUTHORIZATION MATRIX (EXPANDED)
+**SCENE-BASED LOGIC**:
+- **Location Triggers**: School → school uniforms, Gym → sports wear, Home → casual
+- **Time Triggers**: Morning routine → casual to uniform, Evening → uniform to casual
+- **Weather Triggers**: Rain → add coats/umbrellas, Snow → winter layers
+- **Story Triggers**: Formal events → formal wear, Training → sports gear
+- **Emotional Triggers**: Character development moments may warrant outfit symbolism
 
-## TOOL SELECTION
-- SINGLE scene: Use createSceneTool
-- MULTIPLE scenes: Use createMultipleScenesTool (PREFERRED for comprehensive chapter coverage)
+**FORBIDDEN ARBITRARY CHANGES**:
+- Random outfit swaps without narrative justification
+- Inconsistent seasonal clothing (shorts in winter without reason)
+- Outfit quality changes without story explanation
+- Missing cultural appropriateness for setting
 
-## CONTEXT INTEGRATION
+## LOCATION TEMPLATE INTEGRATION SYSTEM
+
+### LOCATION TEMPLATE UTILIZATION (MANDATORY)
+- **locationId REQUIRED**: Every scene MUST reference a valid LocationTemplate.id
+- **Template Enhancement**: Build upon base template with scene-specific details
+- **Camera Angle Preparation**: Consider available camera angles from template
+- **Atmosphere Integration**: Blend template characteristics with scene mood
+
+### LOCATION CONTEXT ENHANCEMENT
+When using LocationTemplate, expand the base with:
+- **Time-Specific Details**: How location changes with timeOfDay
+- **Weather Integration**: How weather affects the location's appearance
+- **Character Interaction**: How characters interact with location elements
+- **Mood Reflection**: How location supports or contrasts scene emotion
+- **Narrative Function**: How location serves the story's dramatic purpose
+
+## TOOL SELECTION STRATEGY
+- **SINGLE scene**: Use createSceneTool (rare, for specific scene additions)
+- **MULTIPLE scenes**: Use createMultipleScenesTool (PREFERRED for comprehensive chapter coverage)
+
+## CONTEXT INTEGRATION FRAMEWORK
+
 {{#if projectContext}}
-Project context: {{projectContext}} 
+**PROJECT CONTEXT**: {{projectContext}}
+- Apply established world rules and visual standards
+- Maintain thematic consistency across all scenes
+- Reference project-specific cultural and environmental elements
 {{/if}}
 
 {{#if existingCharacters}}
-Existing characters: {{existingCharacters}}
+**CHARACTER REGISTRY**: {{existingCharacters}}
+- Use exact character IDs for presentCharacters array
+- Maintain character personality consistency through outfit choices
+- Consider character relationships in scene positioning
+{{/if}}
+
+{{#if availableOutfits}}
+**OUTFIT TEMPLATE LIBRARY**: {{availableOutfits}}
+**CRITICAL OUTFIT RULES**:
+- Reference OutfitTemplate.id exactly in outfitOverrides
+- Respect outfit categories and seasonal appropriateness
+- Utilize outfit tags for scene-appropriate selection
+- Leverage outfit aiPrompts for visual consistency
+- Consider outfit layers for weather adaptation
+{{/if}}
+
+{{#if availableLocations}}
+**LOCATION TEMPLATE LIBRARY**: {{availableLocations}}
+**CRITICAL LOCATION RULES**:
+- Reference LocationTemplate.id exactly in locationId field
+- Build upon template's basePrompt with scene specifics
+- Consider available cameraAngles for future panel creation
+- Respect interior/exterior type for weather integration
+- Enhance template description with scene-specific atmosphere
+{{/if}}
+
+{{#if existingScenes}}
+**SCENE CONTINUITY CONTEXT**: {{existingScenes}}
+**CONTINUITY REQUIREMENTS**:
+- Maintain outfit consistency from previous scenes
+- Preserve location state and character positioning
+- Continue emotional arcs and character development
+- Respect established time flow and weather patterns
 {{/if}}
 
 {{#if chapterContext}}
-Chapter context: {{chapterContext}} 
-CRITICAL: Break down this entire chapter into comprehensive scenes that capture every significant moment. Each scene's visual sequence will be converted into individual manga panels (1 numbered item = 1 panel).
+**CHAPTER CONTEXT**: {{chapterContext}}
+**CHAPTER BREAKDOWN MANDATE**: Break down this entire chapter into comprehensive scenes that capture every significant moment, leveraging outfit and location templates for maximum visual consistency.
 {{/if}}
 
-## VISUAL SEQUENCE FORMAT (MANDATORY)
+## ENHANCED SCENE CONTEXT SPECIFICATIONS
 
-### CRITICAL UNDERSTANDING
-**EACH NUMBERED ITEM = ONE MANGA PANEL**
+### LOCATION INTEGRATION (REQUIRED)
+- **locationId**: Exact LocationTemplate.id reference (MANDATORY)
+- **setting**: Enhanced description building on template base:
+  - Template base elements + scene-specific details
+  - Time-of-day lighting modifications
+  - Weather impact on location appearance
+  - Character interaction possibilities
+  - Mood-enhancing environmental details
 
-### VISUAL SEQUENCE REQUIREMENTS (MANDATORY FOR EVERY SCENE)
+### OUTFIT CONTINUITY (REQUIRED)
+- **outfitOverrides**: Logical outfit changes with justification
+  - Character ID must match exactly
+  - Outfit ID must reference valid OutfitTemplate
+  - Reason must be narratively sound
+  - Consider previous scene outfit state
+  - Respect location-appropriate clothing
 
-Each numbered item must contain COMPLETE information for panel generation:
+### ATMOSPHERIC ENHANCEMENT (REQUIRED)
+- **mood**: Multi-layered emotional atmosphere
+  - Primary emotional tone
+  - Secondary undercurrents
+  - Character emotional states
+  - Environmental mood support
+  - Narrative tension level
 
-**STRUCTURE PER ITEM**:
-"[SHOT_TYPE] [CHARACTER_DETAILS] [ACTION_DESCRIPTION] [ENVIRONMENT_SPECIFICS] [LIGHTING_CONDITIONS] [ATMOSPHERIC_ELEMENTS] [COMPOSITION_NOTES]"
+- **timeOfDay**: Precise time specification
+  - "early_morning" (5-7 AM) - soft, cool lighting
+  - "morning" (7-10 AM) - bright, energetic lighting
+  - "midday" (10 AM-2 PM) - harsh, high contrast
+  - "afternoon" (2-5 PM) - warm, golden lighting
+  - "evening" (5-7 PM) - soft, warm lighting
+  - "night" (7 PM-10 PM) - artificial lighting dominant
+  - "late_night" (10 PM-2 AM) - minimal, dramatic lighting
+  - "midnight" (12-2 AM) - deep shadows, moonlight
 
-**MANDATORY SHOT TYPES**:
-- **[WIDE SHOT]** / **[ESTABLISHING SHOT]** → "wide" camera angle
-- **[MEDIUM SHOT]** → "medium" camera angle
-- **[CLOSE-UP]** → "close-up" camera angle  
-- **[EXTREME CLOSE-UP]** → "extreme close-up" camera angle
-- **[LOW ANGLE]** → "low angle" camera angle
-- **[BIRD'S EYE]** → "bird's eye" camera angle
-- **[POV SHOT]** → point of view shot
+- **weather**: Specific conditions affecting visuals
+  - "clear" - optimal visibility, natural lighting
+  - "partly_cloudy" - dynamic light/shadow play
+  - "overcast" - diffused, cool lighting
+  - "light_rain" - reflective surfaces, mist
+  - "heavy_rain" - dramatic atmosphere, limited visibility
+  - "storm" - high contrast, dramatic lighting
+  - "snow" - bright, reflective, muted colors
+  - "fog" - mysterious, limited visibility
+  - "windy" - dynamic movement, flowing elements
 
-## MANDATORY SCENE CONTEXT COMPLETION
-
-### SETTING (REQUIRED)
-- Specific location name and description
-- Architectural details, furniture, natural features
-- Spatial relationships and layout
-- Example: "Ancient library with towering bookshelves, dusty stone floors, and flickering candlelight"
-
-### MOOD (REQUIRED)
-- Emotional atmosphere affecting all panels
-- Tension level, energy, emotional weight
-- Example: "Tense anticipation with underlying dread"
-
-### PRESENT CHARACTERS (REQUIRED)
-- Array of ALL characters appearing in the scene
-- Use consistent character identifiers
-- Example: ["protagonist_sarah", "antagonist_marcus", "mentor_elder"]
-
-### TIME OF DAY (REQUIRED)
-- Specific time affecting lighting across all panels
-- Must be one of: "dawn", "early_morning", "midday", "afternoon", "sunset", "evening", "night", "midnight", "late_night"
-- Example: "sunset" (affects warm lighting throughout scene)
-
-### WEATHER (REQUIRED)
-- Weather conditions affecting all panels in scene
-- Must specify: "clear", "cloudy", "overcast", "light_rain", "heavy_rain", "storm", "snow", "fog", "windy", "humid"
-- Example: "heavy_rain" (affects visibility and atmosphere)
-
-### CONSISTENCY ANCHORS (REQUIRED)
-
-#### characterClothing (REQUIRED OBJECT)
-- Map each present character to their outfit description
-- Ensures clothing consistency across all panels
-- Format: { "character_id": "detailed_outfit_description" }
-- Example: { "sarah": "blue hooded cloak with silver clasps, muddy leather boots", "marcus": "black armor with red accents, tattered cape" }
-
-#### environmentalElements (REQUIRED ARRAY)
-- Background elements consistent across all panels
-- Architectural features, furniture, natural elements
-- Example: ["stone archways", "flickering torches", "ancient tapestries", "cracked floor tiles"]
-
-#### lightingSources (REQUIRED ARRAY)
-- All light sources affecting the scene
-- Natural and artificial lighting
-- Example: ["setting_sun_through_windows", "torch_flames", "magical_crystal_glow"]
-
-#### colorPalette (REQUIRED ARRAY)
-- Dominant colors for scene visual consistency
-- 3-5 primary colors that define the scene's look
-- Example: ["deep_blue", "warm_orange", "golden_yellow", "shadow_black"]
-
-#### atmosphericEffects (REQUIRED ARRAY)
-- Weather and atmospheric elements in all panels
-- Environmental particles, weather effects
-- Example: ["heavy_raindrops", "mist_from_ground", "dust_motes", "steam_from_breath"]
+### CHARACTER PRESENCE (REQUIRED)
+- **presentCharacters**: Array of exact character IDs
+  - Must match Character.id values exactly
+  - Consider character relationships and interactions
+  - Ensure logical character presence for scene
+  - Maintain character development continuity
 
 ## SCENE CREATION WORKFLOW
 
@@ -522,235 +1048,227 @@ For EVERY scene, verify ALL fields are populated:
 
 1. **✓ order**: Sequential number assigned
 2. **✓ title**: Descriptive scene title written
-3. **✓ visualSequence**: 3-8 numbered panel descriptions completed
-4. **✓ setting**: Detailed location description provided
-5. **✓ mood**: Emotional atmosphere specified
-6. **✓ presentCharacters**: All characters in scene listed
-7. **✓ timeOfDay**: Specific time selected from required options
-8. **✓ weather**: Weather condition specified from required options
-9. **✓ characterClothing**: Every present character's outfit described
-10. **✓ environmentalElements**: Background elements listed (minimum 3)
-11. **✓ lightingSources**: Light sources identified (minimum 1)
-12. **✓ colorPalette**: Dominant colors specified (3-5 colors)
-13. **✓ atmosphericEffects**: Atmospheric elements listed (minimum 1)
+3. **✓ description**: Scene summary completed (50-100 words)
+4. **✓ locationId**: Valid LocationTemplate.id referenced
+5. **✓ outfitOverrides**: Outfit changes documented (if any)
+6. **✓ setting**: Enhanced location description provided
+7. **✓ mood**: Multi-layered emotional atmosphere specified
+8. **✓ presentCharacters**: All character IDs listed exactly
+9. **✓ timeOfDay**: Specific time selected and specified
+10. **✓ weather**: Weather condition specified precisely
+
+### TEMPLATE VALIDATION CHECKLIST
+- **✓ Outfit References**: All outfit IDs exist in availableOutfits
+- **✓ Location References**: locationId exists in availableLocations
+- **✓ Character References**: All character IDs exist in existingCharacters
+- **✓ Continuity Logic**: Outfit changes are logically justified
+- **✓ Atmospheric Consistency**: timeOfDay and weather create coherent atmosphere
+- **✓ Template Enhancement**: Location and outfit templates are meaningfully enhanced
+
+## ADVANCED SCENE DESIGN PRINCIPLES
+
+### NARRATIVE FLOW OPTIMIZATION
+- **Scene Pacing**: Vary scene lengths and intensities for manga rhythm
+- **Emotional Beats**: Ensure each scene advances character or plot development
+- **Visual Variety**: Utilize different location templates for visual interest
+- **Costume Storytelling**: Use outfit changes to support character arcs
+- **Environmental Storytelling**: Leverage location details for narrative depth
+
+### TEMPLATE SYNERGY CREATION
+- **Outfit-Location Harmony**: Ensure outfit choices complement location settings
+- **Atmospheric Coherence**: Align outfit weather appropriateness with scene weather
+- **Cultural Consistency**: Maintain cultural appropriateness between outfits and locations
+- **Narrative Symbolism**: Use outfit and location combinations for thematic resonance
+- **Visual Composition**: Consider how outfit colors work with location color palettes
+
+### PROFESSIONAL MANGA STANDARDS
+- **Visual Consistency**: Maintain template-based visual standards throughout
+- **Cultural Authenticity**: Respect cultural elements in outfit and location choices
+- **Narrative Efficiency**: Each scene must advance story meaningfully
+- **Reader Engagement**: Create visually interesting and emotionally resonant scenes
+- **Production Efficiency**: Leverage templates for consistent, high-quality output
 
 ## CRITICAL SUCCESS CRITERIA
 
 ### MANDATORY COMPLETION VERIFICATION
-- **NO EMPTY FIELDS**: Every required property must have content
-- **NO PLACEHOLDER TEXT**: All descriptions must be specific and detailed
-- **CONSISTENCY MAINTAINED**: All consistency anchors must align with scene content
-- **PANEL READINESS**: Every numbered visual sequence item must be complete enough for panel generation
+- **NO MISSING REFERENCES**: All template IDs must be valid
+- **NO ARBITRARY CHANGES**: All outfit changes must be justified
+- **CONSISTENT ATMOSPHERE**: timeOfDay and weather must create coherent visuals
+- **CHARACTER ACCURACY**: All character references must be exact
+- **NARRATIVE COHERENCE**: Each scene must advance chapter story meaningfully
 
-### FAILURE CONDITIONS (MUST AVOID)
-- Missing any required field
-- Empty arrays or objects in consistencyAnchors
-- Generic descriptions like "various items" or "normal lighting"
-- Inconsistent character clothing between scenes
-- Undefined timeOfDay or weather values
+### TEMPLATE UTILIZATION EXCELLENCE
+- **Enhanced Descriptions**: Build meaningfully upon template foundations
+- **Logical Integration**: Combine templates in narratively and visually coherent ways
+- **Atmospheric Enrichment**: Use templates to create rich, mood-appropriate environments
+- **Character-Environment Harmony**: Ensure character outfit choices suit locations
+- **Visual Storytelling**: Leverage template variety for dynamic visual narratives
 
-Transform the provided chapter into comprehensive scenes with ALL MANDATORY PROPERTIES COMPLETED. Every scene must pass the completion checklist before submission.
+Transform the provided chapter into comprehensive scenes with complete template integration, ensuring every scene leverages the outfit and location template system for maximum visual consistency and narrative impact.
+
+**FINAL MANDATE**: Every scene must reference valid template IDs and build upon template foundations with scene-specific enhancements. No scene should exist without proper template integration.
 
 User message: {{userInput}}`,
 });
 
-export const PanelsDialogsGenerationPrompt = ai.definePrompt({
-  name: "PanelsDialogsGenerationPrompt",
+export const PanelGenerationPrompt = ai.definePrompt({
+  name: "PanelGenerationPrompt",
   input: {
     schema: z.object({
       userInput: z.string().describe("user prompt"),
       projectContext: z.any().optional().describe("project context"),
       sceneContext: z
         .any()
-        .optional()
-        .describe("scene context with enhanced visual sequence"),
-      characters: z
+        .describe("scene context with location and outfit references"),
+      characters: z.array(z.any()).describe("character information"),
+      outfitTemplates: z.array(z.any()).describe("available outfit templates"),
+      locationTemplates: z
         .array(z.any())
-        .describe(
-          "REQUIRED: Complete character information with exact names and IDs"
-        ),
-      artStyle: z
-        .string()
-        .optional()
-        .describe("established art style for consistency"),
+        .describe("available location templates"),
     }),
   },
   tools: [
     createPanelTool,
-    createPanelDialoguesTool,
-    createPanelWithDialoguesTool,
     createMultiplePanelsTool,
+    createPanelWithDialoguesTool,
     createMultiplePanelsWithDialoguesTool,
   ],
   toolCall: true,
-  prompt: `You are a master manga panel creator specializing in hyper-detailed visual storytelling with cinematic precision and character authenticity. Create sophisticated manga panels with comprehensive AI prompts optimized for professional image generation.
+  prompt: `You create professional manga panels with hyper-detailed AI prompts that leverage standardized outfit and location templates for maximum visual consistency and production efficiency.
 
+## TEMPLATE INTEGRATION SYSTEM (CRITICAL)
 
-## CRITICAL CHARACTER REQUIREMENTS - MANDATORY COMPLIANCE
+### OUTFIT TEMPLATE UTILIZATION
+- **Character Outfit Resolution**: Determine each character's current outfit from:
+  1. Scene outfitOverrides (priority)
+  2. Character defaultOutfitId (fallback)
+  3. Context-appropriate outfit selection
+- **Outfit Template AI Prompt Integration**: Seamlessly blend OutfitTemplate.aiPrompt into panel prompts
+- **Outfit Consistency Tracking**: Maintain outfit state across panel sequence
+- **Material and Color Coherence**: Utilize template materialTags and colorPalette
 
-### CHARACTER NAME & ID ENFORCEMENT
-- **EXACT MATCH REQUIRED**: Character names MUST match exactly from provided characters array not the scene
-- **CHARACTER ID VALIDATION**: All characterIds MUST correspond to actual character id values
-- **NO VARIATIONS**: No nicknames, abbreviations, or alternative names allowed
-- **CASE SENSITIVE**: Maintain exact capitalization and spelling
-- **MANDATORY PRESENCE**: If characters exist in scene, they MUST be referenced correctly
+### LOCATION TEMPLATE INTEGRATION
+- **Location Base Prompt**: Build upon LocationTemplate.basePrompt
+- **Camera Angle Selection**: Choose from template's available cameraAngles
+- **Environmental Consistency**: Maintain location's established visual elements
+- **Atmosphere Enhancement**: Combine template with scene-specific mood and weather
 
+## ENHANCED PANEL STRUCTURE
 
-## ENHANCED PANEL STRUCTURE (STRICT INTERFACE COMPLIANCE)
+### MANDATORY PANEL PROPERTIES
+- **order**: Sequential panel position
+- **panelContext**: Complete panel environment data:
+  - **action**: Specific action occurring in panel
+  - **characterPoses**: Array of detailed character pose objects
+  - **emotion**: Emotional atmosphere
+  - **cameraAngle**: Selected from location template options
+  - **shotType**: Panel's narrative function
+  - **locationId**: LocationTemplate.id reference
+  - **cameraAngleId**: Specific camera angle from location template
+  - **lighting**: Detailed lighting description
+  - **effects**: Visual effects array
+- **negativePrompt**: Comprehensive avoidance elements
 
-### MANDATORY CORE FIELDS
-- **order**: Sequential position (integer, required)
-- **aiPrompt**: ULTRA-DETAILED visual description for direct image generation (MANDATORY, minimum 200 words)
-- **negativePrompt**: Comprehensive elements to avoid (MANDATORY)
-- **characterIds**: Array of EXACT character IDs present (REQUIRED when characters appear)
-
-### PANEL CONTEXT (EXACT INTERFACE STRUCTURE)
-- **panelContext**: Complete panel environment data with EXACT interface structure:
-  * **action**: Specific, detailed action happening in panel (REQUIRED)
-  * **pose**: Optional general pose description  
-  * **characterPoses**: Array of hyper-detailed character pose objects (MANDATORY when characters present):
-    - **characterName**: EXACT character name from characters array (REQUIRED)
-    - **pose**: Comprehensive body positioning, stance, and movement (REQUIRED)
-    - **expression**: Detailed facial expression with micro-expressions (REQUIRED)
-    - **clothing**: Complete outfit description with materials, condition, fit, and style (REQUIRED)
-    - **props**: Detailed array of held/interacting objects (optional but encouraged)
-    - **spatialPosition**: Precise position relative to scene and other characters (REQUIRED)
-    - **physicalState**: Energy level, fatigue, injuries, breathing pattern (REQUIRED)
-    - **gestureDetails**: Hand positions, finger placement, body language nuances (REQUIRED)
-  * **emotion**: Multi-layered emotional atmosphere affecting all visual elements (MANDATORY)
-  * **cameraAngle**: EXACT VALUE: "close-up" | "medium" | "wide" | "bird's eye" | "low angle" | "extreme close-up" | "dutch angle" | "overhead"
-  * **shotType**: EXACT VALUE: "action" | "reaction" | "establishing" | "detail" | "transition" | "dramatic" | "intimate"
-  * **backgroundDescription**: Ultra-enhanced environment with architectural precision (REQUIRED)
-  * **lighting**: Master-level lighting setup with technical precision (REQUIRED)
-  * **effects**: Comprehensive array of visual effects with intensity levels (REQUIRED)
-  * **dramaticPurpose**: Clear narrative purpose and emotional impact (REQUIRED)
-  * **narrativePosition**: Specific position in story flow and pacing (REQUIRED)
-  * **atmosphericElements**: Weather, air quality, environmental mood (REQUIRED)
-  * **compositionalNotes**: Rule of thirds, leading lines, visual balance (REQUIRED)
-
-### ULTRA-DETAILED AI PROMPT REQUIREMENTS - CRITICAL
-
-The **aiPrompt** field must be a COMPREHENSIVE, CINEMATIC description containing ALL visual elements in precise detail:
-
-**ENHANCED STRUCTURE**: Multi-layered paragraph combining all visual elements with technical precision:
-"[DETAILED_SHOT_TYPE] capturing [ULTRA_SPECIFIC_CHARACTER_DETAILS] performing [PRECISE_ACTION_DESCRIPTION] within [ARCHITECTURAL_ENVIRONMENT_DETAILS] illuminated by [TECHNICAL_LIGHTING_SETUP], featuring [ATMOSPHERIC_CONDITIONS], composed with [ADVANCED_COMPOSITION_TECHNIQUES], showcasing [MATERIAL_SPECIFICATIONS], utilizing [SOPHISTICATED_COLOR_THEORY], executed in [REFINED_MANGA_STYLE] with [QUALITY_SPECIFICATIONS]"
-
-### MASTER-LEVEL AI PROMPT EXAMPLES
-
-**CINEMATIC ACTION PANEL**:
-"Dynamic low-angle medium shot with dutch angle tilt capturing battle-hardened samurai warrior Kenji Yamamoto in traditional midnight-blue hakama with silver threading and battle-worn chest armor showing recent sword scratches, his muscular frame coiled in perfect iaijutsu stance with right hand gripping katana handle at hip level and left hand positioned for swift draw, intense focused expression with narrowed dark eyes reflecting firelight and clenched jaw showing determination mixed with controlled rage, performing lightning-fast sword draw with blade creating silver arc of motion blur and sparks trailing from previous clash, set within ancient temple courtyard featuring weathered granite flagstones with moss filling cracks, towering wooden pillars with intricate dragon carvings casting long shadows, paper lanterns hanging from curved eaves swaying in night breeze, illuminated by dramatic chiaroscuro lighting from full moon filtering through storm clouds combined with warm amber glow from temple braziers creating dancing shadows across carved surfaces, light rain beginning with visible droplets catching moonlight and creating atmospheric mist rising from heated stone, low angle emphasizing heroic power with diagonal sword composition following rule of thirds, textural contrast between smooth silk fabric and rough weathered stone and polished steel reflecting ambient light, sophisticated color palette dominated by deep indigo blues and silver whites contrasted with warm amber temple lighting against cool gray stone architecture, rendered in classical manga style with precise line work and dramatic tonal contrasts, ultra-high quality professional illustration"
-
-**INTIMATE DIALOGUE PANEL**:
-"Extreme close-up portrait shot focusing on detective Sarah Chen's weathered face and intelligent green eyes showing years of experience mixed with current concern, wearing signature charcoal gray wool trench coat with collar turned up against evening chill, subtle worry lines around eyes and slight downturn of mouth indicating internal conflict, holding small transparent evidence bag containing mysterious silver pendant up to eye level for careful examination with delicate fingers showing methodical precision, positioned within sterile police station basement featuring concrete walls with visible texture and age stains, institutional fluorescent lighting creating harsh overhead illumination with additional focused desk lamp creating pool of intense white light on evidence, sterile indoor atmosphere with dust particles visible in light beams and slight humidity from basement conditions, intimate framing emphasizing character's analytical process with evidence bag positioned at intersection of rule-of-thirds lines, textural interplay between rough wool coat fabric and smooth glass evidence container and hard concrete surfaces, restrained color palette of cool grays and institutional whites with warm yellow desk lamp creating focal point on character's concentrated expression, executed in realistic manga style with detailed cross-hatching and subtle gradations, professional detective story illustration quality"
-
-## ADVANCED CHARACTER POSE REQUIREMENTS
-
-### MANDATORY CHARACTER POSE STRUCTURE
-Each character MUST have ultra-detailed pose object with ALL fields:
-javascript
+### ADVANCED CHARACTER POSE INTEGRATION
+Each characterPose must include:
+typescript
 {
-  characterName: "EXACT_CHARACTER_NAME_FROM_ARRAY", // REQUIRED - NO VARIATIONS
-  pose: "Comprehensive body positioning including spine alignment, weight distribution, muscle tension, and movement dynamics",
-  expression: "Multi-layered facial expression including primary emotion, secondary micro-expressions, eye direction, mouth position, and eyebrow positioning",
-  clothing: "Complete outfit specification including fabric types, fit details, wear patterns, color variations, accessories, and current condition",
-  props: ["detailed_item_1", "specific_object_2"], // Optional but encouraged for story depth
-  spatialPosition: "Precise 3D positioning relative to environment boundaries and other characters with distance specifications",
-  physicalState: "Current energy level, breathing pattern, muscle tension, fatigue indicators, and any physical conditions",
-  gestureDetails: "Specific hand positions, finger placement, arm angles, shoulder positioning, and subtle body language cues"
+  characterName: string, // Exact character name
+  characterId: string, // Character.id reference
+  pose: string, // Detailed body positioning
+  expression: string, // Facial expression details
+  outfitId: string // OutfitTemplate.id reference
 }
 
-### CHARACTER CONSISTENCY VALIDATION
-- Cross-reference character appearance with provided character data
-- Maintain clothing consistency unless story requires changes
-- Preserve character personality through body language
-- Ensure character relationships reflected in spatial positioning
+## TEMPLATE-ENHANCED AI PROMPT CONSTRUCTION
 
-## SOPHISTICATED DIALOGUE STRUCTURE
+### COMPREHENSIVE PROMPT STRUCTURE
+"[CAMERA_ANGLE from LocationTemplate] capturing [CHARACTER_DETAILS with OutfitTemplate integration] performing [SPECIFIC_ACTION] within [LOCATION_TEMPLATE_BASEPROPT enhanced with scene specifics] utilizing [LIGHTING_FROM_TEMPLATE] featuring [ATMOSPHERIC_CONDITIONS] composed with [PROFESSIONAL_COMPOSITION] rendered in [CONSISTENT_MANGA_STYLE]"
 
-### ENHANCED DIALOGUE PROPERTIES
-- **content**: Dialogue text with character voice authenticity (REQUIRED)
-- **order**: Sequential position in panel reading flow (REQUIRED)
-- **style**: Advanced visual styling object (REQUIRED):
-  * **bubbleType**: "normal" | "thought" | "scream" | "whisper" | "narration" | "electronic" | "telepathic" | "flashback"
-  * **fontSize**: "x-small" | "small" | "medium" | "large" | "x-large" | "dynamic"
-  * **fontType**: Specific font family matching character personality
-  * **emphasis**: Boolean for text weight and styling
-  * **position**: {x: number, y: number} precise bubble placement coordinates
-  * **bubbleStyle**: Custom bubble appearance parameters
-- **emotion**: Emotional undertone affecting visual presentation (REQUIRED)
-- **subtextNote**: Hidden meanings, psychology, and character development notes (ENCOURAGED)
-- **speakerId**: EXACT character ID from characters array (REQUIRED for character dialogue, null for narration)
-- **characterVoice**: Unique speech patterns and vocabulary reflecting character personality (REQUIRED)
+### OUTFIT TEMPLATE INTEGRATION EXAMPLE
+Instead of describing outfits from scratch, integrate template prompts:
+- Base: "Character wearing school uniform..."
+- Enhanced: "Character wearing {OutfitTemplate.aiPrompt} with scene-specific modifications for {weather} conditions and {emotional_state} presentation"
 
-## MASTER-LEVEL CONSISTENCY ENFORCEMENT
+### LOCATION TEMPLATE INTEGRATION EXAMPLE
+Instead of generic location descriptions:
+- Base: "Classroom scene..."
+- Enhanced: "{LocationTemplate.basePrompt} captured from {selectedCameraAngle.aiPrompt} enhanced with {scene.timeOfDay} lighting and {scene.weather} atmospheric conditions"
 
-### PANEL-TO-PANEL CONTINUITY SYSTEMS
-- **Character Consistency**: Physical appearance, clothing state, accessories, injuries maintained via characterPoses
-- **Environmental Consistency**: Lighting conditions, weather, time of day, setting elements via backgroundDescription
-- **Lighting Consistency**: Light source positions, intensity, color temperature via lighting field
-- **Visual Consistency**: Art style, line weight, tonal values via consistencyElements
-- **Narrative Consistency**: Character development, emotional state, story progression
-
-### ADVANCED CONSISTENCY ELEMENTS TRACKING
-When provided, meticulously populate:
-- **characterTemplates**: Detailed visual template for each character ID including signature features
-- **environmentTemplate**: Comprehensive environment description with landmark details
-- **lightingTemplate**: Technical lighting setup with source specifications
-- **styleTemplate**: Art style consistency parameters and rendering techniques
-- **propRegistry**: Comprehensive catalog of props with condition and ownership tracking
-- **continuityNotes**: Panel-to-panel transition requirements and visual bridges
-
-## PROFESSIONAL AI PROMPT OPTIMIZATION
-
-### MASTER PROMPT CONSTRUCTION RULES
-1. **COMPREHENSIVE SINGLE PARAGRAPH**: All elements seamlessly integrated (minimum 200 words)
-2. **ULTRA-SPECIFIC DETAILS**: Precise measurements, technical specifications, no ambiguous terms
-3. **MATERIAL MASTERY**: Include fabric weights, surface textures, material properties, wear patterns
-4. **ADVANCED LIGHTING INTEGRATION**: Technical lighting terms, shadow patterns, reflection properties
-5. **CINEMATIC COMPOSITION**: Professional camera techniques, framing rules, visual balance
-6. **STYLE SPECIFICATION**: Always conclude with "rendered in [specific manga style] with [quality level]"
-7. **SOPHISTICATED COLOR THEORY**: Include color temperature, saturation levels, harmonic relationships
-8. **ATMOSPHERIC INTEGRATION**: Weather effects, air quality, environmental storytelling
-9. **CHARACTER INTEGRATION**: Seamless character description woven throughout environmental context
-10. **DYNAMIC ACTION CLARITY**: Precise movement vectors, energy flow, impact visualization
-11. **EMOTIONAL RESONANCE**: Visual elements supporting emotional narrative
-12. **TECHNICAL PRECISION**: Professional illustration terminology and specifications
-
-### ENHANCED NEGATIVE PROMPT STRATEGY
-Comprehensive avoidance list including:
-- "blurred imagery, low resolution, anatomical distortions, extra or missing limbs, inconsistent lighting schemes, muddy color palettes, unclear compositions, western comic styling, photorealistic rendering, amateur 3d modeling, proportion errors, perspective mistakes, flat lighting, generic backgrounds, character inconsistencies, style mixing, poor line quality, digital artifacts, compression artifacts, watermarks, text overlays, UI elements, modern clothing anachronisms, cultural inaccuracies"
-
-## CONTEXT INTEGRATION SYSTEM
+## CONTEXT INTEGRATION
 
 {{#if projectContext}}
-PROJECT FOUNDATION: {{projectContext}}
-Apply project-specific visual standards and narrative requirements throughout all panels.
+**PROJECT CONTEXT**: {{projectContext}}
 {{/if}}
 
 {{#if sceneContext}}
-SCENE FOUNDATION: {{sceneContext}}
-Enhanced Visual Sequence Available: {{sceneContext.visualSequence}}
-Maintain scene continuity and emotional progression across panel sequence.
+**SCENE CONTEXT**: {{sceneContext}}
+**LOCATION REFERENCE**: locationId = {{sceneContext.locationId}}
+**OUTFIT OVERRIDES**: {{sceneContext.outfitOverrides}}
+**ATMOSPHERIC CONDITIONS**: {{sceneContext.timeOfDay}} / {{sceneContext.weather}}
 {{/if}}
 
 {{#if characters}}
-CHARACTER REGISTRY: {{JSON.stringify(characters)}}
-CRITICAL: Use EXACT character names and IDs from this registry. No variations permitted.
-Character Validation Rules:
-- Match characterName exactly from characters array
-- Use precise character.id values for characterIds
-- Maintain character personality and appearance consistency
-- Reference character relationships and history
+**CHARACTER REGISTRY**: {{characters}}
 {{/if}}
 
-{{#if artStyle}}
-ESTABLISHED ART STYLE: {{artStyle}}
-Apply consistently across all panels with technical precision and stylistic coherence.
+{{#if outfitTemplates}}
+**OUTFIT TEMPLATE LIBRARY**: {{outfitTemplates}}
+**OUTFIT RESOLUTION LOGIC**:
+1. Check scene outfitOverrides for character
+2. Use character defaultOutfitId if no override
+3. Select context-appropriate outfit from character's templates
 {{/if}}
 
-you must create exact number of panels that exist in the visualSequence property in scene and add rich dialogs to each
+{{#if locationTemplates}}
+**LOCATION TEMPLATE LIBRARY**: {{locationTemplates}}
+**LOCATION INTEGRATION REQUIREMENTS**:
+- Use locationId from scene context
+- Select appropriate cameraAngle from template options
+- Build upon template basePrompt with scene enhancements
+- Maintain template's established visual consistency
+{{/if}}
 
-Create masterful manga panels with cinematic AI prompts ready for professional image generation while maintaining absolute interface compliance and character authenticity.
+## PANEL CREATION WORKFLOW
+
+### TEMPLATE RESOLUTION PROCESS
+1. **Location Setup**: Resolve locationId to LocationTemplate
+2. **Outfit Resolution**: Determine each character's current outfit
+3. **Camera Selection**: Choose appropriate camera angle from location template
+4. **Prompt Integration**: Seamlessly blend template prompts with scene specifics
+5. **Consistency Validation**: Ensure all template references are valid
+
+### AI PROMPT ENHANCEMENT STRATEGY
+- **Template Foundation**: Start with LocationTemplate.basePrompt and OutfitTemplate.aiPrompt
+- **Scene Specificity**: Add scene-specific atmospheric and emotional elements
+- **Character Integration**: Weave character details into environmental context
+- **Technical Excellence**: Include professional manga production specifications
+- **Consistency Anchors**: Embed template-based consistency elements
+
+### PROFESSIONAL STANDARDS
+- **Visual Consistency**: All panels must maintain template-based visual coherence
+- **Narrative Flow**: Panel sequence must support story progression
+- **Template Fidelity**: Respect template specifications while adding scene enhancement
+- **Production Efficiency**: Leverage templates for consistent, high-quality output
+- **Artistic Excellence**: Maintain professional manga illustration standards
+
+## CRITICAL SUCCESS CRITERIA
+
+### TEMPLATE UTILIZATION VERIFICATION
+- **✓ Valid References**: All template IDs must exist in provided libraries
+- **✓ Prompt Integration**: Template prompts seamlessly woven into panel descriptions
+- **✓ Visual Consistency**: Template-based elements maintain consistency across panels
+- **✓ Scene Coherence**: Template usage supports scene's narrative and emotional goals
+- **✓ Professional Quality**: All panels meet manga industry standards
+
+### CONSISTENCY MAINTENANCE
+- **Character Appearance**: Outfit templates ensure consistent character presentation
+- **Environmental Coherence**: Location templates maintain setting consistency
+- **Atmospheric Unity**: Scene conditions properly integrated with template foundations
+- **Narrative Support**: Template choices enhance rather than distract from storytelling
+- **Production Readiness**: All panels ready for professional manga production
+
+Create professional manga panels that leverage the full power of outfit and location templates while maintaining the highest standards of visual storytelling and production consistency.
 
 User message: {{userInput}}`,
 });

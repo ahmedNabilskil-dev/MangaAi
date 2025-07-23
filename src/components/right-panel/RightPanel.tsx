@@ -34,7 +34,7 @@ import { Node } from "reactflow";
 export const ProjectViewerPanel = ({ project }: { project: MangaProject }) => {
   console.log({ project });
   return (
-    <div className="fixed right-0 top-0 h-full bg-gray-900 text-white border-l border-gray-700 overflow-y-auto z-50">
+    <div className="h-full bg-gray-900 text-white border-l border-gray-700 overflow-y-auto z-50">
       <div className="relative w-full h-64">
         {project.coverImageUrl ? (
           <Image
@@ -194,7 +194,7 @@ export const ProjectViewerPanel = ({ project }: { project: MangaProject }) => {
 
 export const ChapterViewerPanel = ({ chapter }: { chapter: Chapter }) => {
   return (
-    <div className="fixed right-0 top-0 h-full bg-gray-900 text-white border-l border-gray-700 overflow-y-auto z-50">
+    <div className="h-full bg-gray-900 text-white border-l border-gray-700 overflow-y-auto z-50">
       <div className="relative w-full h-48">
         {chapter.coverImageUrl ? (
           <Image
@@ -308,7 +308,7 @@ export const ChapterViewerPanel = ({ chapter }: { chapter: Chapter }) => {
 
 export const SceneViewerPanel = ({ scene }: { scene: Scene }) => {
   return (
-    <div className="fixed right-0 top-0 h-full bg-gray-900 text-white border-l border-gray-700 overflow-y-auto z-50 p-6">
+    <div className="h-full bg-gray-900 text-white border-l border-gray-700 overflow-y-auto z-50 p-6">
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-3">
           <div className="bg-indigo-900 w-12 h-12 rounded-full flex items-center justify-center">
@@ -415,7 +415,7 @@ export const SceneViewerPanel = ({ scene }: { scene: Scene }) => {
 
 export const PanelViewerPanel = ({ panel }: { panel: Panel }) => {
   return (
-    <div className="fixed right-0 top-0 h-full bg-gray-900 text-white border-l border-gray-700 overflow-y-auto z-50">
+    <div className="h-full bg-gray-900 text-white border-l border-gray-700 overflow-y-auto z-50">
       <div className="flex flex-col">
         {/* Panel image section */}
         <div className="relative bg-black">
@@ -615,7 +615,7 @@ export const DialogueViewerPanel = ({
   dialogue: PanelDialogue;
 }) => {
   return (
-    <div className="fixed right-0 top-0 h-full w-full bg-gray-900 text-white border-l border-gray-700 overflow-y-auto z-50 p-6">
+    <div className="h-full w-full bg-gray-900 text-white border-l border-gray-700 overflow-y-auto z-50 p-6">
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-3">
           <div className="bg-indigo-900 w-12 h-12 rounded-full flex items-center justify-center">
@@ -768,7 +768,7 @@ export const CharacterViewerPanel = ({
   >("profile");
 
   return (
-    <div className="fixed right-0 top-0 h-full bg-gray-900 text-white border-l border-gray-700 overflow-y-auto z-50">
+    <div className="h-full bg-gray-900 text-white border-l border-gray-700 overflow-y-auto z-50">
       <div className="flex flex-col">
         {/* Character image and basic info */}
         <div className="bg-gray-800">
@@ -1410,7 +1410,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: rightPanel.width, opacity: 0 }}
           transition={ANIMATION_CONFIG}
-          className="fixed right-0 top-0 h-full bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm shadow-xl border-l border-gray-200/50 dark:border-gray-700/50 flex flex-col z-20"
+          className="h-full bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm shadow-xl border-l border-gray-200/50 dark:border-gray-700/50 flex flex-col z-20"
           style={{ width: `${rightPanel.width}px` }}
         >
           {/* Content */}
