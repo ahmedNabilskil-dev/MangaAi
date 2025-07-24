@@ -466,76 +466,186 @@ export function EnhancedProjectStructurePanel({
                         className="ml-6 mt-3 space-y-2 bg-gradient-to-r from-gray-800/30 to-gray-700/20 rounded-lg p-3 border border-gray-700/30"
                       >
                         {chapter.scenes?.map((scene: Scene) => (
-                          <div
-                            key={scene.id}
-                            className={`flex items-center gap-3 p-3 rounded-lg transition-all hover:bg-gray-800/50 group relative bg-gray-800/20 border ${
-                              selectedEntity?.id === scene.id &&
-                              selectedEntity?.type === "scene"
-                                ? "bg-yellow-500/20 border-yellow-400/30 shadow-lg shadow-yellow-500/10"
-                                : "border-gray-700/50 hover:border-yellow-400/20"
-                            }`}
-                          >
-                            <div className="w-8 h-8 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-lg flex items-center justify-center shadow-md group-hover:shadow-yellow-500/20 transition-all duration-200 flex-shrink-0">
-                              <Layout className="w-4 h-4 text-white" />
-                            </div>
-                            <div className="flex-1 min-w-0 pr-20">
-                              <div
-                                className="font-medium text-white text-sm truncate group-hover:text-yellow-300 transition-colors"
-                                title={scene.title}
+                          <div key={scene.id} className="space-y-2">
+                            {/* Scene Header */}
+                            <div
+                              className={`flex items-center gap-3 p-3 rounded-lg transition-all hover:bg-gray-800/50 group relative bg-gray-800/20 border ${
+                                selectedEntity?.id === scene.id &&
+                                selectedEntity?.type === "scene"
+                                  ? "bg-yellow-500/20 border-yellow-400/30 shadow-lg shadow-yellow-500/10"
+                                  : "border-gray-700/50 hover:border-yellow-400/20"
+                              }`}
+                            >
+                              {/* Expand/Collapse Button for Scene */}
+                              <button
+                                onClick={() =>
+                                  toggleExpanded(`scene-${scene.id}`)
+                                }
+                                className="p-1 hover:bg-gray-700 rounded transition-colors flex-shrink-0"
                               >
-                                {scene.title}
-                              </div>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                <span className="text-xs text-yellow-300/60">
-                                  {scene.panels?.length || 0} panels
-                                </span>
-                                {scene.description && (
-                                  <>
-                                    <span className="text-xs text-yellow-300/40">
-                                      •
-                                    </span>
-                                    <span
-                                      className="text-xs text-gray-400 truncate max-w-24"
-                                      title={scene.description}
-                                    >
-                                      {scene.description}
-                                    </span>
-                                  </>
+                                {expandedItems.has(`scene-${scene.id}`) ? (
+                                  <ChevronDown className="w-3 h-3 text-yellow-400" />
+                                ) : (
+                                  <ChevronRight className="w-3 h-3 text-yellow-400" />
                                 )}
+                              </button>
+
+                              <div className="w-8 h-8 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-lg flex items-center justify-center shadow-md group-hover:shadow-yellow-500/20 transition-all duration-200 flex-shrink-0">
+                                <Layout className="w-4 h-4 text-white" />
+                              </div>
+                              <div className="flex-1 min-w-0 pr-20">
+                                <div
+                                  className="font-medium text-white text-sm truncate group-hover:text-yellow-300 transition-colors"
+                                  title={scene.title}
+                                >
+                                  {scene.title}
+                                </div>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <span className="text-xs text-yellow-300/60">
+                                    {scene.panels?.length || 0} panels
+                                  </span>
+                                  {scene.description && (
+                                    <>
+                                      <span className="text-xs text-yellow-300/40">
+                                        •
+                                      </span>
+                                      <span
+                                        className="text-xs text-gray-400 truncate max-w-24"
+                                        title={scene.description}
+                                      >
+                                        {scene.description}
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="absolute right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900/90 backdrop-blur-sm rounded px-1 py-0.5">
+                                <button
+                                  onClick={() =>
+                                    showEntityDetails(
+                                      scene as any,
+                                      "scene" as any
+                                    )
+                                  }
+                                  className="p-1 hover:bg-gray-700 rounded transition-colors"
+                                  title="View Scene Details"
+                                >
+                                  <Eye className="w-3.5 h-3.5 text-yellow-400" />
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    handleEntitySelect(
+                                      scene as any,
+                                      "scene",
+                                      scene.id
+                                    )
+                                  }
+                                  className={`p-1 rounded transition-colors ${
+                                    selectedEntity?.id === scene.id &&
+                                    selectedEntity?.type === "scene"
+                                      ? "bg-yellow-500/40 text-yellow-300"
+                                      : "hover:bg-gray-700 text-gray-400"
+                                  }`}
+                                  title="Select Scene"
+                                >
+                                  <Settings className="w-3.5 h-3.5" />
+                                </button>
                               </div>
                             </div>
-                            <div className="absolute right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900/90 backdrop-blur-sm rounded px-1 py-0.5">
-                              <button
-                                onClick={() =>
-                                  showEntityDetails(
-                                    scene as any,
-                                    "scene" as any
-                                  )
-                                }
-                                className="p-1 hover:bg-gray-700 rounded transition-colors"
-                                title="View Scene Details"
-                              >
-                                <Eye className="w-3.5 h-3.5 text-yellow-400" />
-                              </button>
-                              <button
-                                onClick={() =>
-                                  handleEntitySelect(
-                                    scene as any,
-                                    "scene",
-                                    scene.id
-                                  )
-                                }
-                                className={`p-1 rounded transition-colors ${
-                                  selectedEntity?.id === scene.id &&
-                                  selectedEntity?.type === "scene"
-                                    ? "bg-yellow-500/40 text-yellow-300"
-                                    : "hover:bg-gray-700 text-gray-400"
-                                }`}
-                                title="Select Scene"
-                              >
-                                <Settings className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
+
+                            {/* Scene Panels */}
+                            {expandedItems.has(`scene-${scene.id}`) &&
+                              scene.panels &&
+                              scene.panels.length > 0 && (
+                                <motion.div
+                                  initial={{ opacity: 0, height: 0 }}
+                                  animate={{ opacity: 1, height: "auto" }}
+                                  exit={{ opacity: 0, height: 0 }}
+                                  className="ml-8 space-y-1 bg-gradient-to-r from-cyan-900/20 to-blue-900/10 rounded-lg p-2 border border-cyan-700/30"
+                                >
+                                  {scene.panels.map((panel: any) => (
+                                    <div
+                                      key={panel.id}
+                                      className={`flex items-center gap-3 p-2 rounded-lg transition-all hover:bg-cyan-800/30 group relative bg-cyan-800/10 border ${
+                                        selectedEntity?.id === panel.id &&
+                                        selectedEntity?.type === "panel"
+                                          ? "bg-cyan-500/20 border-cyan-400/30 shadow-lg shadow-cyan-500/10"
+                                          : "border-cyan-700/30 hover:border-cyan-400/20"
+                                      }`}
+                                    >
+                                      <div className="w-6 h-6 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-md flex items-center justify-center shadow-sm group-hover:shadow-cyan-500/20 transition-all duration-200 flex-shrink-0">
+                                        <Eye className="w-3 h-3 text-white" />
+                                      </div>
+                                      <div className="flex-1 min-w-0 pr-16">
+                                        <div
+                                          className="font-medium text-white text-xs truncate group-hover:text-cyan-300 transition-colors"
+                                          title={`Panel ${panel.order}`}
+                                        >
+                                          Panel {panel.order}
+                                        </div>
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                          <span className="text-xs text-cyan-300/60">
+                                            {panel.dialogues?.length || 0}{" "}
+                                            dialogues
+                                          </span>
+                                          {panel.panelContext?.shotType && (
+                                            <>
+                                              <span className="text-xs text-cyan-300/40">
+                                                •
+                                              </span>
+                                              <span className="text-xs text-gray-400 truncate max-w-20 capitalize">
+                                                {panel.panelContext.shotType}
+                                              </span>
+                                            </>
+                                          )}
+                                          {panel.panelContext?.emotion && (
+                                            <>
+                                              <span className="text-xs text-cyan-300/40">
+                                                •
+                                              </span>
+                                              <span className="text-xs text-gray-400 truncate max-w-16 capitalize">
+                                                {panel.panelContext.emotion}
+                                              </span>
+                                            </>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <div className="absolute right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900/90 backdrop-blur-sm rounded px-1 py-0.5">
+                                        <button
+                                          onClick={() =>
+                                            showEntityDetails(
+                                              panel as any,
+                                              "panel" as any
+                                            )
+                                          }
+                                          className="p-1 hover:bg-gray-700 rounded transition-colors"
+                                          title="View Panel Details"
+                                        >
+                                          <Eye className="w-3 h-3 text-cyan-400" />
+                                        </button>
+                                        <button
+                                          onClick={() =>
+                                            handleEntitySelect(
+                                              panel as any,
+                                              "panel",
+                                              panel.id
+                                            )
+                                          }
+                                          className={`p-1 rounded transition-colors ${
+                                            selectedEntity?.id === panel.id &&
+                                            selectedEntity?.type === "panel"
+                                              ? "bg-cyan-500/40 text-cyan-300"
+                                              : "hover:bg-gray-700 text-gray-400"
+                                          }`}
+                                          title="Select Panel"
+                                        >
+                                          <Settings className="w-3 h-3" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </motion.div>
+                              )}
                           </div>
                         )) || (
                           <div className="text-xs text-gray-500 p-2 text-center">

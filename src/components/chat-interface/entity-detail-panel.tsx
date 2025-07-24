@@ -1607,78 +1607,62 @@ function SceneDetails({ scene }: { scene: Scene }) {
 
 function PanelDetails({ panel }: { panel: Panel }) {
   return (
-    <div className="space-y-6">
-      {/* Panel Header with Image */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-cyan-50 to-blue-100 dark:from-cyan-900/30 dark:to-blue-900/30 border border-cyan-200 dark:border-cyan-800">
+    <div className="space-y-4">
+      {/* Panel Header */}
+      <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-cyan-600 to-blue-700 p-4">
         {/* Panel Image */}
         {panel.imageUrl && (
-          <div className="relative h-48 overflow-hidden">
+          <div className="relative h-32 overflow-hidden rounded-lg mb-3">
             <img
               src={panel.imageUrl}
               alt={`Panel ${panel.order}`}
-              className="w-full h-full object-contain bg-black/5"
+              className="w-full h-full object-cover"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-cyan-900/30 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
           </div>
         )}
 
-        <div className="relative z-10 p-6">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg">
-              <Eye className="w-8 h-8 text-white" />
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-12 h-12 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
+              <Eye className="w-6 h-6 text-white" />
             </div>
-            <div className="flex-1">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-lg font-bold text-white mb-1">
                 Panel {panel.order}
-              </h3>
-              <div className="flex items-center gap-2">
+              </h1>
+              <div className="flex items-center gap-2 flex-wrap">
                 {panel.panelContext?.shotType && (
-                  <Badge
-                    variant="secondary"
-                    className="bg-white/70 text-cyan-700 border-cyan-200 capitalize"
-                  >
-                    {panel.panelContext.shotType} Shot
+                  <Badge className="bg-white/15 text-white border-white/20 text-xs capitalize">
+                    {panel.panelContext.shotType}
                   </Badge>
                 )}
                 <Badge
-                  variant={panel.isAiGenerated ? "default" : "secondary"}
-                  className={
+                  className={`text-xs ${
                     panel.isAiGenerated
-                      ? "bg-purple-500 text-white"
-                      : "bg-blue-500 text-white"
-                  }
+                      ? "bg-purple-500/80 text-white"
+                      : "bg-blue-500/80 text-white"
+                  }`}
                 >
-                  {panel.isAiGenerated ? "AI Generated" : "Manual"}
+                  {panel.isAiGenerated ? "AI" : "Manual"}
                 </Badge>
               </div>
             </div>
           </div>
 
-          {/* Panel Stats */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-white/70 dark:bg-white/10 rounded-xl p-3 text-center">
-              <div className="text-2xl font-bold text-cyan-600 dark:text-cyan-400">
+          {/* Compact Stats */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-white/10 rounded-lg p-2 text-center">
+              <div className="text-xl font-bold text-white">
                 {panel.dialogues?.length || 0}
               </div>
-              <div className="text-xs text-gray-600 dark:text-gray-400">
-                Dialogues
-              </div>
+              <div className="text-white/70 text-xs">Dialogues</div>
             </div>
-            <div className="bg-white/70 dark:bg-white/10 rounded-xl p-3 text-center">
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+            <div className="bg-white/10 rounded-lg p-2 text-center">
+              <div className="text-xl font-bold text-white">
                 {panel.panelContext?.characterPoses?.length || 0}
               </div>
-              <div className="text-xs text-gray-600 dark:text-gray-400">
-                Characters
-              </div>
-            </div>
-            <div className="bg-white/70 dark:bg-white/10 rounded-xl p-3 text-center">
-              <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 capitalize">
-                {panel.panelContext?.cameraAngle || "N/A"}
-              </div>
-              <div className="text-xs text-gray-600 dark:text-gray-400">
-                Angle
-              </div>
+              <div className="text-white/70 text-xs">Characters</div>
             </div>
           </div>
         </div>
@@ -1687,240 +1671,215 @@ function PanelDetails({ panel }: { panel: Panel }) {
       {/* Panel Action */}
       {panel.panelContext?.action && (
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
+          className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700"
         >
-          <Card className="border-cyan-200 dark:border-cyan-800 bg-gradient-to-br from-white to-cyan-50/30 dark:from-gray-900 dark:to-cyan-900/10">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-3 text-lg">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
-                  <Activity className="w-4 h-4 text-white" />
-                </div>
-                Panel Action
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                {panel.panelContext.action}
-              </p>
-            </CardContent>
-          </Card>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 rounded-lg bg-cyan-500 flex items-center justify-center">
+              <Activity className="w-4 h-4 text-white" />
+            </div>
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+              Action
+            </h2>
+          </div>
+          <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed break-words">
+            {panel.panelContext.action}
+          </p>
         </motion.div>
       )}
 
       {/* Technical Details */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
+        className="space-y-2"
       >
-        <Card className="border-blue-200 dark:border-blue-800 bg-gradient-to-br from-white to-blue-50/30 dark:from-gray-900 dark:to-blue-900/10">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-3 text-lg">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-                <Eye className="w-4 h-4 text-white" />
-              </div>
-              Technical Details
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              {panel.panelContext?.cameraAngle && (
-                <div className="bg-white/60 dark:bg-gray-800/60 p-3 rounded-lg border border-blue-100 dark:border-blue-800">
-                  <div className="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-1">
-                    Camera Angle
-                  </div>
-                  <div className="text-sm font-medium text-gray-900 dark:text-gray-100 capitalize">
-                    {panel.panelContext.cameraAngle}
-                  </div>
-                </div>
-              )}
-              {panel.panelContext?.shotType && (
-                <div className="bg-white/60 dark:bg-gray-800/60 p-3 rounded-lg border border-blue-100 dark:border-blue-800">
-                  <div className="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-1">
-                    Shot Type
-                  </div>
-                  <div className="text-sm font-medium text-gray-900 dark:text-gray-100 capitalize">
-                    {panel.panelContext.shotType}
-                  </div>
-                </div>
-              )}
-              {panel.panelContext?.emotion && (
-                <div className="bg-white/60 dark:bg-gray-800/60 p-3 rounded-lg border border-blue-100 dark:border-blue-800">
-                  <div className="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-1">
-                    Emotion
-                  </div>
-                  <div className="text-sm font-medium text-gray-900 dark:text-gray-100 capitalize">
-                    {panel.panelContext.emotion}
-                  </div>
-                </div>
-              )}
-              {panel.panelContext?.lighting && (
-                <div className="bg-white/60 dark:bg-gray-800/60 p-3 rounded-lg border border-blue-100 dark:border-blue-800">
-                  <div className="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-1">
-                    Lighting
-                  </div>
-                  <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {panel.panelContext.lighting}
-                  </div>
-                </div>
-              )}
+        {panel.panelContext?.cameraAngle && (
+          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
+            <div className="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-1">
+              Camera Angle
             </div>
-          </CardContent>
-        </Card>
+            <div className="text-sm font-semibold text-blue-900 dark:text-blue-100 capitalize">
+              {panel.panelContext.cameraAngle}
+            </div>
+          </div>
+        )}
+
+        {panel.panelContext?.emotion && (
+          <div className="bg-violet-50 dark:bg-violet-900/20 rounded-lg p-3 border border-violet-200 dark:border-violet-800">
+            <div className="text-xs font-medium text-violet-600 dark:text-violet-400 uppercase tracking-wide mb-1">
+              Emotion
+            </div>
+            <div className="text-sm font-semibold text-violet-900 dark:text-violet-100 capitalize">
+              {panel.panelContext.emotion}
+            </div>
+          </div>
+        )}
+
+        {panel.panelContext?.lighting && (
+          <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-3 border border-amber-200 dark:border-amber-800">
+            <div className="text-xs font-medium text-amber-600 dark:text-amber-400 uppercase tracking-wide mb-1">
+              Lighting
+            </div>
+            <div className="text-sm font-semibold text-amber-900 dark:text-amber-100 break-words">
+              {panel.panelContext.lighting}
+            </div>
+          </div>
+        )}
       </motion.div>
 
       {/* Character Poses */}
       {panel.panelContext?.characterPoses &&
         panel.panelContext.characterPoses.length > 0 && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
+            className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-4 border border-indigo-200 dark:border-indigo-800"
           >
-            <Card className="border-indigo-200 dark:border-indigo-800 bg-gradient-to-br from-white to-indigo-50/30 dark:from-gray-900 dark:to-indigo-900/10">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-3 text-lg">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-                    <Users className="w-4 h-4 text-white" />
-                  </div>
-                  Character Poses
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {panel.panelContext.characterPoses.map((pose, index) => (
-                    <div
-                      key={index}
-                      className="bg-gradient-to-r from-indigo-50/50 to-purple-50/50 dark:from-indigo-900/20 dark:to-purple-900/20 border border-indigo-200 dark:border-indigo-800 rounded-xl p-4"
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
-                          {index + 1}
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                            {pose.characterName}
-                          </h4>
-                          <div className="grid grid-cols-2 gap-2 text-xs">
-                            <div>
-                              <span className="text-indigo-600 dark:text-indigo-400 font-medium">
-                                Pose:
-                              </span>
-                              <span className="ml-1 text-gray-700 dark:text-gray-300">
-                                {pose.pose}
-                              </span>
-                            </div>
-                            <div>
-                              <span className="text-indigo-600 dark:text-indigo-400 font-medium">
-                                Expression:
-                              </span>
-                              <span className="ml-1 text-gray-700 dark:text-gray-300">
-                                {pose.expression}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center">
+                <Users className="w-4 h-4 text-white" />
+              </div>
+              <h3 className="text-sm font-bold text-indigo-900 dark:text-indigo-100">
+                Character Poses ({panel.panelContext.characterPoses.length})
+              </h3>
+            </div>
+            <div className="space-y-3">
+              {panel.panelContext.characterPoses.map((pose, index) => (
+                <div
+                  key={index}
+                  className="bg-white/60 dark:bg-indigo-900/30 rounded-lg p-3 border border-indigo-100 dark:border-indigo-700"
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-6 h-6 rounded bg-indigo-500 flex items-center justify-center text-white font-bold text-xs">
+                      {index + 1}
                     </div>
-                  ))}
+                    <span className="text-sm font-semibold text-indigo-900 dark:text-indigo-100 break-words">
+                      {pose.characterName}
+                    </span>
+                  </div>
+                  <div className="space-y-1 text-xs">
+                    <div>
+                      <span className="text-indigo-600 dark:text-indigo-400 font-medium">
+                        Pose:
+                      </span>
+                      <span className="ml-1 text-indigo-800 dark:text-indigo-200 break-words">
+                        {pose.pose}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-indigo-600 dark:text-indigo-400 font-medium">
+                        Expression:
+                      </span>
+                      <span className="ml-1 text-indigo-800 dark:text-indigo-200 break-words">
+                        {pose.expression}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
+              ))}
+            </div>
           </motion.div>
         )}
 
       {/* Effects */}
       {panel.panelContext?.effects && panel.panelContext.effects.length > 0 && (
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
+          className="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-4 border border-purple-200 dark:border-purple-800"
         >
-          <Card className="border-purple-200 dark:border-purple-800 bg-gradient-to-br from-white to-purple-50/30 dark:from-gray-900 dark:to-purple-900/10">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-3 text-lg">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
-                  <Sparkles className="w-4 h-4 text-white" />
-                </div>
-                Visual Effects
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {panel.panelContext.effects.map((effect, index) => (
-                  <Badge
-                    key={index}
-                    variant="secondary"
-                    className="bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 text-purple-800 dark:text-purple-200 border-purple-200 dark:border-purple-700"
-                  >
-                    <Sparkles className="w-3 h-3 mr-1" />
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 rounded-lg bg-purple-500 flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-white" />
+            </div>
+            <h3 className="text-sm font-bold text-purple-900 dark:text-purple-100">
+              Effects ({panel.panelContext.effects.length})
+            </h3>
+          </div>
+          <div className="space-y-2">
+            {panel.panelContext.effects.map((effect, index) => (
+              <div
+                key={index}
+                className="bg-white/60 dark:bg-purple-900/30 rounded-lg p-2 border border-purple-100 dark:border-purple-700"
+              >
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+                  <span className="text-sm font-medium text-purple-900 dark:text-purple-100 break-words">
                     {effect}
-                  </Badge>
-                ))}
+                  </span>
+                </div>
               </div>
-            </CardContent>
-          </Card>
+            ))}
+          </div>
         </motion.div>
       )}
 
       {/* Dialogues */}
       {panel.dialogues && panel.dialogues.length > 0 && (
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
+          className="bg-pink-50 dark:bg-pink-900/20 rounded-xl p-4 border border-pink-200 dark:border-pink-800"
         >
-          <Card className="border-pink-200 dark:border-pink-800 bg-gradient-to-br from-white to-pink-50/30 dark:from-gray-900 dark:to-pink-900/10">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-3 text-lg">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center">
-                  <Tag className="w-4 h-4 text-white" />
-                </div>
-                Dialogues ({panel.dialogues.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {panel.dialogues.map((dialogue, index) => (
-                  <div
-                    key={dialogue.id}
-                    className="bg-gradient-to-r from-pink-50/50 to-rose-50/50 dark:from-pink-900/20 dark:to-rose-900/20 border border-pink-200 dark:border-pink-800 rounded-xl p-4"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-pink-400 to-rose-500 flex items-center justify-center text-white font-bold text-xs">
-                        {dialogue.order}
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm text-gray-700 dark:text-gray-300 italic mb-2">
-                          "{dialogue.content}"
-                        </p>
-                        <div className="flex items-center gap-2 text-xs">
-                          {dialogue.style?.bubbleType && (
-                            <Badge
-                              variant="outline"
-                              className="bg-white/50 border-pink-200 text-pink-700"
-                            >
-                              {dialogue.style.bubbleType}
-                            </Badge>
-                          )}
-                          {dialogue.emotion && (
-                            <Badge
-                              variant="outline"
-                              className="bg-white/50 border-pink-200 text-pink-700"
-                            >
-                              {dialogue.emotion}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 rounded-lg bg-pink-500 flex items-center justify-center">
+              <MessageSquare className="w-4 h-4 text-white" />
+            </div>
+            <h3 className="text-sm font-bold text-pink-900 dark:text-pink-100">
+              Dialogues ({panel.dialogues.length})
+            </h3>
+          </div>
+          <div className="space-y-3">
+            {panel.dialogues.map((dialogue, index) => (
+              <motion.div
+                key={dialogue.id}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.05 * index }}
+                className="bg-white/60 dark:bg-pink-900/30 rounded-lg p-3 border border-pink-100 dark:border-pink-700"
+              >
+                <div className="flex items-start gap-2 mb-2">
+                  <div className="w-6 h-6 rounded-full bg-pink-500 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
+                    {dialogue.order}
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-pink-900 dark:text-pink-100 italic break-words leading-relaxed">
+                      "{dialogue.content}"
+                    </p>
+                  </div>
+                </div>
+
+                {(dialogue.style?.bubbleType || dialogue.emotion) && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {dialogue.style?.bubbleType && (
+                      <Badge className="bg-pink-100 text-pink-800 border-pink-200 text-xs">
+                        {dialogue.style.bubbleType}
+                      </Badge>
+                    )}
+                    {dialogue.emotion && (
+                      <Badge className="bg-pink-100 text-pink-800 border-pink-200 text-xs">
+                        {dialogue.emotion}
+                      </Badge>
+                    )}
+                  </div>
+                )}
+
+                {dialogue.speaker && (
+                  <div className="mt-2 text-xs text-pink-600 dark:text-pink-400">
+                    <User className="w-3 h-3 inline mr-1" />
+                    <span className="break-words">{dialogue.speaker.name}</span>
+                  </div>
+                )}
+              </motion.div>
+            ))}
+          </div>
         </motion.div>
       )}
     </div>
