@@ -73,6 +73,7 @@ export interface EntityDetailPanelProps {
     | "pose"
     | "effect"
     | null;
+  projectData?: MangaProject | null;
   isOpen: boolean;
   onClose: () => void;
   onEdit?: (entity: DetailableEntity) => void;
@@ -83,6 +84,36 @@ export interface EntityDetailPanelProps {
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
+
+// Reference resolution helpers
+const getCharacterName = (
+  characterId: string,
+  projectData?: MangaProject | null
+): string => {
+  if (!projectData?.characters) return characterId;
+  const character = projectData.characters.find((c) => c.id === characterId);
+  return character?.name || characterId;
+};
+
+const getOutfitName = (
+  outfitId: string,
+  projectData?: MangaProject | null
+): string => {
+  if (!projectData?.outfitTemplates) return outfitId;
+  const outfit = projectData.outfitTemplates.find((o) => o.id === outfitId);
+  return outfit?.name || outfitId;
+};
+
+const getLocationName = (
+  locationId: string,
+  projectData?: MangaProject | null
+): string => {
+  if (!projectData?.locationTemplates) return locationId;
+  const location = projectData.locationTemplates.find(
+    (l) => l.id === locationId
+  );
+  return location?.name || locationId;
+};
 
 const getEntityIcon = (type: string) => {
   switch (type) {
@@ -1362,7 +1393,13 @@ function ProjectDetails({ project }: { project: MangaProject }) {
   );
 }
 
-function SceneDetails({ scene }: { scene: Scene }) {
+function SceneDetails({
+  scene,
+  projectData,
+}: {
+  scene: Scene;
+  projectData?: MangaProject | null;
+}) {
   return (
     <div className="space-y-4">
       {/* Compact Header */}
@@ -1522,8 +1559,53 @@ function SceneDetails({ scene }: { scene: Scene }) {
                   <div className="flex items-center gap-2">
                     <User className="w-3 h-3 text-purple-600 dark:text-purple-400" />
                     <span className="text-sm font-medium text-purple-900 dark:text-purple-100 break-words">
-                      {character}
+                      {getCharacterName(character, projectData)}
                     </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+      {/* Outfit Overrides */}
+      {scene.sceneContext?.outfitOverrides &&
+        scene.sceneContext.outfitOverrides.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+            className="bg-teal-50 dark:bg-teal-900/20 rounded-xl p-4 border border-teal-200 dark:border-teal-800"
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-teal-500 flex items-center justify-center">
+                <Palette className="w-4 h-4 text-white" />
+              </div>
+              <h3 className="text-sm font-bold text-teal-900 dark:text-teal-100">
+                Outfit Changes ({scene.sceneContext.outfitOverrides.length})
+              </h3>
+            </div>
+            <div className="space-y-2">
+              {scene.sceneContext.outfitOverrides.map((override, index) => (
+                <div
+                  key={index}
+                  className="bg-white/60 dark:bg-teal-900/30 rounded-lg p-3 border border-teal-100 dark:border-teal-700"
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <User className="w-3 h-3 text-teal-600 dark:text-teal-400" />
+                    <span className="text-sm font-medium text-teal-900 dark:text-teal-100">
+                      {getCharacterName(override.characterId, projectData)}
+                    </span>
+                  </div>
+                  <div className="text-xs text-teal-700 dark:text-teal-300 ml-5">
+                    <span className="font-medium">Outfit:</span>{" "}
+                    {getOutfitName(override.outfitId, projectData)}
+                    {override.reason && (
+                      <div className="mt-1">
+                        <span className="font-medium">Reason:</span>{" "}
+                        {override.reason}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -1605,7 +1687,13 @@ function SceneDetails({ scene }: { scene: Scene }) {
   );
 }
 
-function PanelDetails({ panel }: { panel: Panel }) {
+function PanelDetails({
+  panel,
+  projectData,
+}: {
+  panel: Panel;
+  projectData?: MangaProject | null;
+}) {
   return (
     <div className="space-y-4">
       {/* Panel Header */}
@@ -1729,6 +1817,18 @@ function PanelDetails({ panel }: { panel: Panel }) {
             </div>
           </div>
         )}
+
+        {panel.panelContext?.locationId && (
+          <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 border border-green-200 dark:border-green-800">
+            <div className="text-xs font-medium text-green-600 dark:text-green-400 uppercase tracking-wide mb-1 flex items-center gap-1">
+              <MapPin className="w-3 h-3" />
+              Location
+            </div>
+            <div className="text-sm font-semibold text-green-900 dark:text-green-100 break-words">
+              {getLocationName(panel.panelContext.locationId, projectData)}
+            </div>
+          </div>
+        )}
       </motion.div>
 
       {/* Character Poses */}
@@ -1779,6 +1879,16 @@ function PanelDetails({ panel }: { panel: Panel }) {
                         {pose.expression}
                       </span>
                     </div>
+                    {pose.outfitId && (
+                      <div>
+                        <span className="text-indigo-600 dark:text-indigo-400 font-medium">
+                          Outfit:
+                        </span>
+                        <span className="ml-1 text-indigo-800 dark:text-indigo-200 break-words">
+                          {getOutfitName(pose.outfitId, projectData)}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -1871,10 +1981,16 @@ function PanelDetails({ panel }: { panel: Panel }) {
                   </div>
                 )}
 
-                {dialogue.speaker && (
+                {(dialogue.speaker || dialogue.speakerId) && (
                   <div className="mt-2 text-xs text-pink-600 dark:text-pink-400">
                     <User className="w-3 h-3 inline mr-1" />
-                    <span className="break-words">{dialogue.speaker.name}</span>
+                    <span className="break-words">
+                      {dialogue.speaker
+                        ? dialogue.speaker.name
+                        : dialogue.speakerId
+                        ? getCharacterName(dialogue.speakerId, projectData)
+                        : "Unknown Speaker"}
+                    </span>
                   </div>
                 )}
               </motion.div>
@@ -2140,6 +2256,7 @@ function ChapterDetails({ chapter }: { chapter: Chapter }) {
 export default function EntityDetailPanel({
   entity,
   entityType,
+  projectData,
   isOpen,
   onClose,
   onEdit,
@@ -2291,10 +2408,16 @@ export default function EntityDetailPanel({
                 <ProjectDetails project={entity as MangaProject} />
               )}
               {entityType === "scene" && (
-                <SceneDetails scene={entity as Scene} />
+                <SceneDetails
+                  scene={entity as Scene}
+                  projectData={projectData}
+                />
               )}
               {entityType === "panel" && (
-                <PanelDetails panel={entity as Panel} />
+                <PanelDetails
+                  panel={entity as Panel}
+                  projectData={projectData}
+                />
               )}
               {(entityType === "outfit" ||
                 entityType === "location" ||

@@ -670,6 +670,7 @@ export function EnhancedProjectStructurePanel({
       <EntityDetailPanel
         entity={detailPanel.entity}
         entityType={detailPanel.entityType}
+        projectData={projectData}
         isOpen={detailPanel.isOpen}
         onClose={closeDetailPanel}
         onEdit={(entity) => {
@@ -982,6 +983,7 @@ export function EnhancedTemplateLibraryPanel({
       <EntityDetailPanel
         entity={detailPanel.entity}
         entityType={detailPanel.entityType}
+        projectData={projectData}
         isOpen={detailPanel.isOpen}
         onClose={closeDetailPanel}
         onEdit={(entity) => {
