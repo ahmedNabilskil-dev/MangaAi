@@ -566,81 +566,88 @@ export function EnhancedProjectStructurePanel({
                                   {scene.panels.map((panel: any) => (
                                     <div
                                       key={panel.id}
-                                      className={`flex items-center gap-3 p-2 rounded-lg transition-all hover:bg-cyan-800/30 group relative bg-cyan-800/10 border ${
+                                      className={`p-2 rounded-lg transition-all hover:bg-cyan-800/30 group relative bg-cyan-800/10 border ${
                                         selectedEntity?.id === panel.id &&
                                         selectedEntity?.type === "panel"
                                           ? "bg-cyan-500/20 border-cyan-400/30 shadow-lg shadow-cyan-500/10"
                                           : "border-cyan-700/30 hover:border-cyan-400/20"
                                       }`}
                                     >
-                                      <div className="w-6 h-6 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-md flex items-center justify-center shadow-sm group-hover:shadow-cyan-500/20 transition-all duration-200 flex-shrink-0">
-                                        <Eye className="w-3 h-3 text-white" />
-                                      </div>
-                                      <div className="flex-1 min-w-0 pr-16">
-                                        <div
-                                          className="font-medium text-white text-xs truncate group-hover:text-cyan-300 transition-colors"
-                                          title={`Panel ${panel.order}`}
-                                        >
-                                          Panel {panel.order}
+                                      {/* Header with icon, title and actions */}
+                                      <div className="flex items-center justify-between mb-2">
+                                        <div className="flex items-center gap-2">
+                                          <div className="w-6 h-6 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-md flex items-center justify-center shadow-sm group-hover:shadow-cyan-500/20 transition-all duration-200 flex-shrink-0">
+                                            <Eye className="w-3 h-3 text-white" />
+                                          </div>
+                                          <div
+                                            className="font-medium text-white text-xs group-hover:text-cyan-300 transition-colors"
+                                            title={`Panel ${panel.order}`}
+                                          >
+                                            Panel {panel.order}
+                                          </div>
                                         </div>
-                                        <div className="flex items-center gap-2 mt-0.5">
-                                          <span className="text-xs text-cyan-300/60">
-                                            {panel.dialogues?.length || 0}{" "}
+                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                          <button
+                                            onClick={() =>
+                                              showEntityDetails(
+                                                panel as any,
+                                                "panel" as any
+                                              )
+                                            }
+                                            className="p-1 hover:bg-gray-700 rounded transition-colors"
+                                            title="View Panel Details"
+                                          >
+                                            <Eye className="w-3 h-3 text-cyan-400" />
+                                          </button>
+                                          <button
+                                            onClick={() =>
+                                              handleEntitySelect(
+                                                panel as any,
+                                                "panel",
+                                                panel.id
+                                              )
+                                            }
+                                            className={`p-1 rounded transition-colors ${
+                                              selectedEntity?.id === panel.id &&
+                                              selectedEntity?.type === "panel"
+                                                ? "bg-cyan-500/40 text-cyan-300"
+                                                : "hover:bg-gray-700 text-gray-400"
+                                            }`}
+                                            title="Select Panel"
+                                          >
+                                            <Settings className="w-3 h-3" />
+                                          </button>
+                                        </div>
+                                      </div>
+
+                                      {/* Panel details - stacked vertically for narrow width */}
+                                      <div className="space-y-1.5">
+                                        <div className="flex items-center gap-1">
+                                          <span className="text-xs text-cyan-300/60 bg-cyan-900/20 px-2 py-0.5 rounded">
+                                            💬 {panel.dialogues?.length || 0}{" "}
                                             dialogues
                                           </span>
+                                        </div>
+
+                                        {/* Technical details in compact rows */}
+                                        <div className="space-y-1">
                                           {panel.panelContext?.shotType && (
-                                            <>
-                                              <span className="text-xs text-cyan-300/40">
-                                                •
-                                              </span>
-                                              <span className="text-xs text-gray-400 truncate max-w-20 capitalize">
+                                            <div className="text-xs text-gray-400 capitalize bg-cyan-900/20 px-2 py-0.5 rounded flex items-center gap-1">
+                                              <span>📷</span>
+                                              <span className="truncate">
                                                 {panel.panelContext.shotType}
                                               </span>
-                                            </>
+                                            </div>
                                           )}
                                           {panel.panelContext?.emotion && (
-                                            <>
-                                              <span className="text-xs text-cyan-300/40">
-                                                •
-                                              </span>
-                                              <span className="text-xs text-gray-400 truncate max-w-16 capitalize">
+                                            <div className="text-xs text-gray-400 capitalize bg-cyan-900/20 px-2 py-0.5 rounded flex items-center gap-1">
+                                              <span>😊</span>
+                                              <span className="truncate">
                                                 {panel.panelContext.emotion}
                                               </span>
-                                            </>
+                                            </div>
                                           )}
                                         </div>
-                                      </div>
-                                      <div className="absolute right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900/90 backdrop-blur-sm rounded px-1 py-0.5">
-                                        <button
-                                          onClick={() =>
-                                            showEntityDetails(
-                                              panel as any,
-                                              "panel" as any
-                                            )
-                                          }
-                                          className="p-1 hover:bg-gray-700 rounded transition-colors"
-                                          title="View Panel Details"
-                                        >
-                                          <Eye className="w-3 h-3 text-cyan-400" />
-                                        </button>
-                                        <button
-                                          onClick={() =>
-                                            handleEntitySelect(
-                                              panel as any,
-                                              "panel",
-                                              panel.id
-                                            )
-                                          }
-                                          className={`p-1 rounded transition-colors ${
-                                            selectedEntity?.id === panel.id &&
-                                            selectedEntity?.type === "panel"
-                                              ? "bg-cyan-500/40 text-cyan-300"
-                                              : "hover:bg-gray-700 text-gray-400"
-                                          }`}
-                                          title="Select Panel"
-                                        >
-                                          <Settings className="w-3 h-3" />
-                                        </button>
                                       </div>
                                     </div>
                                   ))}
