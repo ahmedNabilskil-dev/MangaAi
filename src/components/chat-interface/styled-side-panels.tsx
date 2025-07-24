@@ -875,9 +875,8 @@ export function EnhancedTemplateLibraryPanel({
       </div>
 
       {/* Templates Content */}
-      <div className="flex-1 min-h-0 overflow-hidden relative z-10">
-        <div className="h-full overflow-y-auto">
-          <div className="p-4">
+      <div className="flex-1 overflow-y-auto relative z-10">
+        <div className="p-4">
           {templates.length === 0 ? (
             <div className="text-center py-8">
               <div
