@@ -57,6 +57,7 @@ interface EnhancedProjectStructurePanelProps {
   onComponentSelect?: (componentId: string, type: string) => void;
   selectedEntity?: SelectedState | null;
   onEntitySelect?: (entity: SelectedState | null) => void;
+  onAssetSelect?: (asset: any) => void; // Optional prop for consistency
 }
 
 export function EnhancedProjectStructurePanel({
@@ -64,6 +65,7 @@ export function EnhancedProjectStructurePanel({
   onComponentSelect,
   selectedEntity,
   onEntitySelect,
+  onAssetSelect, // Accept but ignore this prop
 }: EnhancedProjectStructurePanelProps) {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(
     new Set(["project", "characters", "chapters"])
@@ -706,6 +708,7 @@ interface EnhancedTemplateLibraryPanelProps {
   onTemplateSelect?: (templateId: string, type: string) => void;
   selectedEntity?: SelectedState | null;
   onEntitySelect?: (entity: SelectedState | null) => void;
+  onAssetSelect?: (asset: any) => void; // Optional prop for consistency
 }
 
 export function EnhancedTemplateLibraryPanel({
@@ -713,6 +716,7 @@ export function EnhancedTemplateLibraryPanel({
   onTemplateSelect,
   selectedEntity,
   onEntitySelect,
+  onAssetSelect, // Accept but ignore this prop
 }: EnhancedTemplateLibraryPanelProps) {
   const [activeTab, setActiveTab] = useState<
     "outfits" | "locations" | "poses" | "effects"

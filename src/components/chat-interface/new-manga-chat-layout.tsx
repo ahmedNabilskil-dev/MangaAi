@@ -20,6 +20,7 @@ import {
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import AssetDetailPanel from "./asset-detail-panel";
 import { GeneratedAssetsPanel } from "./generated-assets-panel";
 import {
   EnhancedProjectStructurePanel,
@@ -30,6 +31,19 @@ import {
 // TYPES & INTERFACES
 // ============================================================================
 
+interface Asset {
+  id: string;
+  type: "character" | "panel" | "scene" | "other";
+  name: string;
+  url: string;
+  timestamp: string;
+  chapterId?: string;
+  chapterTitle?: string;
+  sceneId?: string;
+  sceneTitle?: string;
+  panelOrder?: number;
+}
+
 interface SidePanelTab {
   id: string;
   name: string;
@@ -39,6 +53,7 @@ interface SidePanelTab {
     onComponentSelect?: (componentId: string, type: string) => void;
     selectedEntity?: { id: string; type: string } | null;
     onEntitySelect?: (entity: { id: string; type: string } | null) => void;
+    onAssetSelect?: (asset: Asset) => void;
   }>;
 }
 
@@ -73,10 +88,56 @@ export default function NewMangaChatLayout() {
     activeTab: "structure",
     width: 420,
   });
+  const [assetDetailPanel, setAssetDetailPanel] = useState<{
+    isOpen: boolean;
+    asset: Asset | null;
+  }>({
+    isOpen: false,
+    asset: null,
+  });
 
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Handlers
+  const handleAssetSelect = useCallback((asset: Asset) => {
+    setAssetDetailPanel({
+      isOpen: true,
+      asset,
+    });
+  }, []);
+
+  const handleAssetDetailClose = useCallback(() => {
+    setAssetDetailPanel({
+      isOpen: false,
+      asset: null,
+    });
+  }, []);
+
+  const handleNavigateToSource = useCallback(
+    (type: string, id: string) => {
+      // Navigate to the source component in the structure panel
+      setSidePanel((prev) => ({
+        ...prev,
+        activeTab: "structure",
+      }));
+
+      setSelectedEntity({
+        id,
+        type,
+      });
+
+      // Close asset detail panel
+      handleAssetDetailClose();
+
+      toast({
+        title: "Navigation",
+        description: `Navigated to ${type}`,
+      });
+    },
+    [toast, handleAssetDetailClose]
+  );
 
   // Side panel tabs configuration
   const sidePanelTabs: SidePanelTab[] = [
@@ -328,6 +389,7 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
                       onComponentSelect={handleComponentSelect}
                       selectedEntity={selectedEntity}
                       onEntitySelect={handleEntitySelect}
+                      onAssetSelect={handleAssetSelect}
                     />
                   );
                 }
@@ -623,6 +685,14 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
           </form>
         </div>
       </div>
+
+      {/* Asset Detail Panel */}
+      <AssetDetailPanel
+        asset={assetDetailPanel.asset}
+        isOpen={assetDetailPanel.isOpen}
+        onClose={handleAssetDetailClose}
+        onNavigateToSource={handleNavigateToSource}
+      />
     </div>
   );
 }
