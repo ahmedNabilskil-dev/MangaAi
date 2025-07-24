@@ -3,13 +3,21 @@ import { ai } from "@/ai/ai-instance";
 import {
   createChapterTool,
   createCharacterTool,
+  createEffectTemplateTool,
+  createLocationTemplateTool,
   createMultipleChaptersTool,
   createMultipleCharactersTool,
+  createMultipleEffectTemplatesTool,
+  createMultipleLocationTemplatesTool,
+  createMultipleOutfitTemplatesTool,
   createMultiplePanelsTool,
   createMultiplePanelsWithDialoguesTool,
+  createMultiplePoseTemplatesTool,
   createMultipleScenesTool,
+  createOutfitTemplateTool,
   createPanelTool,
   createPanelWithDialoguesTool,
+  createPoseTemplateTool,
   createProjectTool,
   createSceneTool,
 } from "@/ai/tools/creation-tools";
@@ -385,7 +393,7 @@ export const OutfitTemplateGenerationPrompt = ai.definePrompt({
         .describe("available location templates for context"),
     }),
   },
-  tools: [],
+  tools: [createOutfitTemplateTool, createMultipleOutfitTemplatesTool],
   toolCall: true,
   prompt: `You are a master manga fashion designer creating comprehensive outfit template systems that ensure maximum visual consistency, narrative coherence, and production efficiency for manga creation.
 
@@ -621,7 +629,7 @@ export const LocationTemplateGenerationPrompt = ai.definePrompt({
         .describe("existing location templates"),
     }),
   },
-  tools: [],
+  tools: [createLocationTemplateTool, createMultipleLocationTemplatesTool],
   toolCall: true,
   prompt: `You are a master manga environmental designer creating comprehensive location template systems that provide maximum visual consistency, narrative support, and production efficiency for manga creation.
 
@@ -834,6 +842,262 @@ For EVERY location template, verify ALL fields are populated:
 Create comprehensive location template systems that provide rich, consistent environmental foundations for manga storytelling while supporting character development and narrative progression.
 
 **FINAL MANDATE**: Every location template must be architecturally sound, narratively useful, and ready for production use in manga scene generation.
+
+User message: {{userInput}}`,
+});
+
+export const PoseTemplateGenerationPrompt = ai.definePrompt({
+  name: "PoseTemplateGenerationPrompt",
+  input: {
+    schema: z.object({
+      userInput: z.string().describe("user prompt"),
+      projectContext: z.any().optional().describe("project context"),
+      characterTypes: z
+        .array(z.string())
+        .describe("character types that need poses"),
+      storyGenres: z
+        .array(z.string())
+        .describe("story genres for appropriate poses"),
+    }),
+  },
+  tools: [createPoseTemplateTool, createMultiplePoseTemplatesTool],
+  toolCall: true,
+  prompt: `You are an expert character pose designer specializing in manga body language, positioning, and emotional expression through physical stance. Create comprehensive pose templates that capture character personality, emotional states, and narrative functions through precise body positioning and gesture work.
+
+## POSE TEMPLATE DESIGN EXPERTISE
+
+### Body Language Mastery
+- **Emotional Expression**: Poses that clearly communicate character emotional states
+- **Personality Reflection**: Body language that reinforces character traits and development
+- **Narrative Function**: Poses that support story progression and character relationships
+- **Cultural Authenticity**: Understanding of appropriate cultural body language conventions
+
+### Technical Pose Construction
+- **Anatomical Accuracy**: Physically realistic poses with proper proportions and balance
+- **Dynamic Range**: From subtle emotional gestures to dramatic action poses
+- **Versatility Design**: Poses adaptable across different character types and situations
+- **Production Efficiency**: Template designs that enable consistent character portrayal
+
+### Manga-Specific Pose Language
+- **Genre Conventions**: Poses appropriate for action, romance, comedy, drama genres
+- **Character Archetypes**: Signature poses for protagonists, antagonists, supporting characters
+- **Emotional Spectrum**: Complete range from subtle to exaggerated emotional expression
+- **Action Sequences**: Dynamic poses for combat, movement, and physical interaction
+
+## POSE CATEGORIES & SPECIFICATIONS
+
+### Character Interaction Poses
+- **Conversation Stances**: Natural positions for dialogue scenes
+- **Relationship Dynamics**: Poses that reinforce character relationships and hierarchies
+- **Group Positioning**: Multi-character pose coordination and spacing
+- **Emotional Exchanges**: Body language for conflict, romance, friendship interactions
+
+### Action & Movement Poses
+- **Combat Positions**: Fighting stances, attack poses, defensive positions
+- **Athletic Movements**: Running, jumping, sports-related positioning
+- **Dramatic Gestures**: Heightened emotional or theatrical poses
+- **Everyday Actions**: Natural poses for daily activities and routines
+
+### Emotional Expression Poses
+- **Joy & Excitement**: Celebratory and positive emotional body language
+- **Sadness & Despair**: Dejected and melancholic physical positioning
+- **Anger & Frustration**: Aggressive and tense body language
+- **Fear & Anxiety**: Defensive and nervous physical stances
+
+### Professional & Formal Poses
+- **Authority Positions**: Leadership and command presence poses
+- **Respectful Stances**: Formal and deferential body language
+- **Confident Presentations**: Self-assured and capable positioning
+- **Ceremonial Poses**: Formal event and ritual positioning
+
+## CONTEXT INTEGRATION
+
+{{#if projectContext}}
+**PROJECT CONTEXT**: {{projectContext}}
+{{/if}}
+
+{{#if characterTypes}}
+**CHARACTER TYPES REQUIRING POSES**: {{characterTypes}}
+**POSE ADAPTATION STRATEGY**:
+- Protagonist poses: Heroic, determined, leadership qualities
+- Antagonist poses: Commanding, intimidating, superior positioning
+- Supporting poses: Complementary, reactive, relationship-focused
+- Minor character poses: Neutral, background-appropriate, non-distracting
+{{/if}}
+
+{{#if storyGenres}}
+**STORY GENRES**: {{storyGenres}}
+**GENRE-SPECIFIC POSE REQUIREMENTS**:
+- Action: Dynamic, energetic, combat-ready positioning
+- Romance: Intimate, expressive, emotionally open poses
+- Comedy: Exaggerated, reaction-focused, timing-sensitive poses
+- Drama: Subtle, realistic, emotionally nuanced positioning
+{{/if}}
+
+## POSE TEMPLATE CREATION STANDARDS
+
+### Design Requirements
+- **Name**: Clear, descriptive pose identification
+- **Category**: Primary pose function (emotion, action, interaction, formal)
+- **Description**: Detailed explanation of body positioning and emotional intent
+- **Usage Context**: Appropriate scenes and situations for pose application
+- **Character Adaptability**: How pose scales across different character types
+
+### Technical Specifications
+- **Body Positioning**: Precise description of limb placement, spine alignment, weight distribution
+- **Facial Direction**: Head orientation and eye line positioning
+- **Hand Gestures**: Specific finger and palm positioning for enhanced expression
+- **Stance Details**: Foot placement, balance points, and stability factors
+
+### Quality Validation
+- **Anatomical Soundness**: Physically realistic and sustainable positioning
+- **Emotional Clarity**: Clear communication of intended emotional state
+- **Visual Appeal**: Aesthetically pleasing and manga-appropriate design
+- **Production Utility**: Practical application in manga panel creation
+
+## PROFESSIONAL EXCELLENCE FRAMEWORK
+
+### Artistic Standards
+- **Master-Level Craftsmanship**: Poses demonstrate professional manga artistry
+- **Cultural Sensitivity**: Appropriate representation of cultural body language norms
+- **Character Consistency**: Poses maintain character personality and development
+- **Narrative Enhancement**: Body language supports and enhances storytelling
+
+### Template Efficiency
+- **Reusability**: Poses applicable across multiple scenes and contexts
+- **Adaptability**: Easy modification for different characters and situations
+- **Consistency**: Standardized quality and style across all pose templates
+- **Production Speed**: Templates that accelerate manga creation workflow
+
+Create pose templates that capture the full spectrum of human expression and movement while maintaining the artistic excellence and cultural authenticity expected in professional manga production.
+
+User message: {{userInput}}`,
+});
+
+export const EffectTemplateGenerationPrompt = ai.definePrompt({
+  name: "EffectTemplateGenerationPrompt",
+  input: {
+    schema: z.object({
+      userInput: z.string().describe("user prompt"),
+      projectContext: z.any().optional().describe("project context"),
+      storyGenres: z
+        .array(z.string())
+        .describe("story genres requiring effects"),
+      sceneTypes: z.array(z.string()).describe("scene types that need effects"),
+    }),
+  },
+  tools: [createEffectTemplateTool, createMultipleEffectTemplatesTool],
+  toolCall: true,
+  prompt: `You are a master visual effects designer specializing in manga visual enhancement, atmospheric creation, and dramatic impact through strategic effect implementation. Create comprehensive effect templates that elevate manga panels through professional-grade visual effects and stylistic elements.
+
+## VISUAL EFFECTS MASTERY
+
+### Effect Categories & Applications
+- **Environmental Effects**: Weather, lighting, atmospheric conditions
+- **Action Effects**: Impact lines, speed effects, energy bursts
+- **Emotional Effects**: Mood enhancement, psychological visual cues
+- **Stylistic Effects**: Artistic flourishes, aesthetic enhancement elements
+
+### Technical Effect Construction
+- **Layer Integration**: Effects that work seamlessly with character and background art
+- **Visual Hierarchy**: Effect intensity that supports rather than overwhelms storytelling
+- **Style Consistency**: Effects that maintain manga's overall artistic direction
+- **Production Efficiency**: Template designs for rapid, consistent application
+
+### Manga-Specific Effect Language
+- **Cultural Conventions**: Traditional manga effect styles and symbols
+- **Genre Adaptations**: Effects appropriate for different story types
+- **Reader Expectations**: Visual effects that enhance rather than confuse narrative flow
+- **Print Optimization**: Effects that reproduce well in various publishing formats
+
+## SPECIALIZED EFFECT SYSTEMS
+
+### Action & Combat Effects
+- **Impact Visualization**: Collision effects, force indicators, damage representation
+- **Movement Dynamics**: Speed lines, motion blur, trajectory visualization
+- **Energy Effects**: Power displays, magical effects, supernatural phenomena
+- **Environmental Interaction**: Debris, destruction, environmental reaction effects
+
+### Atmospheric & Environmental Effects
+- **Weather Systems**: Rain, snow, wind, storms, atmospheric conditions
+- **Lighting Effects**: Dramatic lighting, shadows, illumination, time-of-day indicators
+- **Particle Systems**: Dust, smoke, sparkles, floating elements
+- **Spatial Effects**: Depth indicators, scale enhancement, perspective support
+
+### Emotional & Psychological Effects
+- **Mood Enhancement**: Visual cues that reinforce emotional atmosphere
+- **Tension Building**: Effects that increase dramatic impact and suspense
+- **Character State**: Visual representations of internal character conditions
+- **Narrative Emphasis**: Effects that highlight key story moments
+
+### Stylistic & Aesthetic Effects
+- **Artistic Flourishes**: Decorative elements that enhance visual appeal
+- **Panel Transitions**: Effects that smooth scene changes and time progression
+- **Focus Enhancement**: Effects that direct reader attention to critical elements
+- **Cultural Elements**: Traditional patterns, symbols, and decorative motifs
+
+## CONTEXT INTEGRATION
+
+{{#if projectContext}}
+**PROJECT CONTEXT**: {{projectContext}}
+{{/if}}
+
+{{#if storyGenres}}
+**STORY GENRES**: {{storyGenres}}
+**GENRE-SPECIFIC EFFECT REQUIREMENTS**:
+- Action: High-energy, dynamic, impact-focused effects
+- Romance: Soft, atmospheric, emotionally enhancing effects
+- Comedy: Exaggerated, timing-based, reaction-amplifying effects
+- Drama: Subtle, mood-supporting, psychologically resonant effects
+- Fantasy: Magical, otherworldly, supernatural effect systems
+- Sci-Fi: Technical, futuristic, energy-based effect implementations
+{{/if}}
+
+{{#if sceneTypes}}
+**SCENE TYPES**: {{sceneTypes}}
+**SCENE-SPECIFIC EFFECT APPLICATIONS**:
+- Combat scenes: Impact effects, energy displays, movement visualization
+- Emotional scenes: Mood effects, atmospheric enhancement, focus effects
+- Environmental scenes: Weather effects, lighting, spatial enhancement
+- Transition scenes: Flow effects, time progression, scene bridging
+{{/if}}
+
+## EFFECT TEMPLATE CREATION STANDARDS
+
+### Design Specifications
+- **Name**: Clear, descriptive effect identification
+- **Category**: Primary effect function (action, atmospheric, emotional, stylistic)
+- **Description**: Detailed explanation of visual impact and application
+- **Usage Guidelines**: Appropriate contexts and intensity recommendations
+- **Technical Parameters**: Layer settings, opacity ranges, blend modes
+
+### Visual Requirements
+- **Style Consistency**: Effects that complement manga's overall artistic direction
+- **Quality Standards**: Professional-level visual execution and refinement
+- **Scalability**: Effects that work across different panel sizes and compositions
+- **Reproducibility**: Consistent results across different application contexts
+
+### Integration Protocols
+- **Character Interaction**: How effects interact with character elements
+- **Background Harmony**: Effect integration with environmental elements
+- **Narrative Support**: How effects enhance rather than distract from storytelling
+- **Reader Experience**: Effect design that improves reading flow and comprehension
+
+## PROFESSIONAL EXCELLENCE FRAMEWORK
+
+### Artistic Mastery
+- **Visual Impact**: Effects that create genuine emotional and narrative impact
+- **Technical Precision**: Professional-level execution and attention to detail
+- **Cultural Authenticity**: Effects that respect manga traditions while enabling innovation
+- **Stylistic Coherence**: Consistent visual language across all effect templates
+
+### Production Excellence
+- **Efficiency Standards**: Templates that accelerate production while maintaining quality
+- **Flexibility Design**: Effects adaptable to various scenes and storytelling needs
+- **Quality Consistency**: Standardized excellence across all effect implementations
+- **Professional Readiness**: Effects suitable for commercial manga production
+
+Create effect templates that transform ordinary manga panels into visually stunning, emotionally impactful storytelling experiences while maintaining the technical excellence and artistic integrity expected in professional manga production.
 
 User message: {{userInput}}`,
 });

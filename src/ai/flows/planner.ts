@@ -2,18 +2,30 @@ import { ai } from "@/ai/ai-instance";
 import {
   ChapterGenerationPrompt,
   CharacterGenerationPrompt,
-  PanelsDialogsGenerationPrompt,
+  EffectTemplateGenerationPrompt,
+  LocationTemplateGenerationPrompt,
+  OutfitTemplateGenerationPrompt,
+  PanelGenerationPrompt,
+  PoseTemplateGenerationPrompt,
   SceneGenerationPrompt,
 } from "@/ai/flows/generation-flows";
 import {
   GenerateCharacterImage,
-  GeneratePanelImage,
+  GenerateCharacterWithTemplates,
+  GenerateLocationImage,
+  GenerateLocationWithEffects,
+  GeneratePanelImagePromptOnly,
+  GeneratePanelImageWithReferences,
 } from "@/ai/flows/image-genration";
 import {
   ChapterUpdatePrompt,
   CharacterUpdatePrompt,
   DialogueUpdatePrompt,
+  EffectTemplateUpdatePrompt,
+  LocationTemplateUpdatePrompt,
+  OutfitTemplateUpdatePrompt,
   PanelUpdatePrompt,
+  PoseTemplateUpdatePrompt,
   SceneUpdatePrompt,
 } from "@/ai/flows/update-flows";
 import { getSceneForContext } from "@/services/data-service";
@@ -31,7 +43,9 @@ export interface ContentPlannerResult {
     | "directResponse"
     | "generateContent"
     | "updateContent"
-    | "generateImage";
+    | "generateImage"
+    | "generateTemplate"
+    | "updateTemplate";
 
   // Action-specific context objects (only one should be provided)
   directResponseContext?: {
@@ -52,8 +66,41 @@ export interface ContentPlannerResult {
   };
 
   generateImageContext?: {
-    contentType: "character" | "chapter" | "scene" | "panel";
+    contentType:
+      | "character"
+      | "characterWithTemplate"
+      | "location"
+      | "locationWithEffects"
+      | "panel";
     contentId: string;
+    description: string;
+    imageMode?:
+      | "portrait"
+      | "withTemplate"
+      | "location"
+      | "locationWithEffects"
+      | "panelPromptOnly"
+      | "panelWithReferences";
+    templateIds?: {
+      outfitId?: string;
+      poseId?: string;
+      locationId?: string;
+      effectIds?: string[];
+    };
+    panelMode?: "promptOnly" | "withReferences";
+    cameraAngle?: string;
+  };
+
+  generateTemplateContext?: {
+    templateType: "outfit" | "location" | "pose" | "effect";
+    parentType: "project";
+    parentId: string;
+    description: string;
+  };
+
+  updateTemplateContext?: {
+    templateType: "outfit" | "location" | "pose" | "effect";
+    templateId: string;
     description: string;
   };
 }
@@ -67,6 +114,8 @@ export interface ProcessingResult {
     | "contentGenerated"
     | "contentUpdate"
     | "imageGenerated"
+    | "templateGenerated"
+    | "templateUpdated"
     | "error"
     | "notImplemented";
   message?: string;
@@ -105,6 +154,8 @@ export const ContentPlannerPrompt = ai.definePrompt({
           "generateContent",
           "updateContent",
           "generateImage",
+          "generateTemplate",
+          "updateTemplate",
         ])
         .describe("The action to take based on user intent"),
 
@@ -148,15 +199,82 @@ export const ContentPlannerPrompt = ai.definePrompt({
       generateImageContext: z
         .object({
           contentType: z
-            .enum(["character", "chapter", "scene", "panel"])
+            .enum([
+              "character",
+              "characterWithTemplate",
+              "location",
+              "locationWithEffects",
+              "panel",
+            ])
             .describe("Type of content for the image"),
           contentId: z.string().describe("ID of related content"),
           description: z
             .string()
             .describe("Brief description of the image to generate"),
+          imageMode: z
+            .enum([
+              "portrait",
+              "withTemplate",
+              "location",
+              "locationWithEffects",
+              "panelPromptOnly",
+              "panelWithReferences",
+            ])
+            .optional()
+            .describe("Specific image generation mode"),
+          templateIds: z
+            .object({
+              outfitId: z.string().optional(),
+              poseId: z.string().optional(),
+              locationId: z.string().optional(),
+              effectIds: z.array(z.string()).optional(),
+            })
+            .optional()
+            .describe("Template IDs to use for generation"),
+          panelMode: z
+            .enum(["promptOnly", "withReferences"])
+            .optional()
+            .describe(
+              "Panel generation mode - prompt-only or with reference images"
+            ),
+          cameraAngle: z
+            .string()
+            .optional()
+            .describe("Specific camera angle for locations"),
         })
         .optional()
         .describe("Context for image generation action"),
+
+      generateTemplateContext: z
+        .object({
+          templateType: z
+            .enum(["outfit", "location", "pose", "effect"])
+            .describe("Type of template to generate"),
+          parentType: z
+            .enum(["project"])
+            .describe(
+              "Type of parent container (templates belong to projects)"
+            ),
+          parentId: z.string().describe("ID of parent project"),
+          description: z
+            .string()
+            .describe("Brief description of the template to generate"),
+        })
+        .optional()
+        .describe("Context for template generation action"),
+
+      updateTemplateContext: z
+        .object({
+          templateType: z
+            .enum(["outfit", "location", "pose", "effect"])
+            .describe("Type of template to update"),
+          templateId: z.string().describe("ID of template to update"),
+          description: z
+            .string()
+            .describe("Brief description of what will be updated"),
+        })
+        .optional()
+        .describe("Context for template update action"),
     }),
   },
   prompt: `You are an AI assistant that helps users develop manga projects. Your job is to analyze requests and route them to the correct handler with the appropriate context.
@@ -186,11 +304,41 @@ Required context object: updateContentContext
 - description: Brief description of what will be updated
 
 ## 4. GENERATE IMAGE (action: "generateImage")
-Use when: The user wants to create an image.
+Use when: The user wants to create an image using the 5-stage image generation pipeline.
 Required context object: generateImageContext
-- contentType: The type of content for the image ("character", "chapter", "scene", "panel")
+- contentType: The type of image to generate ("character", "characterWithTemplate", "location", "locationWithEffects", "panel")
 - contentId: The ID of the relevant content
 - description: Brief description of the image request
+- imageMode: (Optional) Specific generation mode
+- templateIds: (Optional) Specific template IDs to use
+- panelMode: (Optional) For panels: "promptOnly" or "withReferences"
+- cameraAngle: (Optional) For locations: specific camera angle
+
+### Image Generation Stages:
+1. **"character"** - Stage 1: Generate character portrait for reference
+2. **"characterWithTemplate"** - Stage 2: Generate character with outfit/pose templates
+3. **"location"** - Stage 3: Generate location reference from template
+4. **"locationWithEffects"** - Stage 4: Generate location with atmospheric effects
+5. **"panel"** - Stage 5: Generate complete panel (two modes available)
+
+### Panel Generation Modes:
+- **panelMode: "promptOnly"** - Fast generation using only text prompts
+- **panelMode: "withReferences"** - High-quality generation using character and location references
+
+## 5. GENERATE TEMPLATE (action: "generateTemplate")
+Use when: The user wants to create NEW template content (outfit, location, pose, effect templates).
+Required context object: generateTemplateContext
+- templateType: The type of template being generated ("outfit", "location", "pose", "effect")
+- parentType: Always "project" (templates belong to projects)
+- parentId: The ID of the project where this template will be created
+- description: Brief description of the template to generate
+
+## 6. UPDATE TEMPLATE (action: "updateTemplate")
+Use when: The user wants to modify EXISTING template content.
+Required context object: updateTemplateContext
+- templateType: The type of template being updated ("outfit", "location", "pose", "effect")
+- templateId: The ID of the specific template being updated
+- description: Brief description of what will be updated
 
 # ROUTING GUIDE FOR CONTENT GENERATION
 
@@ -215,6 +363,30 @@ For "generateContent" action, use this mapping:
    - parentType: "scene" (panels belong to scenes)
    - parentId: [scene ID]
    - contentType: "panel"
+
+# ROUTING GUIDE FOR TEMPLATE GENERATION
+
+For "generateTemplate" action, use this mapping:
+
+1. Creating an OUTFIT TEMPLATE:
+   - templateType: "outfit"
+   - parentType: "project" (templates belong to the project)
+   - parentId: [project ID]
+
+2. Creating a LOCATION TEMPLATE:
+   - templateType: "location"
+   - parentType: "project" (templates belong to the project)
+   - parentId: [project ID]
+
+3. Creating a POSE TEMPLATE:
+   - templateType: "pose"
+   - parentType: "project" (templates belong to the project)
+   - parentId: [project ID]
+
+4. Creating an EFFECT TEMPLATE:
+   - templateType: "effect"
+   - parentType: "project" (templates belong to the project)
+   - parentId: [project ID]
 
 
 # CRITICAL ID EXTRACTION RULES
@@ -334,6 +506,121 @@ Correct output:
   }
 }
 
+## Example 8: Generate outfit template
+User input: "Create a school uniform template for my characters"
+Selected node: {type: "project", id: "proj_789"}
+Correct output:
+{
+  "action": "generateTemplate",
+  "generateTemplateContext": {
+    "templateType": "outfit",
+    "parentType": "project",
+    "parentId": "proj_789",
+    "description": "Generating a school uniform outfit template for character use."
+  }
+}
+
+## Example 9: Update location template
+User input: "Update the classroom template to add more detail"
+Selected node: {type: "locationTemplate", id: "loc_template_123"}
+Correct output:
+{
+  "action": "updateTemplate",
+  "updateTemplateContext": {
+    "templateType": "location",
+    "templateId": "loc_template_123",
+    "description": "Adding more detail to the classroom location template."
+  }
+}
+
+## Example 10: Generate pose template
+User input: "Create action poses for fight scenes"
+Selected node: {type: "project", id: "proj_456"}
+Correct output:
+{
+  "action": "generateTemplate",
+  "generateTemplateContext": {
+    "templateType": "pose",
+    "parentType": "project",
+    "parentId": "proj_456",
+    "description": "Generating action pose templates for fight scenes."
+  }
+}
+
+## Example 11: Generate character portrait (Stage 1)
+User input: "Create a portrait for this character"
+Selected node: {type: "character", id: "char_123"}
+Correct output:
+{
+  "action": "generateImage",
+  "generateImageContext": {
+    "contentType": "character",
+    "contentId": "char_123",
+    "description": "Generating character portrait for reference.",
+    "imageMode": "portrait"
+  }
+}
+
+## Example 12: Generate character with outfit (Stage 2)
+User input: "Generate this character wearing the school uniform"
+Selected node: {type: "character", id: "char_456"}
+Correct output:
+{
+  "action": "generateImage",
+  "generateImageContext": {
+    "contentType": "characterWithTemplate",
+    "contentId": "char_456",
+    "description": "Generating character with school uniform template.",
+    "imageMode": "withTemplate",
+    "templateIds": {
+      "outfitId": "outfit_school_uniform_01"
+    }
+  }
+}
+
+## Example 13: Generate location reference (Stage 3)
+User input: "Create an image of the classroom from the main angle"
+Selected node: {type: "locationTemplate", id: "loc_classroom_01"}
+Correct output:
+{
+  "action": "generateImage",
+  "generateImageContext": {
+    "contentType": "location",
+    "contentId": "loc_classroom_01",
+    "description": "Generating classroom location reference image.",
+    "imageMode": "location",
+    "cameraAngle": "main_view"
+  }
+}
+
+## Example 14: Generate panel with references (Stage 5)
+User input: "Generate this panel using character and location references"
+Selected node: {type: "panel", id: "panel_789"}
+Correct output:
+{
+  "action": "generateImage",
+  "generateImageContext": {
+    "contentType": "panel",
+    "contentId": "panel_789",
+    "description": "Generating panel with character and location references.",
+    "panelMode": "withReferences"
+  }
+}
+
+## Example 15: Generate panel prompt-only (Stage 5)
+User input: "Quick generate this panel"
+Selected node: {type: "panel", id: "panel_101"}
+Correct output:
+{
+  "action": "generateImage",
+  "generateImageContext": {
+    "contentType": "panel",
+    "contentId": "panel_101",
+    "description": "Generating panel using prompt-only mode for speed.",
+    "panelMode": "promptOnly"
+  }
+}
+
 # VALIDATION RULES - ALWAYS APPLY THESE
 
 1. EVERY response MUST include the "action" field
@@ -342,6 +629,8 @@ Correct output:
    - For "generateContent" → include only generateContentContext
    - For "updateContent" → include only updateContentContext
    - For "generateImage" → include only generateImageContext
+   - For "generateTemplate" → include only generateTemplateContext
+   - For "updateTemplate" → include only updateTemplateContext
 3. NEVER leave required fields blank in any context object
 4. If you cannot determine a required ID with confidence:
    - Use "directResponse" as the action
@@ -363,7 +652,7 @@ const contentTypeToGenerationPrompt = {
   character: "CharacterGenerationPrompt",
   chapter: "ChapterGenerationPrompt",
   scene: "SceneGenerationPrompt",
-  panel: "PanelsDialogsGenerationPrompt",
+  panel: "PanelGenerationPrompt",
 } as const;
 
 /**
@@ -418,14 +707,13 @@ export const extractFullContexts = (project: MangaProject) => {
             id: scene.id,
             order: scene.order,
             title: scene.title,
-            visualSequence: scene.visualSequence,
+            description: scene.description,
             sceneContext: scene.sceneContext,
             panels: scene.panels?.map((panel) => ({
               id: panel.id,
               order: panel.order,
               panelContext: panel.panelContext,
-              characterIds: panel.characterIds,
-              consistencyElements: panel.consistencyElements,
+              characters: panel.characters,
               dialogues: panel.dialogues?.map((dialogue) => ({
                 id: dialogue.id,
                 order: dialogue.order,
@@ -451,9 +739,7 @@ export const extractFullContexts = (project: MangaProject) => {
             id: panel.id,
             order: panel.order,
             panelContext: panel.panelContext,
-            characterIds: panel.characterIds,
-            consistencyElements: panel.consistencyElements,
-            aiPrompt: panel.aiPrompt,
+            characters: panel.characters,
             negativePrompt: panel.negativePrompt,
             characterNames: panel.panelContext.characterPoses?.map(
               (ch) => ch.characterName
@@ -480,7 +766,7 @@ export const extractFullContexts = (project: MangaProject) => {
           id: sc.id,
           order: sc.order,
           title: sc.title,
-          visualSequence: sc.visualSequence,
+          description: sc.description,
           sceneContext: sc.sceneContext,
         })),
       };
@@ -569,7 +855,7 @@ export const extractUpdateContexts = (project: MangaProject) => {
             id: scene.id,
             order: scene.order,
             title: scene.title,
-            visualSequence: scene.visualSequence,
+            description: scene.description,
             sceneContext: scene.sceneContext,
             // Include only basic panel information
             panelCount: scene.panels?.length || 0,
@@ -593,7 +879,7 @@ export const extractUpdateContexts = (project: MangaProject) => {
               id: panel.id,
               order: panel.order,
               panelContext: panel.panelContext,
-              characterIds: panel.characterIds,
+              characters: panel.characters,
               dialogues: panel.dialogues?.map((d) => ({
                 id: d.id,
                 order: d.order,
@@ -686,7 +972,7 @@ const GenerationPrompt = {
   CharacterGenerationPrompt,
   ChapterGenerationPrompt,
   SceneGenerationPrompt,
-  PanelsDialogsGenerationPrompt,
+  PanelGenerationPrompt,
 };
 
 /**
@@ -760,7 +1046,7 @@ const handleGenerateContent = async (
         params.chapterContext = extractChapterContext(parentId);
         break;
 
-      case "PanelsDialogsGenerationPrompt":
+      case "PanelGenerationPrompt":
         params.characters = charactersContext;
         params.sceneContext = extractSceneContext(parentId);
         break;
@@ -926,7 +1212,7 @@ const handleUpdateContent = async (
 };
 
 /**
- * Handles image generation requests
+ * Handles image generation requests with support for all 5 stages
  */
 const handleGenerateImage = async (
   result: ContentPlannerResult,
@@ -940,7 +1226,6 @@ const handleGenerateImage = async (
   }
 
   const imageContext = result.generateImageContext!;
-
   const {
     charactersContext,
     extractPanelContext,
@@ -949,59 +1234,593 @@ const handleGenerateImage = async (
   } = extractFullContexts(project);
 
   let res;
-  switch (imageContext.contentType) {
-    case "character":
-      const characterContext = charactersContext?.find(
-        (el) => el.id == imageContext.contentId
-      );
-      res = await GenerateCharacterImage({
-        character: characterContext,
-      });
-      break;
 
-    case "panel":
-      const panelContext = extractPanelContext(imageContext.contentId);
-      const charactersInPanel = charactersContext?.filter(
-        (ch) =>
-          panelContext?.panelContext.characterPoses?.findIndex((el) =>
-            ch.name.toLowerCase().includes(el.characterName.toLowerCase())
-          ) != -1
-      );
+  try {
+    switch (imageContext.contentType) {
+      // STAGE 1: Character Portrait Generation
+      case "character":
+        const characterContext = charactersContext?.find(
+          (el) => el.id === imageContext.contentId
+        );
 
-      const charactersInPanelWithImage = await Promise.all(
-        charactersInPanel?.map(async (ch) => {
-          const image = await imageUrlToBase64WithMime(ch.imgUrl!);
+        if (!characterContext) {
           return {
-            ...ch,
-            imageData: {
-              data: image.base64,
-              mimeType: image.mimeType,
-            },
+            type: "error",
+            message: `Character with ID ${imageContext.contentId} not found`,
           };
-        }) ?? []
-      );
+        }
 
-      (projectContext as any).characters = charactersInPanelWithImage;
+        res = await GenerateCharacterImage({
+          character: characterContext,
+        });
+        break;
 
-      const scene = await getSceneForContext(panelContext?.sceneId!);
+      // STAGE 2: Character with Template Generation
+      case "characterWithTemplate":
+        const characterForTemplate = charactersContext?.find(
+          (el) => el.id === imageContext.contentId
+        );
 
-      res = await GeneratePanelImage({
-        panel: panelContext,
-        projectContext: projectContext,
-        scene,
-      });
-      break;
+        if (!characterForTemplate) {
+          return {
+            type: "error",
+            message: `Character with ID ${imageContext.contentId} not found`,
+          };
+        }
+
+        // Get outfit and pose templates from project with validation
+        const outfitTemplate = imageContext.templateIds?.outfitId
+          ? project.outfitTemplates?.find(
+              (t) => t.id === imageContext.templateIds?.outfitId
+            )
+          : undefined;
+
+        const poseTemplate = imageContext.templateIds?.poseId
+          ? project.poseTemplates?.find(
+              (t) => t.id === imageContext.templateIds?.poseId
+            )
+          : undefined;
+
+        // Validate template existence if IDs were provided
+        if (imageContext.templateIds?.outfitId && !outfitTemplate) {
+          return {
+            type: "error",
+            message: `Outfit template with ID ${imageContext.templateIds.outfitId} not found`,
+          };
+        }
+
+        if (imageContext.templateIds?.poseId && !poseTemplate) {
+          return {
+            type: "error",
+            message: `Pose template with ID ${imageContext.templateIds.poseId} not found`,
+          };
+        }
+
+        res = await GenerateCharacterWithTemplates({
+          character: characterForTemplate,
+          outfitTemplate,
+          poseTemplate,
+          context: {
+            mood: imageContext.description?.includes("happy")
+              ? "happy"
+              : imageContext.description?.includes("sad")
+              ? "sad"
+              : imageContext.description?.includes("angry")
+              ? "angry"
+              : "neutral",
+            lighting: imageContext.description?.includes("dark")
+              ? "dramatic lighting"
+              : imageContext.description?.includes("bright")
+              ? "bright lighting"
+              : "soft studio lighting",
+            location: imageContext.description?.includes("outdoor")
+              ? "outdoor setting"
+              : imageContext.description?.includes("indoor")
+              ? "indoor setting"
+              : undefined,
+          },
+        });
+        break;
+
+      // STAGE 3: Location Generation
+      case "location":
+        const locationTemplate = project.locationTemplates?.find(
+          (t) => t.id === imageContext.contentId
+        );
+
+        if (!locationTemplate) {
+          return {
+            type: "error",
+            message: `Location template with ID ${imageContext.contentId} not found`,
+          };
+        }
+
+        // Find the specific camera angle or use default
+        let cameraAngleData = imageContext.cameraAngle;
+        if (imageContext.cameraAngle && locationTemplate.cameraAngles) {
+          const foundAngle = locationTemplate.cameraAngles.find(
+            (angle: any) => angle.name === imageContext.cameraAngle
+          );
+          if (foundAngle) {
+            cameraAngleData = foundAngle;
+          }
+        }
+
+        res = await GenerateLocationImage({
+          locationTemplate,
+          cameraAngle: cameraAngleData,
+        });
+        break;
+
+      // STAGE 4: Location with Effects Generation
+      case "locationWithEffects":
+        const locationForEffects = project.locationTemplates?.find(
+          (t) => t.id === imageContext.contentId
+        );
+
+        if (!locationForEffects) {
+          return {
+            type: "error",
+            message: `Location template with ID ${imageContext.contentId} not found`,
+          };
+        }
+
+        // Get effect templates with validation
+        const effectTemplates =
+          imageContext.templateIds?.effectIds
+            ?.map((effectId) => {
+              const template = project.effectTemplates?.find(
+                (t) => t.id === effectId
+              );
+              if (!template) {
+                console.warn(`Effect template with ID ${effectId} not found`);
+              }
+              return template;
+            })
+            .filter(Boolean) || [];
+
+        // Validate that all requested effect templates were found
+        const requestedEffectIds = imageContext.templateIds?.effectIds || [];
+        const foundEffectIds = effectTemplates.map((t: any) => t.id);
+        const missingEffectIds = requestedEffectIds.filter(
+          (id) => !foundEffectIds.includes(id)
+        );
+
+        if (missingEffectIds.length > 0) {
+          return {
+            type: "error",
+            message: `Effect templates not found: ${missingEffectIds.join(
+              ", "
+            )}`,
+          };
+        }
+
+        res = await GenerateLocationWithEffects({
+          locationTemplate: locationForEffects,
+          effectTemplates,
+          cameraAngle: imageContext.cameraAngle,
+          atmosphere: {
+            timeOfDay: "day",
+            weather: "clear",
+            mood: "neutral",
+            lighting: "natural",
+          },
+        });
+        break;
+
+      // STAGE 5: Panel Generation (Two Modes)
+      case "panel":
+        const panelContext = extractPanelContext(imageContext.contentId);
+
+        if (!panelContext) {
+          return {
+            type: "error",
+            message: `Panel with ID ${imageContext.contentId} not found`,
+          };
+        }
+
+        // Get characters in panel with improved matching
+        const charactersInPanel =
+          charactersContext?.filter((ch) => {
+            // Check if character is mentioned in panel context
+            const isInPanel = panelContext?.panelContext.characterPoses?.some(
+              (pose) =>
+                // Try multiple matching strategies
+                pose.characterName.toLowerCase() === ch.name.toLowerCase() ||
+                pose.characterName
+                  .toLowerCase()
+                  .includes(ch.name.toLowerCase()) ||
+                ch.name
+                  .toLowerCase()
+                  .includes(pose.characterName.toLowerCase()) ||
+                // Check by character ID if available
+                pose.characterId === ch.id
+            );
+
+            if (isInPanel) {
+              console.log(
+                `Character ${ch.name} matched for panel ${imageContext.contentId}`
+              );
+            }
+
+            return isInPanel;
+          }) || [];
+
+        console.log(
+          `Found ${charactersInPanel.length} characters for panel generation`
+        );
+
+        if (charactersInPanel.length === 0) {
+          console.warn(
+            `No characters found for panel ${imageContext.contentId}. Panel context:`,
+            panelContext?.panelContext.characterPoses
+          );
+        }
+
+        // Get scene context
+        const scene = await getSceneForContext(panelContext?.sceneId!);
+
+        // Prepare available templates
+        const availableTemplates = {
+          outfits: project.outfitTemplates || [],
+          locations: project.locationTemplates || [],
+          poses: project.poseTemplates || [],
+          effects: project.effectTemplates || [],
+        };
+
+        // Determine panel generation mode
+        const panelMode = imageContext.panelMode || "promptOnly";
+
+        if (panelMode === "promptOnly") {
+          // Mode 1: Prompt-only generation
+          res = await GeneratePanelImagePromptOnly({
+            panel: panelContext,
+            scene,
+            characters: charactersInPanel,
+            availableTemplates,
+          });
+        } else {
+          // Mode 2: With reference images
+
+          // Prepare characters with image data
+          const charactersInPanelWithImage = await Promise.all(
+            charactersInPanel.map(async (ch) => {
+              if (ch.imgUrl) {
+                try {
+                  const image = await imageUrlToBase64WithMime(ch.imgUrl);
+                  return {
+                    ...ch,
+                    imageData: {
+                      data: image.base64,
+                      mimeType: image.mimeType,
+                    },
+                  };
+                } catch (error) {
+                  console.warn(
+                    `Failed to load image for character ${ch.name}:`,
+                    error
+                  );
+                  return ch;
+                }
+              }
+              return ch;
+            })
+          );
+
+          // Get location reference if available
+          const locationReference = panelContext.panelContext.locationId
+            ? project.locationTemplates?.find(
+                (t) => t.id === panelContext.panelContext.locationId
+              )
+            : undefined;
+
+          res = await GeneratePanelImageWithReferences({
+            panel: panelContext,
+            scene,
+            characters: charactersInPanelWithImage,
+            locationReference,
+            availableTemplates,
+          });
+        }
+        break;
+
+      default:
+        return {
+          type: "error",
+          message: `Unsupported content type for image generation: ${imageContext.contentType}`,
+        };
+    }
+
+    return {
+      type: "imageGenerated",
+      message: res?.text || "Image generated successfully",
+      data: {
+        contentType: imageContext.contentType,
+        contentId: imageContext.contentId,
+        description: imageContext.description,
+        imageMode: imageContext.imageMode,
+        panelMode: imageContext.panelMode,
+        result: res,
+        metadata: {
+          templateIds: imageContext.templateIds,
+          cameraAngle: imageContext.cameraAngle,
+          generationType: imageContext.contentType,
+        },
+      },
+    };
+  } catch (error: any) {
+    return {
+      type: "error",
+      message: `Error generating image: ${error.message}`,
+    };
+  }
+};
+
+/**
+ * Handles template generation requests
+ */
+const handleGenerateTemplate = async (
+  result: ContentPlannerResult,
+  project: MangaProject
+): Promise<ProcessingResult> => {
+  if (!result.generateTemplateContext) {
+    return {
+      type: "error",
+      message: "Missing generateTemplateContext in result",
+    };
   }
 
-  return {
-    type: "imageGenerated",
-    message: res || "generate image successfully",
-    data: {
-      contentType: result.generateImageContext.contentType,
-      contentId: result.generateImageContext.contentId,
-      description: result.generateImageContext.description,
-    },
-  };
+  const templateContext = result.generateTemplateContext!;
+  const { projectContext } = extractFullContexts(project);
+
+  try {
+    let generatedTemplate;
+    const userInput = `Create a ${templateContext.templateType} template. ${templateContext.description}`;
+
+    switch (templateContext.templateType) {
+      case "outfit":
+        generatedTemplate = await OutfitTemplateGenerationPrompt({
+          userInput,
+          projectContext,
+          existingCharacters: project.characters || [],
+          existingOutfits: project.outfitTemplates || [],
+          locationTemplates: project.locationTemplates || [],
+        });
+        break;
+
+      case "location":
+        generatedTemplate = await LocationTemplateGenerationPrompt({
+          userInput,
+          projectContext,
+          existingLocations: project.locationTemplates || [],
+        });
+        break;
+
+      case "pose":
+        generatedTemplate = await PoseTemplateGenerationPrompt({
+          userInput,
+          projectContext,
+          characterTypes:
+            (project.characters
+              ?.map((c) => c.role)
+              .filter(Boolean) as string[]) || [],
+          storyGenres: project.genre ? [project.genre] : [],
+        });
+        break;
+
+      case "effect":
+        generatedTemplate = await EffectTemplateGenerationPrompt({
+          userInput,
+          projectContext,
+          storyGenres: project.genre ? [project.genre] : [],
+          sceneTypes:
+            project.chapters?.flatMap(
+              (ch) =>
+                ch.scenes?.map((sc) => sc.sceneContext?.setting || "general") ||
+                []
+            ) || [],
+        });
+        break;
+
+      default:
+        return {
+          type: "error",
+          message: `Unsupported template type: ${templateContext.templateType}`,
+        };
+    }
+
+    return {
+      type: "templateGenerated",
+      message: `${templateContext.templateType} template successfully generated`,
+      data: {
+        templateType: templateContext.templateType,
+        parentId: templateContext.parentId,
+        description: templateContext.description,
+        output: generatedTemplate.output,
+      },
+    };
+  } catch (error: any) {
+    return {
+      type: "error",
+      message: `Failed to generate ${templateContext.templateType} template: ${error.message}`,
+    };
+  }
+};
+
+/**
+ * Handles template update requests
+ */
+const handleUpdateTemplate = async (
+  result: ContentPlannerResult,
+  project: MangaProject
+): Promise<ProcessingResult> => {
+  if (!result.updateTemplateContext) {
+    return {
+      type: "error",
+      message: "Missing updateTemplateContext in result",
+    };
+  }
+
+  const templateContext = result.updateTemplateContext!;
+  const { projectContext } = extractUpdateContexts(project);
+
+  try {
+    let updatedTemplate;
+    const userInput = `Update the ${templateContext.templateType} template. ${templateContext.description}`;
+
+    // Fetch the actual template data based on type
+    let templateData: any = null;
+
+    switch (templateContext.templateType) {
+      case "outfit":
+        templateData = project.outfitTemplates?.find(
+          (t) => t.id === templateContext.templateId
+        );
+        if (!templateData) {
+          return {
+            type: "error",
+            message: `Outfit template with ID ${templateContext.templateId} not found`,
+          };
+        }
+        break;
+
+      case "location":
+        templateData = project.locationTemplates?.find(
+          (t) => t.id === templateContext.templateId
+        );
+        if (!templateData) {
+          return {
+            type: "error",
+            message: `Location template with ID ${templateContext.templateId} not found`,
+          };
+        }
+        break;
+
+      case "pose":
+        templateData = project.poseTemplates?.find(
+          (t) => t.id === templateContext.templateId
+        );
+        if (!templateData) {
+          return {
+            type: "error",
+            message: `Pose template with ID ${templateContext.templateId} not found`,
+          };
+        }
+        break;
+
+      case "effect":
+        templateData = project.effectTemplates?.find(
+          (t) => t.id === templateContext.templateId
+        );
+        if (!templateData) {
+          return {
+            type: "error",
+            message: `Effect template with ID ${templateContext.templateId} not found`,
+          };
+        }
+        break;
+    }
+
+    switch (templateContext.templateType) {
+      case "outfit":
+        updatedTemplate = await OutfitTemplateUpdatePrompt({
+          userInput,
+          outfitTemplate: templateData,
+          projectContext,
+          characterReferences:
+            project.characters?.map((c) => ({
+              id: c.id,
+              name: c.name,
+              role: c.role,
+            })) || [],
+        });
+        break;
+
+      case "location":
+        updatedTemplate = await LocationTemplateUpdatePrompt({
+          userInput,
+          locationTemplate: templateData,
+          projectContext,
+          sceneReferences:
+            project.chapters?.flatMap(
+              (ch) =>
+                ch.scenes
+                  ?.filter(
+                    (sc) =>
+                      sc.sceneContext?.locationId === templateContext.templateId
+                  )
+                  .map((sc) => ({
+                    id: sc.id,
+                    title: sc.title,
+                    chapterTitle: ch.title,
+                  })) || []
+            ) || [],
+        });
+        break;
+
+      case "pose":
+        updatedTemplate = await PoseTemplateUpdatePrompt({
+          userInput,
+          poseTemplate: templateData,
+          projectContext,
+          characterReferences:
+            project.characters?.map((c) => ({
+              id: c.id,
+              name: c.name,
+              role: c.role,
+            })) || [],
+        });
+        break;
+
+      case "effect":
+        updatedTemplate = await EffectTemplateUpdatePrompt({
+          userInput,
+          effectTemplate: templateData,
+          projectContext,
+          usageReferences:
+            project.chapters?.flatMap(
+              (ch) =>
+                ch.scenes?.flatMap(
+                  (sc) =>
+                    sc.panels
+                      ?.filter((p) =>
+                        p.panelContext?.effects?.includes(
+                          templateContext.templateId
+                        )
+                      )
+                      .map((p) => ({
+                        panelId: p.id,
+                        sceneTitle: sc.title,
+                        chapterTitle: ch.title,
+                      })) || []
+                ) || []
+            ) || [],
+        });
+        break;
+
+      default:
+        return {
+          type: "error",
+          message: `Unsupported template type: ${templateContext.templateType}`,
+        };
+    }
+
+    return {
+      type: "templateUpdated",
+      message: `${templateContext.templateType} template successfully updated`,
+      data: {
+        templateType: templateContext.templateType,
+        templateId: templateContext.templateId,
+        description: templateContext.description,
+        output: updatedTemplate.output,
+      },
+    };
+  } catch (error: any) {
+    return {
+      type: "error",
+      message: `Failed to update ${templateContext.templateType} template: ${error.message}`,
+    };
+  }
 };
 
 /**
@@ -1049,6 +1868,23 @@ export function extractSlimProject(fullProject: MangaProject) {
 
 /**
  * Main flow to process manga requests
+ *
+ * ENHANCED IMAGE GENERATION FEATURES:
+ * - Stage 1: Character Portrait Generation with GenerateCharacterImage
+ * - Stage 2: Character with Templates using GenerateCharacterWithTemplates
+ * - Stage 3: Location Generation with camera angle support
+ * - Stage 4: Location with Effects including multiple effect templates
+ * - Stage 5: Panel Generation with two modes (promptOnly/withReferences)
+ *
+ * IMPROVEMENTS MADE:
+ * - Enhanced template validation and error handling
+ * - Better character matching for panel generation
+ * - Context-aware character generation (mood, lighting, location)
+ * - Improved template fetching with actual project data
+ * - Enhanced template update operations with usage tracking
+ * - Better error handling for missing templates/content
+ * - Added metadata in image generation responses
+ * - Improved image URL to base64 conversion with timeout
  */
 export const ProcessMangaRequestFlow = ai.defineFlow(
   {
@@ -1104,6 +1940,12 @@ export const ProcessMangaRequestFlow = ai.defineFlow(
         case "generateImage":
           return handleGenerateImage(plannerResult, project);
 
+        case "generateTemplate":
+          return await handleGenerateTemplate(plannerResult, project);
+
+        case "updateTemplate":
+          return await handleUpdateTemplate(plannerResult, project);
+
         default:
           return {
             type: "error",
@@ -1120,20 +1962,50 @@ export const ProcessMangaRequestFlow = ai.defineFlow(
 );
 
 async function imageUrlToBase64WithMime(url: string) {
-  const response = await axios.get(url, {
-    responseType: "arraybuffer",
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36",
-      Referer: "https://i.ibb.co/",
-    },
-  });
+  try {
+    const response = await axios.get(url, {
+      responseType: "arraybuffer",
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36",
+        Referer: "https://i.ibb.co/",
+      },
+      timeout: 10000, // 10 second timeout
+    });
 
-  const mimeType = response.headers["content-type"];
-  const base64 = Buffer.from(response.data, "binary").toString("base64");
+    const mimeType = response.headers["content-type"];
+    const base64 = Buffer.from(response.data, "binary").toString("base64");
 
+    return {
+      mimeType,
+      base64, // No "data:mime;base64," prefix
+    };
+  } catch (error) {
+    console.error("Failed to fetch image from URL:", url, error);
+    throw new Error(
+      `Failed to fetch image: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
+  }
+}
+
+/**
+ * Helper function to get available templates for a project
+ */
+function getAvailableTemplatesSummary(project: MangaProject) {
   return {
-    mimeType,
-    base64, // No "data:mime;base64," prefix
+    outfits: project.outfitTemplates?.length || 0,
+    locations: project.locationTemplates?.length || 0,
+    poses: project.poseTemplates?.length || 0,
+    effects: project.effectTemplates?.length || 0,
+    outfitList:
+      project.outfitTemplates?.map((t) => ({ id: t.id, name: t.name })) || [],
+    locationList:
+      project.locationTemplates?.map((t) => ({ id: t.id, name: t.name })) || [],
+    poseList:
+      project.poseTemplates?.map((t) => ({ id: t.id, name: t.name })) || [],
+    effectList:
+      project.effectTemplates?.map((t) => ({ id: t.id, name: t.name })) || [],
   };
 }

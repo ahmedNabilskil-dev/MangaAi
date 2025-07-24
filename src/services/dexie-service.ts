@@ -2,9 +2,13 @@ import { db, getProjectWithRelations } from "@/services/db";
 import type {
   Chapter,
   Character,
+  EffectTemplate,
+  LocationTemplate,
   MangaProject,
+  OutfitTemplate,
   Panel,
   PanelDialogue,
+  PoseTemplate,
   Scene,
 } from "@/types/entities";
 import type { DeepPartial } from "@/types/utils";
@@ -170,9 +174,6 @@ class DexieDataService implements IDataService {
     const newPanel: Panel = {
       ...panelData,
       id: newId,
-      characterIds: Array.isArray(panelData.characterIds)
-        ? panelData.characterIds
-        : [],
       dialogues: [],
       characters: [],
       createdAt: new Date(),
@@ -192,12 +193,6 @@ class DexieDataService implements IDataService {
     const updatePayload = {
       ...panelData,
       updatedAt: new Date(),
-      characterIds:
-        panelData.characterIds !== undefined
-          ? Array.isArray(panelData.characterIds)
-            ? panelData.characterIds
-            : []
-          : undefined,
     };
     await db.panels.update(id, updatePayload);
   }
@@ -220,13 +215,17 @@ class DexieDataService implements IDataService {
       const character = await db.characters.get(characterId);
       if (!character) throw new Error(`Character ${characterId} not found`);
 
-      const updatedIds = Array.from(
-        new Set([...(panel.characterIds || []), characterId])
+      // Check if character is already assigned to this panel
+      const isAlreadyAssigned = panel.characters?.some(
+        (c) => c.id === characterId
       );
-      await db.panels.update(panelId, {
-        characterIds: updatedIds,
-        updatedAt: new Date(),
-      });
+      if (!isAlreadyAssigned) {
+        const updatedCharacters = [...(panel.characters || []), character];
+        await db.panels.update(panelId, {
+          characters: updatedCharacters,
+          updatedAt: new Date(),
+        });
+      }
     });
   }
 
@@ -238,11 +237,11 @@ class DexieDataService implements IDataService {
       const panel = await db.panels.get(panelId);
       if (!panel) throw new Error(`Panel ${panelId} not found`);
 
-      const updatedIds = (panel.characterIds || []).filter(
-        (id) => id !== characterId
+      const updatedCharacters = (panel.characters || []).filter(
+        (character) => character.id !== characterId
       );
       await db.panels.update(panelId, {
-        characterIds: updatedIds,
+        characters: updatedCharacters,
         updatedAt: new Date(),
       });
     });
@@ -332,15 +331,17 @@ class DexieDataService implements IDataService {
       db.panels,
       db.dialogues,
       async () => {
-        const panels = await db.panels
-          .where("characterIds")
-          .equals(id)
-          .toArray();
+        // Remove character from all panels where they appear
+        const allPanels = await db.panels.toArray();
+        const panelsWithCharacter = allPanels.filter((panel) =>
+          panel.characters?.some((char) => char.id === id)
+        );
+
         await Promise.all(
-          panels.map((panel) =>
+          panelsWithCharacter.map((panel) =>
             db.panels.update(panel.id, {
-              characterIds: (panel.characterIds || []).filter(
-                (charId) => charId !== id
+              characters: (panel.characters || []).filter(
+                (character) => character.id !== id
               ),
               updatedAt: new Date(),
             })
@@ -405,6 +406,319 @@ class DexieDataService implements IDataService {
 
   async getAllCharacters(): Promise<Character[]> {
     return db.characters.toArray();
+  }
+
+  // --- Template Methods ---
+
+  // --- Outfit Templates ---
+  async createOutfitTemplate(
+    templateData: Omit<OutfitTemplate, "id" | "createdAt" | "updatedAt">
+  ): Promise<OutfitTemplate> {
+    const newId = uuidv4();
+    const newTemplate: OutfitTemplate = {
+      ...templateData,
+      id: newId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    await db.outfitTemplates.add(newTemplate);
+    return newTemplate;
+  }
+
+  async getOutfitTemplate(id: string): Promise<OutfitTemplate | null> {
+    return (await db.outfitTemplates.get(id)) || null;
+  }
+
+  async updateOutfitTemplate(
+    id: string,
+    templateData: DeepPartial<
+      Omit<OutfitTemplate, "id" | "createdAt" | "updatedAt">
+    >
+  ): Promise<void> {
+    const existingTemplate = await db.outfitTemplates.get(id);
+    if (!existingTemplate) return;
+
+    // Create update object with only the fields that are provided
+    const updateData: any = {
+      ...templateData,
+      updatedAt: new Date(),
+    };
+
+    // If components are provided, ensure they have the correct structure
+    if (templateData.components) {
+      updateData.components = templateData.components.map((comp: any) => ({
+        type: comp.type || "top",
+        item: comp.item || "",
+        color: comp.color,
+        material: comp.material,
+        pattern: comp.pattern,
+      }));
+    }
+
+    await db.outfitTemplates.update(id, updateData);
+  }
+
+  async deleteOutfitTemplate(id: string): Promise<void> {
+    await db.outfitTemplates.delete(id);
+  }
+
+  async listOutfitTemplates(filters?: {
+    category?: string;
+    gender?: string;
+    ageGroup?: string;
+    season?: string;
+    style?: string;
+    activeOnly?: boolean;
+  }): Promise<OutfitTemplate[]> {
+    let query = db.outfitTemplates.toCollection();
+
+    if (filters?.activeOnly) {
+      query = query.filter((template) => template.isActive);
+    }
+    if (filters?.category) {
+      query = query.filter(
+        (template) => template.category === filters.category
+      );
+    }
+    if (filters?.gender) {
+      query = query.filter((template) => template.gender === filters.gender);
+    }
+    if (filters?.ageGroup) {
+      query = query.filter(
+        (template) => template.ageGroup === filters.ageGroup
+      );
+    }
+    if (filters?.season) {
+      query = query.filter((template) => template.season === filters.season);
+    }
+    if (filters?.style) {
+      query = query.filter((template) => template.style === filters.style);
+    }
+
+    return await query.toArray();
+  }
+
+  // --- Location Templates ---
+  async createLocationTemplate(
+    templateData: Omit<LocationTemplate, "id" | "createdAt" | "updatedAt">
+  ): Promise<LocationTemplate> {
+    const newId = uuidv4();
+    const newTemplate: LocationTemplate = {
+      ...templateData,
+      id: newId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    await db.locationTemplates.add(newTemplate);
+    return newTemplate;
+  }
+
+  async getLocationTemplate(id: string): Promise<LocationTemplate | null> {
+    return (await db.locationTemplates.get(id)) || null;
+  }
+
+  async updateLocationTemplate(
+    id: string,
+    templateData: DeepPartial<
+      Omit<LocationTemplate, "id" | "createdAt" | "updatedAt">
+    >
+  ): Promise<void> {
+    const updateData: any = {
+      ...templateData,
+      updatedAt: new Date(),
+    };
+
+    await db.locationTemplates.update(id, updateData);
+  }
+
+  async deleteLocationTemplate(id: string): Promise<void> {
+    await db.locationTemplates.delete(id);
+  }
+
+  async listLocationTemplates(filters?: {
+    category?: string;
+    timeOfDay?: string;
+    weather?: string;
+    mood?: string;
+    style?: string;
+    activeOnly?: boolean;
+  }): Promise<LocationTemplate[]> {
+    let query = db.locationTemplates.toCollection();
+
+    if (filters?.activeOnly) {
+      query = query.filter((template) => template.isActive);
+    }
+    if (filters?.category) {
+      query = query.filter(
+        (template) => template.category === filters.category
+      );
+    }
+    if (filters?.timeOfDay) {
+      query = query.filter(
+        (template) => template.timeOfDay === filters.timeOfDay
+      );
+    }
+    if (filters?.weather) {
+      query = query.filter((template) => template.weather === filters.weather);
+    }
+    if (filters?.mood) {
+      query = query.filter((template) => template.mood === filters.mood);
+    }
+    if (filters?.style) {
+      query = query.filter((template) => template.style === filters.style);
+    }
+
+    return await query.toArray();
+  }
+
+  // --- Pose Templates ---
+  async createPoseTemplate(
+    templateData: Omit<PoseTemplate, "id" | "createdAt" | "updatedAt">
+  ): Promise<PoseTemplate> {
+    const newId = uuidv4();
+    const newTemplate: PoseTemplate = {
+      ...templateData,
+      id: newId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    await db.poseTemplates.add(newTemplate);
+    return newTemplate;
+  }
+
+  async getPoseTemplate(id: string): Promise<PoseTemplate | null> {
+    return (await db.poseTemplates.get(id)) || null;
+  }
+
+  async updatePoseTemplate(
+    id: string,
+    templateData: DeepPartial<
+      Omit<PoseTemplate, "id" | "createdAt" | "updatedAt">
+    >
+  ): Promise<void> {
+    const updateData: any = {
+      ...templateData,
+      updatedAt: new Date(),
+    };
+
+    await db.poseTemplates.update(id, updateData);
+  }
+
+  async deletePoseTemplate(id: string): Promise<void> {
+    await db.poseTemplates.delete(id);
+  }
+
+  async listPoseTemplates(filters?: {
+    category?: string;
+    emotion?: string;
+    difficulty?: string;
+    gender?: string;
+    ageGroup?: string;
+    style?: string;
+    activeOnly?: boolean;
+  }): Promise<PoseTemplate[]> {
+    let query = db.poseTemplates.toCollection();
+
+    if (filters?.activeOnly) {
+      query = query.filter((template) => template.isActive);
+    }
+    if (filters?.category) {
+      query = query.filter(
+        (template) => template.category === filters.category
+      );
+    }
+    if (filters?.emotion) {
+      query = query.filter((template) => template.emotion === filters.emotion);
+    }
+    if (filters?.difficulty) {
+      query = query.filter(
+        (template) => template.difficulty === filters.difficulty
+      );
+    }
+    if (filters?.gender) {
+      query = query.filter((template) => template.gender === filters.gender);
+    }
+    if (filters?.ageGroup) {
+      query = query.filter(
+        (template) => template.ageGroup === filters.ageGroup
+      );
+    }
+    if (filters?.style) {
+      query = query.filter((template) => template.style === filters.style);
+    }
+
+    return await query.toArray();
+  }
+
+  // --- Effect Templates ---
+  async createEffectTemplate(
+    templateData: Omit<EffectTemplate, "id" | "createdAt" | "updatedAt">
+  ): Promise<EffectTemplate> {
+    const newId = uuidv4();
+    const newTemplate: EffectTemplate = {
+      ...templateData,
+      id: newId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    await db.effectTemplates.add(newTemplate);
+    return newTemplate;
+  }
+
+  async getEffectTemplate(id: string): Promise<EffectTemplate | null> {
+    return (await db.effectTemplates.get(id)) || null;
+  }
+
+  async updateEffectTemplate(
+    id: string,
+    templateData: DeepPartial<
+      Omit<EffectTemplate, "id" | "createdAt" | "updatedAt">
+    >
+  ): Promise<void> {
+    const updateData: any = {
+      ...templateData,
+      updatedAt: new Date(),
+    };
+
+    await db.effectTemplates.update(id, updateData);
+  }
+
+  async deleteEffectTemplate(id: string): Promise<void> {
+    await db.effectTemplates.delete(id);
+  }
+
+  async listEffectTemplates(filters?: {
+    category?: string;
+    intensity?: string;
+    duration?: string;
+    style?: string;
+    activeOnly?: boolean;
+  }): Promise<EffectTemplate[]> {
+    let query = db.effectTemplates.toCollection();
+
+    if (filters?.activeOnly) {
+      query = query.filter((template) => template.isActive);
+    }
+    if (filters?.category) {
+      query = query.filter(
+        (template) => template.category === filters.category
+      );
+    }
+    if (filters?.intensity) {
+      query = query.filter(
+        (template) => template.intensity === filters.intensity
+      );
+    }
+    if (filters?.duration) {
+      query = query.filter(
+        (template) => template.duration === filters.duration
+      );
+    }
+    if (filters?.style) {
+      query = query.filter((template) => template.style === filters.style);
+    }
+
+    return await query.toArray();
   }
 
   // --- Initialization ---

@@ -1,87 +1,177 @@
 import { MangaStatus } from "@/types/enums";
 
-export interface PoseTemplate {
-  id: string;
-  name: string; // "Standing", "Running", "Crossed Arms", etc.
-  description: string;
-  characterId?: string; // optional: use for character-specific poses
-  imageUrl: string; // preview or sprite
-  tags: string[]; // e.g., ["neutral", "dynamic", "angry"]
-  angle?: "front" | "side" | "back";
-  viewType?: "full-body" | "bust" | "headshot";
-  emotionOverlayId?: string; // for combining expressions
-  isDefault?: boolean;
-}
-
-export interface EffectTemplate {
-  id: string;
-  name: string; // "Rain", "Speed Lines", "Magic Aura"
-  description?: string;
-  imageUrl: string;
-  type: "weather" | "motion" | "magic" | "emotion" | "ui";
-  tags?: string[];
-  blendMode?: "overlay" | "multiply" | "screen";
-  opacity?: number;
-  animation?: boolean; // optional for animated support later
-}
-
 export interface OutfitTemplate {
   id: string;
-  name: string; // e.g., "School Uniform", "Casual"
-  characterId: string;
-  description: string; // Short, visual-friendly summary
-  aiPrompt: string; // Detailed and composable prompt for AI
-  isDefault?: boolean; // Marks main outfit
-  tags: string[]; // e.g., ["uniform", "blue", "skirt"]
-
+  name: string;
+  description: string;
   category:
-    | "school"
     | "casual"
     | "formal"
-    | "sports"
-    | "sleepwear"
-    | "work"
-    | "special"
+    | "traditional"
     | "fantasy"
-    | "historical"; // <-- NEW: allows genre expansion
-
-  season?: "spring" | "summer" | "fall" | "winter" | "any";
-
-  materialTags?: string[]; // <-- NEW: ["cotton", "leather", "silk"] for realism
-  colorPalette?: string[]; // <-- NEW: ["navy", "white", "red"] helps AI and filtering
-  layers?: string[]; // <-- NEW: ["shirt", "jacket", "tie"] (good for sprite separation)
-
-  referenceImages: {
-    id: string;
-    url: string;
-    description: string; // "front view", "side view", etc.
-    isMain: boolean;
-    metadata?: {
-      angle?: string;
-      lighting?: string;
-      resolution?: string;
-    }; // <-- NEW: helpful for AI training or consistency
+    | "modern"
+    | "vintage"
+    | "futuristic"
+    | "seasonal"
+    | "special";
+  subCategory?: string;
+  gender: "male" | "female" | "unisex";
+  ageGroup: "child" | "teen" | "adult" | "elderly";
+  season: "spring" | "summer" | "autumn" | "winter" | "all";
+  style: "anime" | "realistic" | "cartoon" | "manga";
+  components: {
+    type: "top" | "bottom" | "shoes" | "accessories" | "outerwear";
+    item: string;
+    color?: string;
+    material?: string;
+    pattern?: string;
   }[];
+  colors: string[];
+  materials: string[];
+  tags: string[];
+  imagePrompt?: string;
+  imageUrl?: string;
+  isActive: boolean;
+  mangaProjectId: string;
+  createdAt: Date | string;
+  updatedAt: Date | string;
 }
 
 export interface LocationTemplate {
   id: string;
-  name: string; // e.g., "Classroom", "Park"
-  basePrompt: string; // Foundational scene elements
-  type: "interior" | "exterior";
-  cameraAngles: {
-    id: string;
-    name: string; // e.g., "corner_view", "doorway_view"
-    aiPrompt: string; // Full prompt for rendering
-    referenceImage?: {
-      url: string;
-      description: string;
-      metadata?: {
-        resolution?: string;
-        lighting?: string;
-      }; // <-- NEW
-    };
-  }[];
+  name: string;
+  description: string;
+  category:
+    | "indoor"
+    | "outdoor"
+    | "urban"
+    | "rural"
+    | "fantasy"
+    | "futuristic"
+    | "historical"
+    | "natural"
+    | "architectural";
+  subCategory?: string;
+  timeOfDay:
+    | "dawn"
+    | "morning"
+    | "noon"
+    | "afternoon"
+    | "evening"
+    | "night"
+    | "any";
+  weather: "sunny" | "cloudy" | "rainy" | "stormy" | "snowy" | "foggy" | "any";
+  mood:
+    | "peaceful"
+    | "mysterious"
+    | "energetic"
+    | "romantic"
+    | "tense"
+    | "cheerful"
+    | "somber";
+  style: "anime" | "realistic" | "cartoon" | "manga";
+  lighting: {
+    type?: "natural" | "artificial" | "mixed";
+    intensity?: "dim" | "moderate" | "bright";
+    color?: string;
+  };
+  cameraAngles: (
+    | "wide-shot"
+    | "medium-shot"
+    | "close-up"
+    | "birds-eye"
+    | "worms-eye"
+    | "dutch-angle"
+    | "over-shoulder"
+  )[];
+  props: string[];
+  colors: string[];
+  tags: string[];
+  imagePrompt?: string;
+  imageUrl?: string;
+  isActive: boolean;
+  mangaProjectId: string;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+}
+
+export interface PoseTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category:
+    | "standing"
+    | "sitting"
+    | "lying"
+    | "walking"
+    | "running"
+    | "action"
+    | "emotional"
+    | "interaction"
+    | "combat"
+    | "dance";
+  subCategory?: string;
+  emotion:
+    | "neutral"
+    | "happy"
+    | "sad"
+    | "angry"
+    | "surprised"
+    | "fearful"
+    | "disgusted"
+    | "excited"
+    | "calm"
+    | "intense";
+  difficulty: "easy" | "medium" | "hard";
+  gender: "male" | "female" | "unisex";
+  ageGroup: "child" | "teen" | "adult" | "elderly";
+  style: "anime" | "realistic" | "cartoon" | "manga";
+  bodyParts: {
+    head?: string;
+    arms?: string;
+    hands?: string;
+    torso?: string;
+    legs?: string;
+    feet?: string;
+  };
+  tags: string[];
+  imagePrompt?: string;
+  imageUrl?: string;
+  isActive: boolean;
+  mangaProjectId: string;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+}
+
+export interface EffectTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category:
+    | "speed"
+    | "impact"
+    | "emotion"
+    | "magic"
+    | "weather"
+    | "explosion"
+    | "energy"
+    | "transformation"
+    | "sound"
+    | "motion";
+  subCategory?: string;
+  intensity: "low" | "medium" | "high" | "extreme";
+  duration: "instant" | "short" | "medium" | "long" | "persistent";
+  style: "anime" | "realistic" | "cartoon" | "manga";
+  colors: string[];
+  shapes: string[];
+  patterns: string[];
+  tags: string[];
+  imagePrompt?: string;
+  imageUrl?: string;
+  isActive: boolean;
+  mangaProjectId: string;
+  createdAt: Date | string;
+  updatedAt: Date | string;
 }
 
 export interface MangaProject {
@@ -110,6 +200,8 @@ export interface MangaProject {
   };
   outfitTemplates?: OutfitTemplate[];
   locationTemplates?: LocationTemplate[];
+  poseTemplates?: PoseTemplate[];
+  effectTemplates?: EffectTemplate[];
   // Key events now directly part of project
   themes?: string[];
   motifs?: string[];

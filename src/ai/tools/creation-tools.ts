@@ -1,9 +1,14 @@
 import { ai } from "@/ai/ai-instance";
 import {
+  assignCharacterToPanel,
   createChapter as createChapterService,
   createCharacter as createCharacterService,
+  createEffectTemplate as createEffectTemplateService,
+  createLocationTemplate as createLocationTemplateService,
+  createOutfitTemplate as createOutfitTemplateService,
   createPanelDialogue as createPanelDialogueService,
   createPanel as createPanelService,
+  createPoseTemplate as createPoseTemplateService,
   createProject as createProjectService,
   createScene as createSceneService,
   getChapterForContext,
@@ -18,9 +23,13 @@ import { MangaStatus } from "@/types/enums";
 import {
   chapterSchema,
   characterSchema,
+  effectTemplateSchema,
+  locationTemplateSchema,
   mangaProjectSchema,
+  outfitTemplateSchema,
   panelDialogueSchema,
   panelSchema,
+  poseTemplateSchema,
   sceneSchema,
 } from "@/types/schemas";
 import { z } from "zod";
@@ -69,11 +78,15 @@ export const createProjectTool = ai.defineTool(
       id: true,
       chapters: true,
       characters: true,
+      outfitTemplates: true,
+      locationTemplates: true,
       coverImageUrl: true,
       status: true,
       tags: true,
       creatorId: true,
       initialPrompt: true,
+      createdAt: true,
+      updatedAt: true,
     }),
     outputSchema: z.object({
       createdProject: z.string().describe("created project data"),
@@ -81,10 +94,15 @@ export const createProjectTool = ai.defineTool(
   },
   async (input) => {
     try {
-      const project = await createProjectService({
+      // Convert string dates to Date objects if needed and add required fields
+      const processedInput = {
         ...input,
         status: MangaStatus.DRAFT,
-      });
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      const project = await createProjectService(processedInput);
       localStorage.setItem("currentProjectId", project.id);
       return { createdProject: JSON.stringify(project) };
     } catch (error: any) {
@@ -143,7 +161,6 @@ export const createSceneTool = ai.defineTool(
         createdAt: true,
         updatedAt: true,
         panels: true,
-        dialogueOutline: true,
         isAiGenerated: true,
       })
       .extend({
@@ -159,7 +176,11 @@ export const createSceneTool = ai.defineTool(
       }
 
       const scene = await createSceneService({
-        ...input,
+        order: input.order,
+        title: input.title,
+        description: input.description,
+        sceneContext: input.sceneContext,
+        chapterId: input.chapterId,
         isAiGenerated: true,
       });
       return scene.id;
@@ -223,9 +244,21 @@ export const createPanelTool = ai.defineTool(
 
       const panel = await createPanelService({
         ...input,
-        characterIds,
         isAiGenerated: true,
       });
+
+      // Assign characters to the panel if provided
+      if (characterIds.length > 0) {
+        const { assignCharacterToPanel } = await import(
+          "@/services/data-service"
+        );
+        await Promise.all(
+          characterIds.map((characterId) =>
+            assignCharacterToPanel(panel.id, characterId)
+          )
+        );
+      }
+
       return panel.id;
     } catch (error: any) {
       throw new Error(`Failed to create panel: ${error.message}`);
@@ -380,14 +413,7 @@ export const createCharacterTool = ai.defineTool(
         id: true,
         createdAt: true,
         updatedAt: true,
-        aiGenerationPrompt: true,
         isAiGenerated: true,
-        imgUrl: true,
-        styleGuide: true,
-        style: true,
-        expressionImages: true,
-        referenceImageUrls: true,
-        expressionStyle: true,
       })
       .extend({
         mangaProjectId: z
@@ -490,7 +516,6 @@ export const createChapterWithScenesTool = ai.defineTool(
             createdAt: true,
             updatedAt: true,
             panels: true,
-            dialogueOutline: true,
             isAiGenerated: true,
             chapterId: true,
           })
@@ -521,7 +546,10 @@ export const createChapterWithScenesTool = ai.defineTool(
       const sceneIds = [];
       for (const sceneData of input.scenes) {
         const scene = await createSceneService({
-          ...sceneData,
+          order: sceneData.order,
+          title: sceneData.title,
+          description: sceneData.description,
+          sceneContext: sceneData.sceneContext,
           chapterId: chapter.id,
           isAiGenerated: true,
         });
@@ -552,7 +580,6 @@ export const createMultipleScenesTool = ai.defineTool(
             createdAt: true,
             updatedAt: true,
             panels: true,
-            dialogueOutline: true,
             isAiGenerated: true,
             chapterId: true,
           })
@@ -576,7 +603,10 @@ export const createMultipleScenesTool = ai.defineTool(
       const sceneIds = [];
       for (const sceneData of input.scenes) {
         const scene = await createSceneService({
-          ...sceneData,
+          order: sceneData.order,
+          title: sceneData.title,
+          description: sceneData.description,
+          sceneContext: sceneData.sceneContext,
           chapterId: existedChapter.id,
           isAiGenerated: true,
         });
@@ -621,7 +651,6 @@ export const createMultipleChaptersWithScenesTool = ai.defineTool(
                   createdAt: true,
                   updatedAt: true,
                   panels: true,
-                  dialogueOutline: true,
                   isAiGenerated: true,
                   chapterId: true,
                 })
@@ -662,7 +691,10 @@ export const createMultipleChaptersWithScenesTool = ai.defineTool(
         const sceneIds = [];
         for (const sceneData of scenes) {
           const scene = await createSceneService({
-            ...sceneData,
+            order: sceneData.order,
+            title: sceneData.title,
+            description: sceneData.description,
+            sceneContext: sceneData.sceneContext,
             chapterId: chapter.id,
             isAiGenerated: true,
           });
@@ -770,9 +802,17 @@ export const createPanelWithDialoguesTool = ai.defineTool(
       const panel = await createPanelService({
         ...input.panelData,
         sceneId: input.sceneId,
-        characterIds,
         isAiGenerated: true,
       });
+
+      // Assign characters to the panel if provided
+      if (characterIds.length > 0) {
+        await Promise.all(
+          characterIds.map((characterId) =>
+            assignCharacterToPanel(panel.id, characterId)
+          )
+        );
+      }
 
       // Then create all dialogues within that panel
       const dialogueIds = [];
@@ -880,9 +920,18 @@ export const createMultiplePanelsTool = ai.defineTool(
         const panel = await createPanelService({
           ...panelData,
           sceneId: input.sceneId,
-          characterIds,
           isAiGenerated: true,
         });
+
+        // Assign characters to the panel if provided
+        if (characterIds.length > 0) {
+          await Promise.all(
+            characterIds.map((characterId) =>
+              assignCharacterToPanel(panel.id, characterId)
+            )
+          );
+        }
+
         panelIds.push(panel.id);
       }
 
@@ -995,9 +1044,17 @@ export const createMultiplePanelsWithDialoguesTool = ai.defineTool(
         const panel = await createPanelService({
           ...panelData,
           sceneId: input.sceneId,
-          characterIds,
           isAiGenerated: true,
         });
+
+        // Assign characters to the panel if provided
+        if (characterIds.length > 0) {
+          await Promise.all(
+            characterIds.map((characterId) =>
+              assignCharacterToPanel(panel.id, characterId)
+            )
+          );
+        }
 
         // Create all dialogues for this panel
         const dialogueIds = [];
@@ -1050,12 +1107,7 @@ export const createMultipleCharactersTool = ai.defineTool(
             id: true,
             createdAt: true,
             updatedAt: true,
-            aiGenerationPrompt: true,
             isAiGenerated: true,
-            imgUrl: true,
-            expressionImages: true,
-            referenceImageUrls: true,
-            expressionStyle: true,
             mangaProjectId: true,
           })
         )
@@ -1085,6 +1137,290 @@ export const createMultipleCharactersTool = ai.defineTool(
       return characterIds;
     } catch (error: any) {
       throw new Error(`Failed to create multiple characters: ${error.message}`);
+    }
+  }
+);
+
+// --- Create Outfit Template Tool ---
+export const createOutfitTemplateTool = ai.defineTool(
+  {
+    name: "createOutfitTemplate",
+    description:
+      "Creates a new outfit template for a character with detailed specifications.",
+    inputSchema: outfitTemplateSchema
+      .omit({
+        id: true,
+        createdAt: true,
+        updatedAt: true,
+      })
+      .extend({
+        mangaProjectId: z.string().describe("The ID of the parent project."),
+      }),
+    outputSchema: z
+      .string()
+      .describe("The ID of the newly created outfit template."),
+  },
+  async (input) => {
+    try {
+      const template = await createOutfitTemplateService(input);
+      return template.id;
+    } catch (error: any) {
+      throw new Error(`Failed to create outfit template: ${error.message}`);
+    }
+  }
+);
+
+// --- Create Location Template Tool ---
+export const createLocationTemplateTool = ai.defineTool(
+  {
+    name: "createLocationTemplate",
+    description: "Creates a new location template with multiple camera angles.",
+    inputSchema: locationTemplateSchema
+      .omit({
+        id: true,
+        createdAt: true,
+        updatedAt: true,
+      })
+      .extend({
+        mangaProjectId: z.string().describe("The ID of the parent project."),
+      }),
+    outputSchema: z
+      .string()
+      .describe("The ID of the newly created location template."),
+  },
+  async (input) => {
+    try {
+      const template = await createLocationTemplateService(input);
+      return template.id;
+    } catch (error: any) {
+      throw new Error(`Failed to create location template: ${error.message}`);
+    }
+  }
+);
+
+// --- Create Multiple Outfit Templates Tool ---
+export const createMultipleOutfitTemplatesTool = ai.defineTool(
+  {
+    name: "createMultipleOutfitTemplates",
+    description:
+      "Creates multiple outfit templates for characters in one operation.",
+    inputSchema: z.object({
+      mangaProjectId: z.string().describe("The ID of the parent project."),
+      outfitTemplates: z
+        .array(
+          outfitTemplateSchema.omit({
+            id: true,
+            createdAt: true,
+            updatedAt: true,
+          })
+        )
+        .describe("Array of outfit template data to create"),
+    }),
+    outputSchema: z
+      .array(z.string())
+      .describe("The IDs of the newly created outfit templates."),
+  },
+  async (input) => {
+    try {
+      const outfitIds = [];
+
+      for (const outfitData of input.outfitTemplates) {
+        const template = await createOutfitTemplateService({
+          ...outfitData,
+          mangaProjectId: input.mangaProjectId,
+        });
+        outfitIds.push(template.id);
+      }
+
+      return outfitIds;
+    } catch (error: any) {
+      throw new Error(
+        `Failed to create multiple outfit templates: ${error.message}`
+      );
+    }
+  }
+);
+
+// --- Create Multiple Location Templates Tool ---
+export const createMultipleLocationTemplatesTool = ai.defineTool(
+  {
+    name: "createMultipleLocationTemplates",
+    description: "Creates multiple location templates in one operation.",
+    inputSchema: z.object({
+      mangaProjectId: z.string().describe("The ID of the parent project."),
+      locationTemplates: z
+        .array(
+          locationTemplateSchema.omit({
+            id: true,
+            createdAt: true,
+            updatedAt: true,
+          })
+        )
+        .describe("Array of location template data to create"),
+    }),
+    outputSchema: z
+      .array(z.string())
+      .describe("The IDs of the newly created location templates."),
+  },
+  async (input) => {
+    try {
+      const locationIds = [];
+
+      for (const locationData of input.locationTemplates) {
+        const template = await createLocationTemplateService({
+          ...locationData,
+          mangaProjectId: input.mangaProjectId,
+        });
+        locationIds.push(template.id);
+      }
+
+      return locationIds;
+    } catch (error: any) {
+      throw new Error(
+        `Failed to create multiple location templates: ${error.message}`
+      );
+    }
+  }
+);
+
+// --- Create Pose Template Tool ---
+export const createPoseTemplateTool = ai.defineTool(
+  {
+    name: "createPoseTemplate",
+    description:
+      "Creates a new pose template for character positioning and body language.",
+    inputSchema: poseTemplateSchema
+      .omit({
+        id: true,
+        createdAt: true,
+        updatedAt: true,
+      })
+      .extend({
+        mangaProjectId: z.string().describe("The ID of the parent project."),
+      }),
+    outputSchema: z
+      .string()
+      .describe("The ID of the newly created pose template."),
+  },
+  async (input) => {
+    try {
+      const template = await createPoseTemplateService(input);
+      return template.id;
+    } catch (error: any) {
+      throw new Error(`Failed to create pose template: ${error.message}`);
+    }
+  }
+);
+
+// --- Create Effect Template Tool ---
+export const createEffectTemplateTool = ai.defineTool(
+  {
+    name: "createEffectTemplate",
+    description:
+      "Creates a new effect template for visual effects and stylistic elements.",
+    inputSchema: effectTemplateSchema
+      .omit({
+        id: true,
+        createdAt: true,
+        updatedAt: true,
+      })
+      .extend({
+        mangaProjectId: z.string().describe("The ID of the parent project."),
+      }),
+    outputSchema: z
+      .string()
+      .describe("The ID of the newly created effect template."),
+  },
+  async (input) => {
+    try {
+      const template = await createEffectTemplateService(input);
+      return template.id;
+    } catch (error: any) {
+      throw new Error(`Failed to create effect template: ${error.message}`);
+    }
+  }
+);
+
+// --- Create Multiple Pose Templates Tool ---
+export const createMultiplePoseTemplatesTool = ai.defineTool(
+  {
+    name: "createMultiplePoseTemplates",
+    description: "Creates multiple pose templates in one operation.",
+    inputSchema: z.object({
+      mangaProjectId: z.string().describe("The ID of the parent project."),
+      poseTemplates: z
+        .array(
+          poseTemplateSchema.omit({
+            id: true,
+            createdAt: true,
+            updatedAt: true,
+          })
+        )
+        .describe("Array of pose template data to create"),
+    }),
+    outputSchema: z
+      .array(z.string())
+      .describe("The IDs of the newly created pose templates."),
+  },
+  async (input) => {
+    try {
+      const poseIds = [];
+
+      for (const poseData of input.poseTemplates) {
+        const template = await createPoseTemplateService({
+          ...poseData,
+          mangaProjectId: input.mangaProjectId,
+        });
+        poseIds.push(template.id);
+      }
+
+      return poseIds;
+    } catch (error: any) {
+      throw new Error(
+        `Failed to create multiple pose templates: ${error.message}`
+      );
+    }
+  }
+);
+
+// --- Create Multiple Effect Templates Tool ---
+export const createMultipleEffectTemplatesTool = ai.defineTool(
+  {
+    name: "createMultipleEffectTemplates",
+    description: "Creates multiple effect templates in one operation.",
+    inputSchema: z.object({
+      mangaProjectId: z.string().describe("The ID of the parent project."),
+      effectTemplates: z
+        .array(
+          effectTemplateSchema.omit({
+            id: true,
+            createdAt: true,
+            updatedAt: true,
+          })
+        )
+        .describe("Array of effect template data to create"),
+    }),
+    outputSchema: z
+      .array(z.string())
+      .describe("The IDs of the newly created effect templates."),
+  },
+  async (input) => {
+    try {
+      const effectIds = [];
+
+      for (const effectData of input.effectTemplates) {
+        const template = await createEffectTemplateService({
+          ...effectData,
+          mangaProjectId: input.mangaProjectId,
+        });
+        effectIds.push(template.id);
+      }
+
+      return effectIds;
+    } catch (error: any) {
+      throw new Error(
+        `Failed to create multiple effect templates: ${error.message}`
+      );
     }
   }
 );

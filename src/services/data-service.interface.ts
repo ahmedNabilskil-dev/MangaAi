@@ -2,9 +2,13 @@
 import type {
   Chapter,
   Character,
+  EffectTemplate,
+  LocationTemplate,
   MangaProject,
+  OutfitTemplate,
   Panel,
   PanelDialogue,
+  PoseTemplate,
   Scene,
 } from "@/types/entities";
 import type { DeepPartial } from "@/types/utils";
@@ -126,6 +130,92 @@ export interface IDataService {
   getAllPanels(): Promise<Panel[]>;
   getAllPanelDialogues(): Promise<PanelDialogue[]>;
   getAllCharacters(): Promise<Character[]>;
+
+  // ---- Template Management ----
+
+  // --- Outfit Templates ---
+  createOutfitTemplate(
+    templateData: Omit<OutfitTemplate, "id" | "createdAt" | "updatedAt">
+  ): Promise<OutfitTemplate>;
+  getOutfitTemplate(id: string): Promise<OutfitTemplate | null>;
+  updateOutfitTemplate(
+    id: string,
+    templateData: DeepPartial<
+      Omit<OutfitTemplate, "id" | "createdAt" | "updatedAt">
+    >
+  ): Promise<void>;
+  deleteOutfitTemplate(id: string): Promise<void>;
+  listOutfitTemplates(filters?: {
+    category?: string;
+    gender?: string;
+    ageGroup?: string;
+    season?: string;
+    style?: string;
+    activeOnly?: boolean;
+  }): Promise<OutfitTemplate[]>;
+
+  // --- Location Templates ---
+  createLocationTemplate(
+    templateData: Omit<LocationTemplate, "id" | "createdAt" | "updatedAt">
+  ): Promise<LocationTemplate>;
+  getLocationTemplate(id: string): Promise<LocationTemplate | null>;
+  updateLocationTemplate(
+    id: string,
+    templateData: DeepPartial<
+      Omit<LocationTemplate, "id" | "createdAt" | "updatedAt">
+    >
+  ): Promise<void>;
+  deleteLocationTemplate(id: string): Promise<void>;
+  listLocationTemplates(filters?: {
+    category?: string;
+    timeOfDay?: string;
+    weather?: string;
+    mood?: string;
+    style?: string;
+    activeOnly?: boolean;
+  }): Promise<LocationTemplate[]>;
+
+  // --- Pose Templates ---
+  createPoseTemplate(
+    templateData: Omit<PoseTemplate, "id" | "createdAt" | "updatedAt">
+  ): Promise<PoseTemplate>;
+  getPoseTemplate(id: string): Promise<PoseTemplate | null>;
+  updatePoseTemplate(
+    id: string,
+    templateData: DeepPartial<
+      Omit<PoseTemplate, "id" | "createdAt" | "updatedAt">
+    >
+  ): Promise<void>;
+  deletePoseTemplate(id: string): Promise<void>;
+  listPoseTemplates(filters?: {
+    category?: string;
+    emotion?: string;
+    difficulty?: string;
+    gender?: string;
+    ageGroup?: string;
+    style?: string;
+    activeOnly?: boolean;
+  }): Promise<PoseTemplate[]>;
+
+  // --- Effect Templates ---
+  createEffectTemplate(
+    templateData: Omit<EffectTemplate, "id" | "createdAt" | "updatedAt">
+  ): Promise<EffectTemplate>;
+  getEffectTemplate(id: string): Promise<EffectTemplate | null>;
+  updateEffectTemplate(
+    id: string,
+    templateData: DeepPartial<
+      Omit<EffectTemplate, "id" | "createdAt" | "updatedAt">
+    >
+  ): Promise<void>;
+  deleteEffectTemplate(id: string): Promise<void>;
+  listEffectTemplates(filters?: {
+    category?: string;
+    intensity?: string;
+    duration?: string;
+    style?: string;
+    activeOnly?: boolean;
+  }): Promise<EffectTemplate[]>;
 
   // --- Utility/Initialization (Optional but good practice) ---
   initialize?(): Promise<void>; // For any setup needed

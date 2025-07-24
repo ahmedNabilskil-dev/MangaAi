@@ -11,8 +11,12 @@ import {
   removeCharacterFromPanel as removeCharacterFromPanelService,
   updateChapter as updateChapterService,
   updateCharacter as updateCharacterService,
+  updateEffectTemplate as updateEffectTemplateService,
+  updateLocationTemplate as updateLocationTemplateService,
+  updateOutfitTemplate as updateOutfitTemplateService,
   updatePanelDialogue as updatePanelDialogueService,
   updatePanel as updatePanelService,
+  updatePoseTemplate as updatePoseTemplateService,
   updateProject as updateProjectService,
   updateScene as updateSceneService,
 } from "@/services/data-service";
@@ -107,7 +111,6 @@ const UpdatePanelDataSchema = panelSchema
     dialogues: true,
     characters: true,
     sceneId: true,
-    characterIds: true,
     imageUrl: true,
     isAiGenerated: true,
   })
@@ -131,10 +134,6 @@ const UpdateCharacterDataSchema = characterSchema
     updatedAt: true,
     mangaProjectId: true,
     isAiGenerated: true,
-    aiGenerationPrompt: true,
-    imgUrl: true,
-    expressionImages: true,
-    referenceImageUrls: true,
   })
   .partial();
 
@@ -369,12 +368,6 @@ export const updateCharacterTool = ai.defineTool(
       if (typeof updates.hairAttributes === "string") {
         processedUpdates.hairAttributes = JSON.parse(updates.hairAttributes);
       }
-      if (typeof updates.expressionStyle === "string") {
-        processedUpdates.expressionStyle = JSON.parse(updates.expressionStyle);
-      }
-      if (typeof updates.style === "string") {
-        processedUpdates.style = JSON.parse(updates.style);
-      }
       if (typeof updates.styleGuide === "string") {
         processedUpdates.styleGuide = JSON.parse(updates.styleGuide);
       }
@@ -460,6 +453,372 @@ export const removeCharacterFromPanelTool = ai.defineTool(
       return true;
     } catch (error) {
       console.error(`Error in removeCharacterFromPanelTool: ${error}`);
+      return false;
+    }
+  }
+);
+
+// Template Update Tools
+
+export const updateOutfitTemplateTool = ai.defineTool(
+  {
+    name: "updateOutfitTemplate",
+    description: "Update an existing outfit template",
+    inputSchema: z.object({
+      id: z.string().describe("ID of the outfit template to update"),
+      name: z.string().optional().describe("Name of the outfit template"),
+      description: z.string().optional().describe("Description of the outfit"),
+      category: z
+        .enum([
+          "casual",
+          "formal",
+          "traditional",
+          "fantasy",
+          "modern",
+          "vintage",
+          "futuristic",
+          "seasonal",
+          "special",
+        ])
+        .optional()
+        .describe("Category of the outfit"),
+      subCategory: z
+        .string()
+        .optional()
+        .describe("Subcategory for more specific outfit type"),
+      gender: z
+        .enum(["male", "female", "unisex"])
+        .optional()
+        .describe("Target gender for the outfit"),
+      ageGroup: z
+        .enum(["child", "teen", "adult", "elderly"])
+        .optional()
+        .describe("Target age group"),
+      season: z
+        .enum(["spring", "summer", "autumn", "winter", "all"])
+        .optional()
+        .describe("Appropriate season"),
+      style: z
+        .enum(["anime", "realistic", "cartoon", "manga"])
+        .optional()
+        .describe("Art style"),
+      components: z
+        .array(
+          z.object({
+            type: z.enum([
+              "top",
+              "bottom",
+              "shoes",
+              "accessories",
+              "outerwear",
+            ]),
+            item: z.string(),
+            color: z.string().optional(),
+            material: z.string().optional(),
+            pattern: z.string().optional(),
+          })
+        )
+        .optional()
+        .describe("Outfit components"),
+      colors: z.array(z.string()).optional().describe("Primary colors"),
+      materials: z.array(z.string()).optional().describe("Materials used"),
+      tags: z.array(z.string()).optional().describe("Tags for categorization"),
+      imagePrompt: z
+        .string()
+        .optional()
+        .describe("Prompt for generating outfit image"),
+      imageUrl: z.string().optional().describe("URL of the outfit image"),
+      isActive: z
+        .boolean()
+        .optional()
+        .describe("Whether the template is active"),
+    }),
+    outputSchema: z.boolean().describe("True if update succeeded"),
+  },
+  async (updateData) => {
+    try {
+      const { id, ...templateData } = updateData;
+      await updateOutfitTemplateService(id, templateData);
+      return true;
+    } catch (error) {
+      console.error(`Error in updateOutfitTemplateTool: ${error}`);
+      return false;
+    }
+  }
+);
+
+export const updateLocationTemplateTool = ai.defineTool(
+  {
+    name: "updateLocationTemplate",
+    description: "Update an existing location template",
+    inputSchema: z.object({
+      id: z.string().describe("ID of the location template to update"),
+      name: z.string().optional().describe("Name of the location"),
+      description: z
+        .string()
+        .optional()
+        .describe("Description of the location"),
+      category: z
+        .enum([
+          "indoor",
+          "outdoor",
+          "urban",
+          "rural",
+          "fantasy",
+          "futuristic",
+          "historical",
+          "natural",
+          "architectural",
+        ])
+        .optional()
+        .describe("Category of the location"),
+      subCategory: z
+        .string()
+        .optional()
+        .describe("Subcategory for more specific location type"),
+      timeOfDay: z
+        .enum([
+          "dawn",
+          "morning",
+          "noon",
+          "afternoon",
+          "evening",
+          "night",
+          "any",
+        ])
+        .optional()
+        .describe("Time of day"),
+      weather: z
+        .enum(["sunny", "cloudy", "rainy", "stormy", "snowy", "foggy", "any"])
+        .optional()
+        .describe("Weather condition"),
+      mood: z
+        .enum([
+          "peaceful",
+          "mysterious",
+          "energetic",
+          "romantic",
+          "tense",
+          "cheerful",
+          "somber",
+        ])
+        .optional()
+        .describe("Mood of the location"),
+      style: z
+        .enum(["anime", "realistic", "cartoon", "manga"])
+        .optional()
+        .describe("Art style"),
+      lighting: z
+        .object({
+          type: z.enum(["natural", "artificial", "mixed"]).optional(),
+          intensity: z.enum(["dim", "moderate", "bright"]).optional(),
+          color: z.string().optional(),
+        })
+        .optional()
+        .describe("Lighting characteristics"),
+      cameraAngles: z
+        .array(
+          z.enum([
+            "wide-shot",
+            "medium-shot",
+            "close-up",
+            "birds-eye",
+            "worms-eye",
+            "dutch-angle",
+            "over-shoulder",
+          ])
+        )
+        .optional()
+        .describe("Recommended camera angles"),
+      props: z
+        .array(z.string())
+        .optional()
+        .describe("Common props in this location"),
+      colors: z.array(z.string()).optional().describe("Dominant colors"),
+      tags: z.array(z.string()).optional().describe("Tags for categorization"),
+      imagePrompt: z
+        .string()
+        .optional()
+        .describe("Prompt for generating location image"),
+      imageUrl: z.string().optional().describe("URL of the location image"),
+      isActive: z
+        .boolean()
+        .optional()
+        .describe("Whether the template is active"),
+    }),
+    outputSchema: z.boolean().describe("True if update succeeded"),
+  },
+  async (updateData) => {
+    try {
+      const { id, ...templateData } = updateData;
+      await updateLocationTemplateService(id, templateData);
+      return true;
+    } catch (error) {
+      console.error(`Error in updateLocationTemplateTool: ${error}`);
+      return false;
+    }
+  }
+);
+
+export const updatePoseTemplateTool = ai.defineTool(
+  {
+    name: "updatePoseTemplate",
+    description: "Update an existing pose template",
+    inputSchema: z.object({
+      id: z.string().describe("ID of the pose template to update"),
+      name: z.string().optional().describe("Name of the pose"),
+      description: z.string().optional().describe("Description of the pose"),
+      category: z
+        .enum([
+          "standing",
+          "sitting",
+          "lying",
+          "walking",
+          "running",
+          "action",
+          "emotional",
+          "interaction",
+          "combat",
+          "dance",
+        ])
+        .optional()
+        .describe("Category of the pose"),
+      subCategory: z
+        .string()
+        .optional()
+        .describe("Subcategory for more specific pose type"),
+      emotion: z
+        .enum([
+          "neutral",
+          "happy",
+          "sad",
+          "angry",
+          "surprised",
+          "fearful",
+          "disgusted",
+          "excited",
+          "calm",
+          "intense",
+        ])
+        .optional()
+        .describe("Emotion conveyed by the pose"),
+      difficulty: z
+        .enum(["easy", "medium", "hard"])
+        .optional()
+        .describe("Difficulty to draw"),
+      gender: z
+        .enum(["male", "female", "unisex"])
+        .optional()
+        .describe("Target gender"),
+      ageGroup: z
+        .enum(["child", "teen", "adult", "elderly"])
+        .optional()
+        .describe("Target age group"),
+      style: z
+        .enum(["anime", "realistic", "cartoon", "manga"])
+        .optional()
+        .describe("Art style"),
+      bodyParts: z
+        .object({
+          head: z.string().optional(),
+          arms: z.string().optional(),
+          hands: z.string().optional(),
+          torso: z.string().optional(),
+          legs: z.string().optional(),
+          feet: z.string().optional(),
+        })
+        .optional()
+        .describe("Position of body parts"),
+      tags: z.array(z.string()).optional().describe("Tags for categorization"),
+      imagePrompt: z
+        .string()
+        .optional()
+        .describe("Prompt for generating pose image"),
+      imageUrl: z.string().optional().describe("URL of the pose image"),
+      isActive: z
+        .boolean()
+        .optional()
+        .describe("Whether the template is active"),
+    }),
+    outputSchema: z.boolean().describe("True if update succeeded"),
+  },
+  async (updateData) => {
+    try {
+      const { id, ...templateData } = updateData;
+      await updatePoseTemplateService(id, templateData);
+      return true;
+    } catch (error) {
+      console.error(`Error in updatePoseTemplateTool: ${error}`);
+      return false;
+    }
+  }
+);
+
+export const updateEffectTemplateTool = ai.defineTool(
+  {
+    name: "updateEffectTemplate",
+    description: "Update an existing effect template",
+    inputSchema: z.object({
+      id: z.string().describe("ID of the effect template to update"),
+      name: z.string().optional().describe("Name of the effect"),
+      description: z.string().optional().describe("Description of the effect"),
+      category: z
+        .enum([
+          "speed",
+          "impact",
+          "emotion",
+          "magic",
+          "weather",
+          "explosion",
+          "energy",
+          "transformation",
+          "sound",
+          "motion",
+        ])
+        .optional()
+        .describe("Category of the effect"),
+      subCategory: z
+        .string()
+        .optional()
+        .describe("Subcategory for more specific effect type"),
+      intensity: z
+        .enum(["low", "medium", "high", "extreme"])
+        .optional()
+        .describe("Effect intensity"),
+      duration: z
+        .enum(["instant", "short", "medium", "long", "persistent"])
+        .optional()
+        .describe("Effect duration"),
+      style: z
+        .enum(["anime", "realistic", "cartoon", "manga"])
+        .optional()
+        .describe("Art style"),
+      colors: z.array(z.string()).optional().describe("Effect colors"),
+      shapes: z.array(z.string()).optional().describe("Shapes used in effect"),
+      patterns: z
+        .array(z.string())
+        .optional()
+        .describe("Patterns used in effect"),
+      tags: z.array(z.string()).optional().describe("Tags for categorization"),
+      imagePrompt: z
+        .string()
+        .optional()
+        .describe("Prompt for generating effect image"),
+      imageUrl: z.string().optional().describe("URL of the effect image"),
+      isActive: z
+        .boolean()
+        .optional()
+        .describe("Whether the template is active"),
+    }),
+    outputSchema: z.boolean().describe("True if update succeeded"),
+  },
+  async (updateData) => {
+    try {
+      const { id, ...templateData } = updateData;
+      await updateEffectTemplateService(id, templateData);
+      return true;
+    } catch (error) {
+      console.error(`Error in updateEffectTemplateTool: ${error}`);
       return false;
     }
   }
