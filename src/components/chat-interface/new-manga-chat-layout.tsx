@@ -2,11 +2,37 @@
 
 import { Message } from "@/ai/adapters/type";
 import { ProcessMangaRequestFlow } from "@/ai/flows/planner";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Bot,
+  ChevronDown,
   Eye,
   FileText,
   Image,
@@ -15,6 +41,8 @@ import {
   Settings,
   Upload,
   User,
+  Wand2,
+  Wrench,
   X,
 } from "lucide-react";
 import { useParams } from "next/navigation";
@@ -95,6 +123,8 @@ export default function NewMangaChatLayout() {
     isOpen: false,
     asset: null,
   });
+  const [toolsDropdownOpen, setToolsDropdownOpen] = useState(false);
+  const [manualPanelDialog, setManualPanelDialog] = useState(false);
 
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -439,6 +469,74 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <DropdownMenu
+              open={toolsDropdownOpen}
+              onOpenChange={setToolsDropdownOpen}
+            >
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2 bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200 hover:from-purple-100 hover:to-blue-100 text-purple-700 hover:text-purple-800 transition-all"
+                >
+                  <Wrench className="w-4 h-4" />
+                  <span className="hidden sm:block">Tools</span>
+                  <ChevronDown className="w-3 h-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem
+                  onClick={() => {
+                    setManualPanelDialog(true);
+                    setToolsDropdownOpen(false);
+                  }}
+                  className="flex items-center gap-3 p-3 cursor-pointer hover:bg-gradient-to-r hover:from-purple-50 hover:to-blue-50"
+                >
+                  <div className="p-2 bg-gradient-to-br from-purple-100 to-blue-100 rounded-lg">
+                    <Wand2 className="w-4 h-4 text-purple-600" />
+                  </div>
+                  <div>
+                    <div className="font-medium text-gray-900">
+                      Generate Panel Manually
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      Create custom manga panels with detailed settings
+                    </div>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => setToolsDropdownOpen(false)}
+                  className="flex items-center gap-3 p-3 cursor-pointer hover:bg-gray-50"
+                >
+                  <div className="p-2 bg-gray-100 rounded-lg">
+                    <Image className="w-4 h-4 text-gray-600" />
+                  </div>
+                  <div>
+                    <div className="font-medium text-gray-900">Image Tools</div>
+                    <div className="text-xs text-gray-500">
+                      Enhance and edit existing images
+                    </div>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setToolsDropdownOpen(false)}
+                  className="flex items-center gap-3 p-3 cursor-pointer hover:bg-gray-50"
+                >
+                  <div className="p-2 bg-gray-100 rounded-lg">
+                    <Settings className="w-4 h-4 text-gray-600" />
+                  </div>
+                  <div>
+                    <div className="font-medium text-gray-900">
+                      Project Settings
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      Configure project preferences
+                    </div>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <button className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800">
               <Upload className="w-5 h-5" />
             </button>
@@ -686,6 +784,13 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
         </div>
       </div>
 
+      {/* Manual Panel Generator Dialog */}
+      <ManualPanelGenerator
+        isOpen={manualPanelDialog}
+        onClose={() => setManualPanelDialog(false)}
+        projectId={projectId}
+      />
+
       {/* Asset Detail Panel */}
       <AssetDetailPanel
         asset={assetDetailPanel.asset}
@@ -694,5 +799,376 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
         onNavigateToSource={handleNavigateToSource}
       />
     </div>
+  );
+}
+
+// ============================================================================
+// MANUAL PANEL GENERATOR COMPONENT
+// ============================================================================
+
+interface ManualPanelGeneratorProps {
+  isOpen: boolean;
+  onClose: () => void;
+  projectId: string;
+}
+
+function ManualPanelGenerator({
+  isOpen,
+  onClose,
+  projectId,
+}: ManualPanelGeneratorProps) {
+  const [activeTab, setActiveTab] = useState<"scene" | "characters">("scene");
+  const [sceneSettings, setSceneSettings] = useState({
+    description: "",
+    artStyle: "modern, clean anime style",
+    background: "school rooftop",
+    lighting: "soft, diffused lighting",
+    cameraAngle: "medium shot",
+    qualityKeywords: [] as string[],
+  });
+  const [characters, setCharacters] = useState<any[]>([]);
+  const [characterInteraction, setCharacterInteraction] = useState("");
+
+  const predefinedOptions = {
+    artStyles: [
+      { label: "Modern Anime", value: "modern, clean anime style" },
+      { label: "Pastel Anime", value: "soft, pastel anime illustration" },
+      { label: "Dynamic Shonen", value: "dynamic shonen anime style" },
+      { label: "Detailed Fantasy", value: "detailed fantasy anime" },
+      { label: "Chibi Style", value: "chibi style" },
+    ],
+    backgrounds: [
+      { label: "School Rooftop", value: "bright, airy school rooftop" },
+      {
+        label: "Cherry Blossom Park",
+        value: "serene park path with cherry blossoms",
+      },
+      { label: "Festival Street", value: "bustling festival street" },
+      { label: "Cozy Cafe", value: "cozy cafe interior" },
+      { label: "Urban Cityscape", value: "modern urban cityscape" },
+      { label: "Fantasy Forest", value: "mystical forest setting" },
+    ],
+    lighting: [
+      { label: "Soft Diffused", value: "soft, diffused lighting" },
+      { label: "Bright Sunlight", value: "bright, natural sunlight" },
+      { label: "Warm Indoor", value: "warm, indoor lighting from a window" },
+      { label: "Dramatic Backlighting", value: "dramatic backlighting" },
+      { label: "Golden Hour", value: "evening golden hour" },
+      { label: "Neon Cyberpunk", value: "neon cyberpunk lighting" },
+    ],
+    cameraAngles: [
+      { label: "Medium Shot", value: "medium shot" },
+      { label: "Close-up Portrait", value: "close-up portrait" },
+      { label: "Full Body Shot", value: "full body shot" },
+      { label: "Low Angle Hero", value: "low angle looking up" },
+      { label: "Bird's Eye View", value: "bird's eye view from above" },
+    ],
+    qualityKeywords: [
+      "high-resolution",
+      "8k",
+      "detailed",
+      "intricate details",
+      "masterpiece",
+      "best quality",
+      "cinematic lighting",
+      "photorealistic",
+      "ultra-detailed",
+      "studio quality",
+      "professional artwork",
+      "vibrant colors",
+    ],
+  };
+
+  const handleQualityKeywordToggle = (keyword: string) => {
+    setSceneSettings((prev) => ({
+      ...prev,
+      qualityKeywords: prev.qualityKeywords.includes(keyword)
+        ? prev.qualityKeywords.filter((k) => k !== keyword)
+        : [...prev.qualityKeywords, keyword],
+    }));
+  };
+
+  const generatePanel = () => {
+    // Here you would implement the panel generation logic
+    console.log("Generating panel with settings:", {
+      sceneSettings,
+      characters,
+      characterInteraction,
+    });
+    onClose();
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-purple-100 to-blue-100 rounded-lg">
+              <Wand2 className="w-5 h-5 text-purple-600" />
+            </div>
+            Manual Panel Generator
+          </DialogTitle>
+          <DialogDescription>
+            Create custom manga panels with detailed scene and character
+            settings
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex flex-col h-[70vh]">
+          {/* Tab Navigation */}
+          <div className="flex border-b border-gray-200 mb-4">
+            <button
+              className={`py-3 px-6 font-medium text-sm flex-1 text-center border-b-2 transition-all ${
+                activeTab === "scene"
+                  ? "border-purple-500 text-purple-600 bg-purple-50"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+              }`}
+              onClick={() => setActiveTab("scene")}
+            >
+              <div className="flex items-center justify-center gap-2">
+                <Image size={16} />
+                Scene Settings
+              </div>
+            </button>
+            <button
+              className={`py-3 px-6 font-medium text-sm flex-1 text-center border-b-2 transition-all ${
+                activeTab === "characters"
+                  ? "border-purple-500 text-purple-600 bg-purple-50"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+              }`}
+              onClick={() => setActiveTab("characters")}
+            >
+              <div className="flex items-center justify-center gap-2">
+                <User size={16} />
+                Characters ({characters.length})
+              </div>
+            </button>
+          </div>
+
+          {/* Content Area */}
+          <div className="flex-1 overflow-y-auto pr-2">
+            {activeTab === "scene" ? (
+              <div className="space-y-6">
+                {/* Scene Description */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-sm font-medium">
+                    <div className="p-1 bg-gradient-to-br from-purple-100 to-blue-100 rounded">
+                      <FileText className="w-3 h-3 text-purple-600" />
+                    </div>
+                    Scene Description
+                  </Label>
+                  <Textarea
+                    placeholder="Describe the overall scene and mood..."
+                    value={sceneSettings.description}
+                    onChange={(e) =>
+                      setSceneSettings((prev) => ({
+                        ...prev,
+                        description: e.target.value,
+                      }))
+                    }
+                    className="min-h-[80px] focus:ring-purple-500"
+                  />
+                </div>
+
+                {/* Art Style */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-sm font-medium">
+                    <div className="p-1 bg-gradient-to-br from-purple-100 to-blue-100 rounded">
+                      <Wand2 className="w-3 h-3 text-purple-600" />
+                    </div>
+                    Art Style
+                  </Label>
+                  <Select
+                    value={sceneSettings.artStyle}
+                    onValueChange={(value) =>
+                      setSceneSettings((prev) => ({ ...prev, artStyle: value }))
+                    }
+                  >
+                    <SelectTrigger className="focus:ring-purple-500">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {predefinedOptions.artStyles.map((style) => (
+                        <SelectItem key={style.value} value={style.value}>
+                          {style.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Background */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-sm font-medium">
+                    <div className="p-1 bg-gradient-to-br from-green-100 to-emerald-100 rounded">
+                      <Image className="w-3 h-3 text-green-600" />
+                    </div>
+                    Background
+                  </Label>
+                  <Select
+                    value={sceneSettings.background}
+                    onValueChange={(value) =>
+                      setSceneSettings((prev) => ({
+                        ...prev,
+                        background: value,
+                      }))
+                    }
+                  >
+                    <SelectTrigger className="focus:ring-purple-500">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {predefinedOptions.backgrounds.map((bg) => (
+                        <SelectItem key={bg.value} value={bg.value}>
+                          {bg.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Lighting */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-sm font-medium">
+                    <div className="p-1 bg-gradient-to-br from-yellow-100 to-amber-100 rounded">
+                      <Eye className="w-3 h-3 text-yellow-600" />
+                    </div>
+                    Lighting
+                  </Label>
+                  <Select
+                    value={sceneSettings.lighting}
+                    onValueChange={(value) =>
+                      setSceneSettings((prev) => ({ ...prev, lighting: value }))
+                    }
+                  >
+                    <SelectTrigger className="focus:ring-purple-500">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {predefinedOptions.lighting.map((light) => (
+                        <SelectItem key={light.value} value={light.value}>
+                          {light.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Camera Angle */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-sm font-medium">
+                    <div className="p-1 bg-gradient-to-br from-cyan-100 to-blue-100 rounded">
+                      <Eye className="w-3 h-3 text-cyan-600" />
+                    </div>
+                    Camera Angle
+                  </Label>
+                  <Select
+                    value={sceneSettings.cameraAngle}
+                    onValueChange={(value) =>
+                      setSceneSettings((prev) => ({
+                        ...prev,
+                        cameraAngle: value,
+                      }))
+                    }
+                  >
+                    <SelectTrigger className="focus:ring-purple-500">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {predefinedOptions.cameraAngles.map((angle) => (
+                        <SelectItem key={angle.value} value={angle.value}>
+                          {angle.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Quality Keywords */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-sm font-medium">
+                    <div className="p-1 bg-gradient-to-br from-amber-100 to-orange-100 rounded">
+                      <Settings className="w-3 h-3 text-amber-600" />
+                    </div>
+                    Quality Enhancers
+                  </Label>
+                  <div className="flex flex-wrap gap-2">
+                    {predefinedOptions.qualityKeywords.map((keyword) => (
+                      <Badge
+                        key={keyword}
+                        variant={
+                          sceneSettings.qualityKeywords.includes(keyword)
+                            ? "default"
+                            : "outline"
+                        }
+                        className={`cursor-pointer text-xs transition-all ${
+                          sceneSettings.qualityKeywords.includes(keyword)
+                            ? "bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                            : "hover:bg-purple-50 hover:text-purple-600"
+                        }`}
+                        onClick={() => handleQualityKeywordToggle(keyword)}
+                      >
+                        {keyword}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Character Interaction */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-sm font-medium">
+                    <div className="p-1 bg-gradient-to-br from-pink-100 to-rose-100 rounded">
+                      <User className="w-3 h-3 text-pink-600" />
+                    </div>
+                    Character Interaction
+                  </Label>
+                  <Textarea
+                    placeholder="Describe how characters interact in this scene..."
+                    value={characterInteraction}
+                    onChange={(e) => setCharacterInteraction(e.target.value)}
+                    className="min-h-[80px] focus:ring-purple-500"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="p-8 text-center border-2 border-dashed border-gray-300 rounded-xl bg-gray-50">
+                  <div className="mx-auto h-16 w-16 bg-gradient-to-br from-purple-100 to-blue-100 rounded-full flex items-center justify-center text-purple-500 mb-3">
+                    <User size={24} />
+                  </div>
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">
+                    No characters added yet
+                  </h3>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Add characters to include in your panel
+                  </p>
+                  <Button
+                    className="mt-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-sm"
+                    size="sm"
+                  >
+                    <User className="mr-2 h-3 w-3" />
+                    Add Character
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="flex justify-between items-center pt-4 border-t border-gray-200">
+            <Button variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              onClick={generatePanel}
+              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+            >
+              <Wand2 className="mr-2 h-4 w-4" />
+              Generate Panel
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
