@@ -350,9 +350,9 @@ export function GeneratedAssetsPanel({
       </div>
 
       {/* Scrollable Content Area */}
-      <div className="flex-1 overflow-hidden">
-        <ScrollArea className="h-full">
-          <div className="p-4">
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <ScrollArea className="h-full w-full">
+          <div className="p-4 pb-6">
             {filteredAssets.length === 0 ? (
               <div className="text-center py-8">
                 <div className="w-12 h-12 bg-gray-700/50 rounded-lg mx-auto mb-3 flex items-center justify-center">

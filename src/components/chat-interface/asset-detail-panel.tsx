@@ -175,164 +175,172 @@ export default function AssetDetailPanel({
             </div>
 
             {/* Content */}
-            <ScrollArea className="flex-1">
-              <div className="p-6 space-y-6">
-                {/* Image Preview */}
-                <Card className="border-gray-700/50 bg-gray-800/30">
-                  <CardContent className="p-4">
-                    <div className="aspect-square bg-gray-700/30 rounded-lg overflow-hidden mb-3">
-                      {asset.url ? (
-                        <img
-                          src={asset.url}
-                          alt={asset.name}
-                          className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <ImageIcon className="w-12 h-12 text-gray-500" />
-                        </div>
-                      )}
-                    </div>
-                    <h3 className="font-semibold text-white text-center">
-                      {asset.name}
-                    </h3>
-                  </CardContent>
-                </Card>
-
-                {/* Asset Information */}
-                <Card className="border-gray-700/50 bg-gray-800/30">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-white text-base">
-                      <Tag className="w-4 h-4" />
-                      Information
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-gray-400" />
-                      <span className="text-sm text-gray-300">Created</span>
-                      <span className="text-sm text-white ml-auto">
-                        {new Date(asset.timestamp).toLocaleDateString("en-US", {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        })}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Tag className="w-4 h-4 text-gray-400" />
-                      <span className="text-sm text-gray-300">Type</span>
-                      <span className="text-sm text-white ml-auto capitalize">
-                        {asset.type}
-                      </span>
-                    </div>
-
-                    {asset.type === "panel" && asset.panelOrder && (
-                      <div className="flex items-center gap-2">
-                        <Eye className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm text-gray-300">
-                          Panel Order
-                        </span>
-                        <span className="text-sm text-white ml-auto">
-                          #{asset.panelOrder}
-                        </span>
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <ScrollArea className="h-full w-full">
+                <div className="p-6 space-y-6 pb-8">
+                  {/* Image Preview */}
+                  <Card className="border-gray-700/50 bg-gray-800/30">
+                    <CardContent className="p-4">
+                      <div className="aspect-square bg-gray-700/30 rounded-lg overflow-hidden mb-3">
+                        {asset.url ? (
+                          <img
+                            src={asset.url}
+                            alt={asset.name}
+                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <ImageIcon className="w-12 h-12 text-gray-500" />
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
+                      <h3 className="font-semibold text-white text-center">
+                        {asset.name}
+                      </h3>
+                    </CardContent>
+                  </Card>
 
-                {/* Context Information */}
-                {(asset.chapterTitle || asset.sceneTitle) && (
+                  {/* Asset Information */}
                   <Card className="border-gray-700/50 bg-gray-800/30">
                     <CardHeader className="pb-3">
                       <CardTitle className="flex items-center gap-2 text-white text-base">
-                        <BookOpen className="w-4 h-4" />
-                        Context
+                        <Tag className="w-4 h-4" />
+                        Information
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      {asset.chapterTitle && (
-                        <div className="p-3 bg-green-900/20 rounded-lg border border-green-700/30">
-                          <div className="flex items-center gap-2 mb-1">
-                            <BookOpen className="w-4 h-4 text-green-400" />
-                            <span className="text-sm font-medium text-green-300">
-                              Chapter
-                            </span>
-                          </div>
-                          <p className="text-sm text-white">
-                            {asset.chapterTitle}
-                          </p>
-                          {onNavigateToSource && asset.chapterId && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() =>
-                                onNavigateToSource("chapter", asset.chapterId!)
-                              }
-                              className="mt-2 text-green-400 hover:text-green-300 hover:bg-green-900/30 text-xs"
-                            >
-                              Navigate to Chapter
-                            </Button>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm text-gray-300">Created</span>
+                        <span className="text-sm text-white ml-auto">
+                          {new Date(asset.timestamp).toLocaleDateString(
+                            "en-US",
+                            {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            }
                           )}
-                        </div>
-                      )}
+                        </span>
+                      </div>
 
-                      {asset.sceneTitle && (
-                        <div className="p-3 bg-yellow-900/20 rounded-lg border border-yellow-700/30">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Layers className="w-4 h-4 text-yellow-400" />
-                            <span className="text-sm font-medium text-yellow-300">
-                              Scene
-                            </span>
-                          </div>
-                          <p className="text-sm text-white">
-                            {asset.sceneTitle}
-                          </p>
-                          {onNavigateToSource && asset.sceneId && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() =>
-                                onNavigateToSource("scene", asset.sceneId!)
-                              }
-                              className="mt-2 text-yellow-400 hover:text-yellow-300 hover:bg-yellow-900/30 text-xs"
-                            >
-                              Navigate to Scene
-                            </Button>
-                          )}
+                      <div className="flex items-center gap-2">
+                        <Tag className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm text-gray-300">Type</span>
+                        <span className="text-sm text-white ml-auto capitalize">
+                          {asset.type}
+                        </span>
+                      </div>
+
+                      {asset.type === "panel" && asset.panelOrder && (
+                        <div className="flex items-center gap-2">
+                          <Eye className="w-4 h-4 text-gray-400" />
+                          <span className="text-sm text-gray-300">
+                            Panel Order
+                          </span>
+                          <span className="text-sm text-white ml-auto">
+                            #{asset.panelOrder}
+                          </span>
                         </div>
                       )}
                     </CardContent>
                   </Card>
-                )}
 
-                {/* Technical Details */}
-                <Card className="border-gray-700/50 bg-gray-800/30">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-white text-base">
-                      <ImageIcon className="w-4 h-4" />
-                      Technical Details
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-300">Format</span>
-                      <span className="text-sm text-white ml-auto">
-                        {asset.url?.split(".").pop()?.toUpperCase() ||
-                          "Unknown"}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-300">ID</span>
-                      <span className="text-xs text-white ml-auto font-mono">
-                        {asset.id}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </ScrollArea>
+                  {/* Context Information */}
+                  {(asset.chapterTitle || asset.sceneTitle) && (
+                    <Card className="border-gray-700/50 bg-gray-800/30">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="flex items-center gap-2 text-white text-base">
+                          <BookOpen className="w-4 h-4" />
+                          Context
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {asset.chapterTitle && (
+                          <div className="p-3 bg-green-900/20 rounded-lg border border-green-700/30">
+                            <div className="flex items-center gap-2 mb-1">
+                              <BookOpen className="w-4 h-4 text-green-400" />
+                              <span className="text-sm font-medium text-green-300">
+                                Chapter
+                              </span>
+                            </div>
+                            <p className="text-sm text-white">
+                              {asset.chapterTitle}
+                            </p>
+                            {onNavigateToSource && asset.chapterId && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() =>
+                                  onNavigateToSource(
+                                    "chapter",
+                                    asset.chapterId!
+                                  )
+                                }
+                                className="mt-2 text-green-400 hover:text-green-300 hover:bg-green-900/30 text-xs"
+                              >
+                                Navigate to Chapter
+                              </Button>
+                            )}
+                          </div>
+                        )}
+
+                        {asset.sceneTitle && (
+                          <div className="p-3 bg-yellow-900/20 rounded-lg border border-yellow-700/30">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Layers className="w-4 h-4 text-yellow-400" />
+                              <span className="text-sm font-medium text-yellow-300">
+                                Scene
+                              </span>
+                            </div>
+                            <p className="text-sm text-white">
+                              {asset.sceneTitle}
+                            </p>
+                            {onNavigateToSource && asset.sceneId && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() =>
+                                  onNavigateToSource("scene", asset.sceneId!)
+                                }
+                                className="mt-2 text-yellow-400 hover:text-yellow-300 hover:bg-yellow-900/30 text-xs"
+                              >
+                                Navigate to Scene
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Technical Details */}
+                  <Card className="border-gray-700/50 bg-gray-800/30">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center gap-2 text-white text-base">
+                        <ImageIcon className="w-4 h-4" />
+                        Technical Details
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-300">Format</span>
+                        <span className="text-sm text-white ml-auto">
+                          {asset.url?.split(".").pop()?.toUpperCase() ||
+                            "Unknown"}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-300">ID</span>
+                        <span className="text-xs text-white ml-auto font-mono">
+                          {asset.id}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </ScrollArea>
+            </div>
           </motion.div>
         </>
       )}
