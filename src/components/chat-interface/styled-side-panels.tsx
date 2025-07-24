@@ -151,7 +151,7 @@ export function EnhancedProjectStructurePanel({
 
       <div className="flex-1 overflow-y-auto relative z-10">
         <div className="p-4 space-y-4">
-          {/* Project Header */}
+            {/* Project Header */}
           <div className="bg-gradient-to-r from-gray-800/50 to-gray-700/30 rounded-xl p-4 border border-gray-600/30 backdrop-blur-sm">
             <button
               onClick={() => toggleExpanded("project")}
@@ -718,6 +718,7 @@ export function EnhancedTemplateLibraryPanel({
   onEntitySelect,
   onAssetSelect, // Accept but ignore this prop
 }: EnhancedTemplateLibraryPanelProps) {
+}: EnhancedTemplateLibraryPanelProps) {
   const [activeTab, setActiveTab] = useState<
     "outfits" | "locations" | "poses" | "effects"
   >("outfits");
@@ -874,8 +875,9 @@ export function EnhancedTemplateLibraryPanel({
       </div>
 
       {/* Templates Content */}
-      <div className="flex-1 overflow-y-auto relative z-10">
-        <div className="p-4">
+      <div className="flex-1 min-h-0 overflow-hidden relative z-10">
+        <div className="h-full overflow-y-auto">
+          <div className="p-4">
           {templates.length === 0 ? (
             <div className="text-center py-8">
               <div
@@ -987,6 +989,7 @@ export function EnhancedTemplateLibraryPanel({
               ))}
             </div>
           )}
+        </div>
         </div>
       </div>
 

@@ -378,7 +378,7 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
             </div>
 
             {/* Side Panel Content */}
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 min-h-0 overflow-hidden">
               {sidePanelTabs.map((tab) => {
                 if (tab.id === sidePanel.activeTab) {
                   const Component = tab.component;
