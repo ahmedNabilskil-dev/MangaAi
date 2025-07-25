@@ -846,6 +846,10 @@ export const CreateMangaFlow = ai.defineFlow(
     }),
   },
   async ({ userPrompt }) => {
+    console.log(
+      "🔄 Using legacy CreateMangaFlow - consider using CompleteMangaWorkflow for full automation"
+    );
+
     const story = await StoryGenerationPrompt({ userInput: userPrompt });
 
     const ProjectId = story.output?.projectId;
@@ -888,3 +892,65 @@ export const CreateMangaFlow = ai.defineFlow(
     };
   }
 );
+
+// Enhanced Create Manga Flow using the new workflow system
+export const CreateMangaFlowEnhanced = ai.defineFlow(
+  {
+    name: "Create Manga Enhanced",
+    inputSchema: z.object({
+      userPrompt: z.string(),
+      fullWorkflow: z.boolean().default(false),
+      numberOfChapters: z.number().min(1).max(10).default(1),
+    }),
+    outputSchema: z.object({
+      projectId: z.string(),
+      initialMessages: z.array(z.any()),
+      workflowState: z
+        .object({
+          completedSteps: z.array(z.string()),
+          errors: z.array(z.any()),
+          totalDuration: z.number(),
+        })
+        .optional(),
+    }),
+  },
+  async ({ userPrompt, fullWorkflow, numberOfChapters }) => {
+    // Dynamically import the workflow functions to avoid circular dependencies
+    const { CompleteMangaWorkflow, QuickMangaWorkflow } = await import(
+      "./complete-manga-workflow"
+    );
+
+    if (fullWorkflow) {
+      // Use the complete workflow with all features
+      const result = await CompleteMangaWorkflow({
+        userPrompt,
+        includeOutfits: true,
+        includeLocations: true,
+        numberOfChapters,
+      });
+
+      return {
+        projectId: result.projectId,
+        initialMessages: result.initialMessages,
+        workflowState: result.workflowState,
+      };
+    } else {
+      // Use the quick workflow (story + characters only)
+      const result = await QuickMangaWorkflow({
+        userPrompt,
+      });
+
+      return {
+        projectId: result.projectId,
+        initialMessages: result.initialMessages,
+      };
+    }
+  }
+);
+
+// Export the workflow functions for external use
+export {
+  CompleteMangaWorkflow,
+  getWorkflowProgress,
+  QuickMangaWorkflow,
+} from "./complete-manga-workflow";

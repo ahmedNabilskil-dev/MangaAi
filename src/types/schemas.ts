@@ -4,12 +4,102 @@ import { MangaStatus } from "./enums";
 // Component schema for outfit templates
 const outfitComponentSchema = z.object({
   type: z
-    .enum(["top", "bottom", "shoes", "accessories", "outerwear"])
+    .enum([
+      "top",
+      "bottom",
+      "shoes",
+      "accessories",
+      "outerwear",
+      "undergarments",
+      "headwear",
+    ])
     .describe("Type of clothing component"),
   item: z.string().describe("Name of the clothing item"),
-  color: z.string().optional().describe("Color of the component"),
-  material: z.string().optional().describe("Material of the component"),
-  pattern: z.string().optional().describe("Pattern on the component"),
+  isRequired: z.boolean().describe("Whether this component is required"),
+  defaultColor: z
+    .string()
+    .optional()
+    .describe("Default color of the component"),
+  defaultMaterial: z
+    .string()
+    .optional()
+    .describe("Default material of the component"),
+  defaultPattern: z
+    .string()
+    .optional()
+    .describe("Default pattern on the component"),
+  alternatives: z
+    .array(
+      z.object({
+        item: z.string().describe("Alternative item name"),
+        color: z.string().optional().describe("Alternative color"),
+        material: z.string().optional().describe("Alternative material"),
+        pattern: z.string().optional().describe("Alternative pattern"),
+        condition: z
+          .string()
+          .optional()
+          .describe("Condition for using this alternative"),
+      })
+    )
+    .optional()
+    .describe("Alternative options for this component"),
+});
+
+// Color scheme schema
+const colorSchemeSchema = z.object({
+  name: z.string().describe("Name of the color scheme"),
+  primary: z.string().describe("Primary color"),
+  secondary: z.string().optional().describe("Secondary color"),
+  accent: z.string().optional().describe("Accent color"),
+  description: z
+    .string()
+    .optional()
+    .describe("Description of the color scheme"),
+});
+
+// Outfit variation schema
+const outfitVariationSchema = z.object({
+  id: z.string().describe("Unique identifier for the variation"),
+  name: z.string().describe("Name of the variation"),
+  description: z.string().optional().describe("Description of the variation"),
+  componentOverrides: z
+    .array(
+      z.object({
+        componentType: z.string().describe("Type of component to override"),
+        newItem: z.string().describe("New item name"),
+        newColor: z.string().optional().describe("New color"),
+        newMaterial: z.string().optional().describe("New material"),
+        newPattern: z.string().optional().describe("New pattern"),
+      })
+    )
+    .optional()
+    .describe("Component modifications"),
+  additionalComponents: z
+    .array(outfitComponentSchema)
+    .optional()
+    .describe("Additional components for this variation"),
+  conditions: z
+    .object({
+      weather: z.array(z.string()).optional().describe("Weather conditions"),
+      timeOfDay: z
+        .array(z.string())
+        .optional()
+        .describe("Time of day conditions"),
+      mood: z.array(z.string()).optional().describe("Mood conditions"),
+      activity: z.array(z.string()).optional().describe("Activity conditions"),
+    })
+    .optional()
+    .describe("Conditions for using this variation"),
+  promptModifiers: z
+    .array(z.string())
+    .optional()
+    .describe("Prompt modifications"),
+  imageUrl: z.string().optional().describe("Image URL for this variation"),
+  isActive: z.boolean().describe("Whether this variation is active"),
+  usageCount: z.number().int().describe("Usage count"),
+  lastUsed: z.date().optional().describe("Last used date"),
+  createdAt: z.date().describe("Creation date"),
+  updatedAt: z.date().describe("Last update date"),
 });
 
 // Lighting schema for location templates
@@ -73,8 +163,32 @@ export const outfitTemplateSchema = z
     components: z
       .array(outfitComponentSchema)
       .describe("Components that make up the outfit"),
-    colors: z.array(z.string()).describe("Primary colors used in the outfit"),
+    colorSchemes: z
+      .array(colorSchemeSchema)
+      .describe("Available color schemes for the outfit"),
     materials: z.array(z.string()).describe("Materials used in the outfit"),
+    variations: z
+      .array(outfitVariationSchema)
+      .optional()
+      .describe("Outfit variations for different situations"),
+    occasions: z
+      .array(z.string())
+      .describe("Occasions this outfit is suitable for"),
+    compatibility: z
+      .object({
+        weather: z
+          .array(
+            z.enum(["sunny", "cloudy", "rainy", "stormy", "snowy", "foggy"])
+          )
+          .describe("Compatible weather conditions"),
+        timeOfDay: z
+          .array(
+            z.enum(["dawn", "morning", "noon", "afternoon", "evening", "night"])
+          )
+          .describe("Compatible times of day"),
+        activities: z.array(z.string()).describe("Compatible activities"),
+      })
+      .describe("Compatibility information"),
     tags: z.array(z.string()).describe("Tags for filtering and search"),
     imagePrompt: z
       .string()
@@ -93,6 +207,45 @@ export const outfitTemplateSchema = z
       .describe("Last update timestamp"),
   })
   .describe("Template defining character outfits for consistent AI generation");
+
+// Location variation schema
+const locationVariationSchema = z.object({
+  id: z.string().describe("Unique identifier for the variation"),
+  name: z.string().describe("Name of the variation"),
+  timeOfDay: z
+    .enum(["dawn", "morning", "noon", "afternoon", "evening", "night", "any"])
+    .optional()
+    .describe("Time of day override"),
+  weather: z
+    .enum(["sunny", "cloudy", "rainy", "stormy", "snowy", "foggy", "any"])
+    .optional()
+    .describe("Weather override"),
+  mood: z
+    .enum([
+      "peaceful",
+      "mysterious",
+      "energetic",
+      "romantic",
+      "tense",
+      "cheerful",
+      "somber",
+    ])
+    .optional()
+    .describe("Mood override"),
+  lighting: lightingSchema.optional().describe("Lighting override"),
+  additionalProps: z.array(z.string()).optional().describe("Additional props"),
+  modifiedColors: z.array(z.string()).optional().describe("Modified colors"),
+  promptModifiers: z
+    .array(z.string())
+    .optional()
+    .describe("Prompt modifications"),
+  imageUrl: z.string().optional().describe("Image URL for this variation"),
+  isActive: z.boolean().describe("Whether this variation is active"),
+  usageCount: z.number().int().describe("Usage count"),
+  lastUsed: z.date().optional().describe("Last used date"),
+  createdAt: z.date().describe("Creation date"),
+  updatedAt: z.date().describe("Last update date"),
+});
 
 // Location Template Schema
 export const locationTemplateSchema = z
@@ -117,12 +270,16 @@ export const locationTemplateSchema = z
       ])
       .describe("Location category"),
     subCategory: z.string().optional().describe("More specific categorization"),
+
+    // Backward compatibility fields
     timeOfDay: z
       .enum(["dawn", "morning", "noon", "afternoon", "evening", "night", "any"])
-      .describe("Time of day setting"),
+      .optional()
+      .describe("Backward compatibility: time of day setting"),
     weather: z
       .enum(["sunny", "cloudy", "rainy", "stormy", "snowy", "foggy", "any"])
-      .describe("Weather conditions"),
+      .optional()
+      .describe("Backward compatibility: weather conditions"),
     mood: z
       .enum([
         "peaceful",
@@ -133,11 +290,43 @@ export const locationTemplateSchema = z
         "cheerful",
         "somber",
       ])
-      .describe("Mood of the location"),
+      .optional()
+      .describe("Backward compatibility: mood of the location"),
+    lighting: lightingSchema
+      .optional()
+      .describe("Backward compatibility: lighting configuration"),
+
+    // New enhanced fields
+    defaultTimeOfDay: z
+      .enum(["dawn", "morning", "noon", "afternoon", "evening", "night", "any"])
+      .optional()
+      .describe("Default time of day for this location"),
+    defaultWeather: z
+      .enum(["sunny", "cloudy", "rainy", "stormy", "snowy", "foggy", "any"])
+      .optional()
+      .describe("Default weather conditions"),
+    defaultMood: z
+      .enum([
+        "peaceful",
+        "mysterious",
+        "energetic",
+        "romantic",
+        "tense",
+        "cheerful",
+        "somber",
+      ])
+      .optional()
+      .describe("Default mood of the location"),
+
     style: z
       .enum(["anime", "realistic", "cartoon", "manga"])
       .describe("Art style for the location"),
-    lighting: lightingSchema.describe("Lighting configuration"),
+
+    baseLighting: lightingSchema.optional().describe("Base lighting setup"),
+    variations: z
+      .array(locationVariationSchema)
+      .optional()
+      .describe("Supported variations for this location"),
     cameraAngles: z
       .array(
         z.enum([
@@ -157,7 +346,11 @@ export const locationTemplateSchema = z
     imagePrompt: z
       .string()
       .optional()
-      .describe("AI prompt for generating location images"),
+      .describe("Base AI prompt for generating location images"),
+    baseImagePrompt: z
+      .string()
+      .optional()
+      .describe("Base image prompt that can be enhanced by variations"),
     imageUrl: z.string().optional().describe("URL of reference image"),
     isActive: z.boolean().describe("Whether this template is active"),
     mangaProjectId: z.string().describe("ID of the parent manga project"),
@@ -372,27 +565,68 @@ export const sceneSchema = z
 
     // Scene Context
     sceneContext: z.object({
-      locationId: z
+      locationId: z.string().describe("ID of the location template being used"),
+      locationVariationId: z
         .string()
         .optional()
-        .describe("ID of the location template being used"),
-      outfitOverrides: z
+        .describe("ID of the specific location variation"),
+      characterOutfits: z
         .array(
           z.object({
             characterId: z.string().describe("Character ID"),
-            outfitId: z.string().describe("Outfit ID to use"),
-            reason: z.string().optional().describe("Reason for outfit change"),
+            outfitId: z.string().describe("Outfit template ID"),
+            outfitVariationId: z
+              .string()
+              .optional()
+              .describe("Specific outfit variation ID"),
+            reason: z.string().optional().describe("Reason for outfit choice"),
           })
         )
-        .optional()
-        .describe("Character outfit overrides for this scene"),
-      setting: z.string().describe("Physical location description"),
-      mood: z.string().describe("Emotional atmosphere"),
+        .describe("Character outfit assignments for this scene"),
       presentCharacters: z
         .array(z.string())
-        .describe("IDs of characters appearing"),
-      timeOfDay: z.string().describe("When the scene occurs"),
-      weather: z.string().describe("Environmental conditions"),
+        .describe("IDs of characters appearing in the scene"),
+      environmentOverrides: z
+        .object({
+          timeOfDay: z
+            .enum(["dawn", "morning", "noon", "afternoon", "evening", "night"])
+            .optional()
+            .describe("Time of day override"),
+          weather: z
+            .enum(["sunny", "cloudy", "rainy", "stormy", "snowy", "foggy"])
+            .optional()
+            .describe("Weather override"),
+          mood: z
+            .enum([
+              "peaceful",
+              "mysterious",
+              "energetic",
+              "romantic",
+              "tense",
+              "cheerful",
+              "somber",
+            ])
+            .optional()
+            .describe("Mood/atmosphere override"),
+          lighting: z
+            .object({
+              type: z.enum(["natural", "artificial", "mixed"]).optional(),
+              intensity: z.enum(["dim", "moderate", "bright"]).optional(),
+              color: z.string().optional(),
+            })
+            .optional()
+            .describe("Lighting conditions"),
+          additionalProps: z
+            .array(z.string())
+            .optional()
+            .describe("Additional environmental properties"),
+        })
+        .optional()
+        .describe("Environmental condition overrides"),
+      sceneNotes: z
+        .string()
+        .optional()
+        .describe("Additional scene-specific notes"),
     }),
 
     // Relationships
@@ -435,35 +669,85 @@ export const panelSchema = z
 
     // Panel Context
     panelContext: z.object({
-      action: z.string().optional().describe("Primary action occurring"),
+      locationId: z.string().describe("ID of the location template"),
+      locationVariationId: z
+        .string()
+        .optional()
+        .describe("ID of the specific location variation"),
+      action: z
+        .string()
+        .optional()
+        .describe("Primary action occurring in the panel"),
       characterPoses: z
         .array(
           z.object({
+            characterId: z.string().describe("ID of the character"),
             characterName: z.string().describe("Name of character"),
-            characterId: z.string().describe("ID of character"),
+            outfitId: z.string().describe("ID of outfit template"),
+            outfitVariationId: z
+              .string()
+              .optional()
+              .describe("ID of outfit variation"),
             pose: z.string().describe("Specific pose description"),
             expression: z.string().describe("Facial expression"),
-            outfitId: z.string().describe("ID of outfit being worn"),
+            position: z.string().optional().describe("Position in panel"),
           })
         )
-        .optional()
         .describe("Character positioning and expressions"),
-      emotion: z.string().optional().describe("Dominant emotional tone"),
-      cameraAngle: z
-        .enum(["close-up", "medium", "wide", "bird's eye", "low angle"])
+      environmentOverrides: z
+        .object({
+          lighting: z
+            .object({
+              type: z.enum(["natural", "artificial", "mixed"]).optional(),
+              intensity: z.enum(["dim", "moderate", "bright"]).optional(),
+              color: z.string().optional(),
+              direction: z.string().optional().describe("Lighting direction"),
+            })
+            .optional()
+            .describe("Lighting conditions"),
+          weather: z
+            .enum(["sunny", "cloudy", "rainy", "stormy", "snowy", "foggy"])
+            .optional()
+            .describe("Weather conditions"),
+          timeOfDay: z
+            .enum(["dawn", "morning", "noon", "afternoon", "evening", "night"])
+            .optional()
+            .describe("Time of day"),
+          atmosphere: z
+            .string()
+            .optional()
+            .describe("Environmental atmosphere"),
+        })
         .optional()
-        .describe("Perspective of view"),
-      shotType: z
-        .enum(["action", "reaction", "establishing", "detail", "transition"])
+        .describe("Environmental condition overrides"),
+      cameraSettings: z
+        .object({
+          angle: z
+            .enum(["close-up", "medium", "wide", "bird's eye", "low angle"])
+            .optional()
+            .describe("Camera angle"),
+          shotType: z
+            .enum([
+              "action",
+              "reaction",
+              "establishing",
+              "detail",
+              "transition",
+            ])
+            .optional()
+            .describe("Type of shot"),
+          focus: z.string().optional().describe("What the camera focuses on"),
+        })
         .optional()
-        .describe("Type of visual framing"),
-      locationId: z.string().describe("ID of the location"),
-      cameraAngelId: z.string().describe("ID of the camera angle"),
-      lighting: z.string().optional().describe("Lighting description"),
-      effects: z
+        .describe("Camera and framing settings"),
+      visualEffects: z
         .array(z.string())
         .optional()
-        .describe("Special visual effects"),
+        .describe("Special visual effects to apply"),
+      panelNotes: z
+        .string()
+        .optional()
+        .describe("Additional panel-specific notes"),
     }),
 
     // Relationships

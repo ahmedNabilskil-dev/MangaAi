@@ -553,14 +553,24 @@ class DexieDataService implements IDataService {
     }
     if (filters?.timeOfDay) {
       query = query.filter(
-        (template) => template.timeOfDay === filters.timeOfDay
+        (template) =>
+          template.timeOfDay === filters.timeOfDay ||
+          template.defaultTimeOfDay === filters.timeOfDay
       );
     }
     if (filters?.weather) {
-      query = query.filter((template) => template.weather === filters.weather);
+      query = query.filter(
+        (template) =>
+          template.weather === filters.weather ||
+          template.defaultWeather === filters.weather
+      );
     }
     if (filters?.mood) {
-      query = query.filter((template) => template.mood === filters.mood);
+      query = query.filter(
+        (template) =>
+          template.mood === filters.mood ||
+          template.defaultMood === filters.mood
+      );
     }
     if (filters?.style) {
       query = query.filter((template) => template.style === filters.style);

@@ -19,15 +19,32 @@ export interface OutfitTemplate {
   ageGroup: "child" | "teen" | "adult" | "elderly";
   season: "spring" | "summer" | "autumn" | "winter" | "all";
   style: "anime" | "realistic" | "cartoon" | "manga";
-  components: {
-    type: "top" | "bottom" | "shoes" | "accessories" | "outerwear";
-    item: string;
-    color?: string;
-    material?: string;
-    pattern?: string;
-  }[];
-  colors: string[];
+
+  // Enhanced component system
+  components: OutfitComponent[];
+
+  // Color schemes and materials
+  colorSchemes: ColorScheme[];
   materials: string[];
+
+  // Outfit variations for different situations
+  variations?: OutfitVariation[];
+
+  // Usage and context
+  occasions: string[]; // e.g., ["school", "formal_event", "casual_day"]
+  compatibility: {
+    weather: ("sunny" | "cloudy" | "rainy" | "stormy" | "snowy" | "foggy")[];
+    timeOfDay: (
+      | "dawn"
+      | "morning"
+      | "noon"
+      | "afternoon"
+      | "evening"
+      | "night"
+    )[];
+    activities: string[]; // e.g., ["walking", "running", "sitting", "fighting"]
+  };
+
   tags: string[];
   imagePrompt?: string;
   imageUrl?: string;
@@ -35,6 +52,76 @@ export interface OutfitTemplate {
   mangaProjectId: string;
   createdAt: Date | string;
   updatedAt: Date | string;
+}
+
+export interface OutfitComponent {
+  type:
+    | "top"
+    | "bottom"
+    | "shoes"
+    | "accessories"
+    | "outerwear"
+    | "undergarments"
+    | "headwear";
+  item: string;
+  isRequired: boolean; // Some components might be optional
+  defaultColor?: string;
+  defaultMaterial?: string;
+  defaultPattern?: string;
+
+  // Alternative options for this component
+  alternatives?: {
+    item: string;
+    color?: string;
+    material?: string;
+    pattern?: string;
+    condition?: string; // e.g., "if weather is rainy"
+  }[];
+}
+
+export interface ColorScheme {
+  name: string; // e.g., "Default", "Summer", "Formal"
+  primary: string;
+  secondary?: string;
+  accent?: string;
+  description?: string;
+}
+
+export interface OutfitVariation {
+  id: string;
+  name: string; // e.g., "Casual Version", "Damaged", "Winter Coat Added"
+  description?: string;
+
+  // Component modifications
+  componentOverrides?: {
+    componentType: string;
+    newItem: string;
+    newColor?: string;
+    newMaterial?: string;
+    newPattern?: string;
+  }[];
+
+  // Additional components for this variation
+  additionalComponents?: OutfitComponent[];
+
+  // When to use this variation
+  conditions?: {
+    weather?: string[];
+    timeOfDay?: string[];
+    mood?: string[];
+    activity?: string[];
+  };
+
+  // Prompt modifications
+  promptModifiers?: string[];
+  imageUrl?: string;
+
+  // Usage tracking
+  isActive: boolean;
+  usageCount: number;
+  lastUsed?: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface LocationTemplate {
@@ -52,7 +139,9 @@ export interface LocationTemplate {
     | "natural"
     | "architectural";
   subCategory?: string;
-  timeOfDay:
+
+  // Backward compatibility: keep old single-value fields
+  timeOfDay?:
     | "dawn"
     | "morning"
     | "noon"
@@ -60,8 +149,8 @@ export interface LocationTemplate {
     | "evening"
     | "night"
     | "any";
-  weather: "sunny" | "cloudy" | "rainy" | "stormy" | "snowy" | "foggy" | "any";
-  mood:
+  weather?: "sunny" | "cloudy" | "rainy" | "stormy" | "snowy" | "foggy" | "any";
+  mood?:
     | "peaceful"
     | "mysterious"
     | "energetic"
@@ -69,12 +158,50 @@ export interface LocationTemplate {
     | "tense"
     | "cheerful"
     | "somber";
-  style: "anime" | "realistic" | "cartoon" | "manga";
-  lighting: {
+  lighting?: {
     type?: "natural" | "artificial" | "mixed";
     intensity?: "dim" | "moderate" | "bright";
     color?: string;
   };
+
+  // New enhanced fields (optional for backward compatibility)
+  defaultTimeOfDay?:
+    | "dawn"
+    | "morning"
+    | "noon"
+    | "afternoon"
+    | "evening"
+    | "night"
+    | "any";
+  defaultWeather?:
+    | "sunny"
+    | "cloudy"
+    | "rainy"
+    | "stormy"
+    | "snowy"
+    | "foggy"
+    | "any";
+  defaultMood?:
+    | "peaceful"
+    | "mysterious"
+    | "energetic"
+    | "romantic"
+    | "tense"
+    | "cheerful"
+    | "somber";
+
+  style: "anime" | "realistic" | "cartoon" | "manga";
+
+  // Base lighting setup (new)
+  baseLighting?: {
+    type?: "natural" | "artificial" | "mixed";
+    intensity?: "dim" | "moderate" | "bright";
+    color?: string;
+  };
+
+  // Supported variations for this location (new)
+  variations?: LocationVariation[];
+
   cameraAngles: (
     | "wide-shot"
     | "medium-shot"
@@ -87,12 +214,61 @@ export interface LocationTemplate {
   props: string[];
   colors: string[];
   tags: string[];
+
+  // Base prompt that can be enhanced by variations
   imagePrompt?: string;
+  baseImagePrompt?: string;
   imageUrl?: string;
   isActive: boolean;
   mangaProjectId: string;
   createdAt: Date | string;
   updatedAt: Date | string;
+}
+
+export interface LocationVariation {
+  id: string;
+  name: string; // e.g., "Morning Classroom", "Rainy Classroom", "Evening Classroom"
+
+  // Override specific properties
+  timeOfDay?:
+    | "dawn"
+    | "morning"
+    | "noon"
+    | "afternoon"
+    | "evening"
+    | "night"
+    | "any";
+  weather?: "sunny" | "cloudy" | "rainy" | "stormy" | "snowy" | "foggy" | "any";
+  mood?:
+    | "peaceful"
+    | "mysterious"
+    | "energetic"
+    | "romantic"
+    | "tense"
+    | "cheerful"
+    | "somber";
+
+  // Variation-specific lighting
+  lighting?: {
+    type?: "natural" | "artificial" | "mixed";
+    intensity?: "dim" | "moderate" | "bright";
+    color?: string;
+  };
+
+  // Additional or modified props for this variation
+  additionalProps?: string[];
+  modifiedColors?: string[];
+
+  // Specific image prompt modifications
+  promptModifiers?: string[]; // e.g., ["golden hour lighting", "rain drops on windows"]
+  imageUrl?: string;
+
+  // Usage tracking
+  isActive: boolean;
+  usageCount: number;
+  lastUsed?: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface MangaProject {
@@ -214,17 +390,49 @@ export interface Scene {
   title: string;
   description: string;
   sceneContext: {
-    locationId?: string;
-    outfitOverrides?: {
+    // Required location reference with optional variation
+    locationId: string;
+    locationVariationId?: string; // Reference to specific variation
+
+    // Character outfit assignments
+    characterOutfits: {
       characterId: string;
       outfitId: string;
+      outfitVariationId?: string; // Reference to specific variation
       reason?: string;
     }[];
-    setting: string;
-    mood: string;
+
+    // Present characters in this scene
     presentCharacters: string[];
-    timeOfDay: string;
-    weather: string;
+
+    // Additional scene-specific overrides (optional)
+    environmentOverrides?: {
+      timeOfDay?:
+        | "dawn"
+        | "morning"
+        | "noon"
+        | "afternoon"
+        | "evening"
+        | "night";
+      weather?: "sunny" | "cloudy" | "rainy" | "stormy" | "snowy" | "foggy";
+      mood?:
+        | "peaceful"
+        | "mysterious"
+        | "energetic"
+        | "romantic"
+        | "tense"
+        | "cheerful"
+        | "somber";
+      lighting?: {
+        type?: "natural" | "artificial" | "mixed";
+        intensity?: "dim" | "moderate" | "bright";
+        color?: string;
+      };
+      additionalProps?: string[];
+    };
+
+    // Scene-specific notes or special instructions
+    sceneNotes?: string;
   };
   chapterId: string;
   isAiGenerated: boolean;
@@ -238,21 +446,60 @@ export interface Panel {
   order: number;
   imageUrl?: string;
   panelContext: {
+    // Location reference
+    locationId: string;
+    locationVariationId?: string;
+
+    // Primary action/description for this panel
     action?: string;
-    characterPoses?: {
-      characterName: string;
+
+    // Character poses and positions
+    characterPoses: {
       characterId: string;
+      characterName: string;
+      outfitId: string;
+      outfitVariationId?: string;
       pose: string;
       expression: string;
-      outfitId: string;
+      position?: string;
     }[];
-    emotion?: string;
-    cameraAngle?: "close-up" | "medium" | "wide" | "bird's eye" | "low angle";
-    shotType?: "action" | "reaction" | "establishing" | "detail" | "transition";
-    locationId: string;
-    cameraAngelId: string;
-    lighting?: string;
-    effects?: string[];
+
+    // Panel-specific environment modifications
+    environmentOverrides?: {
+      lighting?: {
+        type?: "natural" | "artificial" | "mixed";
+        intensity?: "dim" | "moderate" | "bright";
+        color?: string;
+        direction?: string; // e.g., "from above", "backlit", "side lighting"
+      };
+      weather?: "sunny" | "cloudy" | "rainy" | "stormy" | "snowy" | "foggy";
+      timeOfDay?:
+        | "dawn"
+        | "morning"
+        | "noon"
+        | "afternoon"
+        | "evening"
+        | "night";
+      atmosphere?: string; // e.g., "tense", "peaceful", "chaotic"
+    };
+
+    // Camera and framing settings
+    cameraSettings?: {
+      angle?: "close-up" | "medium" | "wide" | "bird's eye" | "low angle";
+      shotType?:
+        | "action"
+        | "reaction"
+        | "establishing"
+        | "detail"
+        | "transition";
+      focus?: string;
+    };
+
+    // Visual effects and special elements
+    visualEffects?: string[];
+
+    // Panel-specific notes
+    panelNotes?: string;
   };
   sceneId: string;
   isAiGenerated: boolean;

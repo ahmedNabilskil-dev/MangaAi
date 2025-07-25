@@ -1158,7 +1158,51 @@ export const createOutfitTemplateTool = ai.defineTool(
   },
   async (input) => {
     try {
-      const template = await createOutfitTemplateService(input);
+      // Add required fields for the new template structure
+      const templateData = {
+        ...input,
+        components: input.components.map((comp) => ({
+          type: comp.type,
+          item: comp.item,
+          isRequired: comp.isRequired ?? true,
+          defaultColor: comp.defaultColor,
+          defaultMaterial: comp.defaultMaterial,
+          defaultPattern: comp.defaultPattern,
+          alternatives: comp.alternatives,
+        })),
+        colorSchemes: input.colorSchemes || [
+          { name: "Default", primary: "#000000" },
+        ],
+        occasions: input.occasions || [],
+        compatibility: {
+          weather: ["sunny", "cloudy", "rainy", "stormy", "snowy", "foggy"] as (
+            | "sunny"
+            | "cloudy"
+            | "rainy"
+            | "stormy"
+            | "snowy"
+            | "foggy"
+          )[],
+          timeOfDay: [
+            "dawn",
+            "morning",
+            "noon",
+            "afternoon",
+            "evening",
+            "night",
+          ] as (
+            | "dawn"
+            | "morning"
+            | "noon"
+            | "afternoon"
+            | "evening"
+            | "night"
+          )[],
+          activities: input.tags || [],
+        },
+      };
+
+      const template = await createOutfitTemplateService(templateData);
       return template.id;
     } catch (error: any) {
       throw new Error(`Failed to create outfit template: ${error.message}`);
@@ -1221,10 +1265,58 @@ export const createMultipleOutfitTemplatesTool = ai.defineTool(
       const outfitIds = [];
 
       for (const outfitData of input.outfitTemplates) {
-        const template = await createOutfitTemplateService({
+        const templateData = {
           ...outfitData,
           mangaProjectId: input.mangaProjectId,
-        });
+          components: outfitData.components.map((comp) => ({
+            type: comp.type,
+            item: comp.item,
+            isRequired: comp.isRequired ?? true,
+            defaultColor: comp.defaultColor,
+            defaultMaterial: comp.defaultMaterial,
+            defaultPattern: comp.defaultPattern,
+            alternatives: comp.alternatives,
+          })),
+          colorSchemes: outfitData.colorSchemes || [
+            { name: "Default", primary: "#000000" },
+          ],
+          occasions: outfitData.occasions || [],
+          compatibility: {
+            weather: [
+              "sunny",
+              "cloudy",
+              "rainy",
+              "stormy",
+              "snowy",
+              "foggy",
+            ] as (
+              | "sunny"
+              | "cloudy"
+              | "rainy"
+              | "stormy"
+              | "snowy"
+              | "foggy"
+            )[],
+            timeOfDay: [
+              "dawn",
+              "morning",
+              "noon",
+              "afternoon",
+              "evening",
+              "night",
+            ] as (
+              | "dawn"
+              | "morning"
+              | "noon"
+              | "afternoon"
+              | "evening"
+              | "night"
+            )[],
+            activities: outfitData.tags || [],
+          },
+        };
+
+        const template = await createOutfitTemplateService(templateData);
         outfitIds.push(template.id);
       }
 

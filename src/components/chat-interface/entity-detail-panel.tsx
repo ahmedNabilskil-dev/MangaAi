@@ -652,29 +652,30 @@ function TemplateDetails({
                         </h4>
                       </div>
                       <div className="text-right space-y-1">
-                        {component.color && (
+                        {component.defaultColor && (
                           <div className="flex items-center gap-2">
                             <div
                               className="w-3 h-3 rounded-full border"
                               style={{
-                                backgroundColor: component.color.toLowerCase(),
+                                backgroundColor:
+                                  component.defaultColor.toLowerCase(),
                               }}
                             ></div>
                             <span className="text-xs text-gray-600 dark:text-gray-400">
-                              {component.color}
+                              {component.defaultColor}
                             </span>
                           </div>
                         )}
-                        {component.material && (
+                        {component.defaultMaterial && (
                           <div className="text-xs text-gray-600 dark:text-gray-400">
                             <Brush className="w-3 h-3 inline mr-1" />
-                            {component.material}
+                            {component.defaultMaterial}
                           </div>
                         )}
-                        {component.pattern && (
+                        {component.defaultPattern && (
                           <div className="text-xs text-gray-600 dark:text-gray-400">
                             <Sparkles className="w-3 h-3 inline mr-1" />
-                            {component.pattern}
+                            {component.defaultPattern}
                           </div>
                         )}
                       </div>
@@ -1298,54 +1299,59 @@ function SceneDetails({
           transition={{ delay: 0.2 }}
           className="space-y-3"
         >
-          {/* Setting */}
-          {scene.sceneContext.setting && (
+          {/* Location */}
+          {scene.sceneContext.locationId && (
             <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-4 border border-emerald-200 dark:border-emerald-800">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center">
                   <MapPin className="w-4 h-4 text-white" />
                 </div>
                 <h3 className="text-sm font-bold text-emerald-900 dark:text-emerald-100">
-                  Setting
+                  Location
                 </h3>
               </div>
               <p className="text-sm text-emerald-800 dark:text-emerald-200 break-words">
-                {scene.sceneContext.setting}
+                Location ID: {scene.sceneContext.locationId}
+                {scene.sceneContext.locationVariationId && (
+                  <span className="block mt-1">
+                    Variation: {scene.sceneContext.locationVariationId}
+                  </span>
+                )}
               </p>
             </div>
           )}
 
           {/* Environment Details Grid */}
           <div className="space-y-2">
-            {scene.sceneContext.timeOfDay && (
+            {scene.sceneContext.environmentOverrides?.timeOfDay && (
               <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-3 border border-amber-200 dark:border-amber-800">
                 <div className="text-xs font-medium text-amber-600 dark:text-amber-400 uppercase tracking-wide mb-1">
                   Time of Day
                 </div>
                 <div className="text-sm font-semibold text-amber-900 dark:text-amber-100 capitalize">
-                  {scene.sceneContext.timeOfDay}
+                  {scene.sceneContext.environmentOverrides.timeOfDay}
                 </div>
               </div>
             )}
 
-            {scene.sceneContext.weather && (
+            {scene.sceneContext.environmentOverrides?.weather && (
               <div className="bg-sky-50 dark:bg-sky-900/20 rounded-lg p-3 border border-sky-200 dark:border-sky-800">
                 <div className="text-xs font-medium text-sky-600 dark:text-sky-400 uppercase tracking-wide mb-1">
                   Weather
                 </div>
                 <div className="text-sm font-semibold text-sky-900 dark:text-sky-100 capitalize">
-                  {scene.sceneContext.weather}
+                  {scene.sceneContext.environmentOverrides.weather}
                 </div>
               </div>
             )}
 
-            {scene.sceneContext.mood && (
+            {scene.sceneContext.environmentOverrides?.mood && (
               <div className="bg-violet-50 dark:bg-violet-900/20 rounded-lg p-3 border border-violet-200 dark:border-violet-800">
                 <div className="text-xs font-medium text-violet-600 dark:text-violet-400 uppercase tracking-wide mb-1">
                   Mood
                 </div>
                 <div className="text-sm font-semibold text-violet-900 dark:text-violet-100 capitalize">
-                  {scene.sceneContext.mood}
+                  {scene.sceneContext.environmentOverrides.mood}
                 </div>
               </div>
             )}
@@ -1388,9 +1394,9 @@ function SceneDetails({
           </motion.div>
         )}
 
-      {/* Outfit Overrides */}
-      {scene.sceneContext?.outfitOverrides &&
-        scene.sceneContext.outfitOverrides.length > 0 && (
+      {/* Character Outfits */}
+      {scene.sceneContext?.characterOutfits &&
+        scene.sceneContext.characterOutfits.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1402,11 +1408,11 @@ function SceneDetails({
                 <Palette className="w-4 h-4 text-white" />
               </div>
               <h3 className="text-sm font-bold text-teal-900 dark:text-teal-100">
-                Outfit Changes ({scene.sceneContext.outfitOverrides.length})
+                Character Outfits ({scene.sceneContext.characterOutfits.length})
               </h3>
             </div>
             <div className="space-y-2">
-              {scene.sceneContext.outfitOverrides.map((override, index) => (
+              {scene.sceneContext.characterOutfits.map((outfit, index) => (
                 <div
                   key={index}
                   className="bg-white/60 dark:bg-teal-900/30 rounded-lg p-3 border border-teal-100 dark:border-teal-700"
@@ -1414,16 +1420,22 @@ function SceneDetails({
                   <div className="flex items-center gap-2 mb-1">
                     <User className="w-3 h-3 text-teal-600 dark:text-teal-400" />
                     <span className="text-sm font-medium text-teal-900 dark:text-teal-100">
-                      {getCharacterName(override.characterId, projectData)}
+                      {getCharacterName(outfit.characterId, projectData)}
                     </span>
                   </div>
                   <div className="text-xs text-teal-700 dark:text-teal-300 ml-5">
                     <span className="font-medium">Outfit:</span>{" "}
-                    {getOutfitName(override.outfitId, projectData)}
-                    {override.reason && (
+                    {getOutfitName(outfit.outfitId, projectData)}
+                    {outfit.outfitVariationId && (
+                      <div className="mt-1">
+                        <span className="font-medium">Variation:</span>{" "}
+                        {outfit.outfitVariationId}
+                      </div>
+                    )}
+                    {outfit.reason && (
                       <div className="mt-1">
                         <span className="font-medium">Reason:</span>{" "}
-                        {override.reason}
+                        {outfit.reason}
                       </div>
                     )}
                   </div>
@@ -1469,9 +1481,9 @@ function PanelDetails({
                 Panel {panel.order}
               </h1>
               <div className="flex items-center gap-2 flex-wrap">
-                {panel.panelContext?.shotType && (
+                {panel.panelContext?.cameraSettings?.shotType && (
                   <Badge className="bg-white/15 text-white border-white/20 text-xs capitalize">
-                    {panel.panelContext.shotType}
+                    {panel.panelContext.cameraSettings.shotType}
                   </Badge>
                 )}
                 <Badge
@@ -1534,35 +1546,36 @@ function PanelDetails({
         transition={{ delay: 0.2 }}
         className="space-y-2"
       >
-        {panel.panelContext?.cameraAngle && (
+        {panel.panelContext?.cameraSettings?.angle && (
           <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
             <div className="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-1">
               Camera Angle
             </div>
             <div className="text-sm font-semibold text-blue-900 dark:text-blue-100 capitalize">
-              {panel.panelContext.cameraAngle}
+              {panel.panelContext.cameraSettings.angle}
             </div>
           </div>
         )}
 
-        {panel.panelContext?.emotion && (
+        {panel.panelContext?.environmentOverrides?.atmosphere && (
           <div className="bg-violet-50 dark:bg-violet-900/20 rounded-lg p-3 border border-violet-200 dark:border-violet-800">
             <div className="text-xs font-medium text-violet-600 dark:text-violet-400 uppercase tracking-wide mb-1">
-              Emotion
+              Atmosphere
             </div>
             <div className="text-sm font-semibold text-violet-900 dark:text-violet-100 capitalize">
-              {panel.panelContext.emotion}
+              {panel.panelContext.environmentOverrides.atmosphere}
             </div>
           </div>
         )}
 
-        {panel.panelContext?.lighting && (
+        {panel.panelContext?.environmentOverrides?.lighting && (
           <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-3 border border-amber-200 dark:border-amber-800">
             <div className="text-xs font-medium text-amber-600 dark:text-amber-400 uppercase tracking-wide mb-1">
               Lighting
             </div>
             <div className="text-sm font-semibold text-amber-900 dark:text-amber-100 break-words">
-              {panel.panelContext.lighting}
+              {panel.panelContext.environmentOverrides.lighting.type} -{" "}
+              {panel.panelContext.environmentOverrides.lighting.intensity}
             </div>
           </div>
         )}
@@ -1645,39 +1658,40 @@ function PanelDetails({
           </motion.div>
         )}
 
-      {/* Effects */}
-      {panel.panelContext?.effects && panel.panelContext.effects.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-4 border border-purple-200 dark:border-purple-800"
-        >
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-8 h-8 rounded-lg bg-purple-500 flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
-            <h3 className="text-sm font-bold text-purple-900 dark:text-purple-100">
-              Effects ({panel.panelContext.effects.length})
-            </h3>
-          </div>
-          <div className="space-y-2">
-            {panel.panelContext.effects.map((effect, index) => (
-              <div
-                key={index}
-                className="bg-white/60 dark:bg-purple-900/30 rounded-lg p-2 border border-purple-100 dark:border-purple-700"
-              >
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-3 h-3 text-purple-600 dark:text-purple-400" />
-                  <span className="text-sm font-medium text-purple-900 dark:text-purple-100 break-words">
-                    {effect}
-                  </span>
-                </div>
+      {/* Visual Effects */}
+      {panel.panelContext?.visualEffects &&
+        panel.panelContext.visualEffects.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-4 border border-purple-200 dark:border-purple-800"
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-purple-500 flex items-center justify-center">
+                <Sparkles className="w-4 h-4 text-white" />
               </div>
-            ))}
-          </div>
-        </motion.div>
-      )}
+              <h3 className="text-sm font-bold text-purple-900 dark:text-purple-100">
+                Visual Effects ({panel.panelContext.visualEffects.length})
+              </h3>
+            </div>
+            <div className="space-y-2">
+              {panel.panelContext.visualEffects.map((effect, index) => (
+                <div
+                  key={index}
+                  className="bg-white/60 dark:bg-purple-900/30 rounded-lg p-2 border border-purple-100 dark:border-purple-700"
+                >
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+                    <span className="text-sm font-medium text-purple-900 dark:text-purple-100 break-words">
+                      {effect}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
 
       {/* Dialogues */}
       {panel.dialogues && panel.dialogues.length > 0 && (

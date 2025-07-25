@@ -90,7 +90,7 @@ body {
 }
 
 /* Add React Flow styles */
-@import "reactflow/dist/style.css";
+
 
 /* Ensure React Flow elements adapt to dark mode */
 .dark .react-flow__background {
