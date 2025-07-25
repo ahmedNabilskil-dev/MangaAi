@@ -6,12 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Chapter,
   Character,
-  EffectTemplate,
   LocationTemplate,
   MangaProject,
   OutfitTemplate,
   Panel,
-  PoseTemplate,
   Scene,
 } from "@/types/entities";
 import { MangaStatus } from "@/types/enums";
@@ -56,9 +54,7 @@ export type DetailableEntity =
   | Panel
   | MangaProject
   | OutfitTemplate
-  | LocationTemplate
-  | PoseTemplate
-  | EffectTemplate;
+  | LocationTemplate;
 
 export interface EntityDetailPanelProps {
   entity: DetailableEntity | null;
@@ -522,7 +518,7 @@ function TemplateDetails({
   template,
   type,
 }: {
-  template: OutfitTemplate | LocationTemplate | PoseTemplate | EffectTemplate;
+  template: OutfitTemplate | LocationTemplate;
   type: string;
 }) {
   const getTypeIcon = () => {
@@ -531,10 +527,6 @@ function TemplateDetails({
         return Palette;
       case "location":
         return MapPin;
-      case "pose":
-        return Layers;
-      case "effect":
-        return Sparkles;
       default:
         return Zap;
     }
@@ -546,10 +538,6 @@ function TemplateDetails({
         return "from-pink-500 to-rose-600";
       case "location":
         return "from-yellow-500 to-orange-600";
-      case "pose":
-        return "from-indigo-500 to-purple-600";
-      case "effect":
-        return "from-red-500 to-pink-600";
       default:
         return "from-gray-500 to-slate-600";
     }
@@ -561,10 +549,6 @@ function TemplateDetails({
         return "from-pink-50 to-rose-100 dark:from-pink-900/30 dark:to-rose-900/30";
       case "location":
         return "from-yellow-50 to-orange-100 dark:from-yellow-900/30 dark:to-orange-900/30";
-      case "pose":
-        return "from-indigo-50 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30";
-      case "effect":
-        return "from-red-50 to-pink-100 dark:from-red-900/30 dark:to-pink-900/30";
       default:
         return "from-gray-50 to-slate-100 dark:from-gray-900/30 dark:to-slate-900/30";
     }
@@ -838,170 +822,6 @@ function TemplateDetails({
                   </div>
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </motion.div>
-      )}
-
-      {/* Pose Body Parts */}
-      {type === "pose" && "bodyParts" in template && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <Card className="border-indigo-200 dark:border-indigo-800 bg-gradient-to-br from-white to-indigo-50/30 dark:from-gray-900 dark:to-indigo-900/10">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-3 text-lg">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-                  <Layers className="w-4 h-4 text-white" />
-                </div>
-                Body Position Details
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                {Object.entries(template.bodyParts).map(
-                  ([part, description]) =>
-                    description && (
-                      <div
-                        key={part}
-                        className="bg-gradient-to-r from-indigo-50/50 to-purple-50/50 dark:from-indigo-900/20 dark:to-purple-900/20 p-4 rounded-xl border border-indigo-200 dark:border-indigo-800"
-                      >
-                        <div className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide mb-2">
-                          {part}
-                        </div>
-                        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                          {description}
-                        </p>
-                      </div>
-                    )
-                )}
-              </div>
-
-              {/* Pose Metadata */}
-              <div className="mt-4 grid grid-cols-3 gap-3">
-                <div className="text-center bg-white/60 dark:bg-gray-800/60 p-3 rounded-lg border border-indigo-100 dark:border-indigo-800">
-                  <div className="text-lg font-bold text-indigo-600 dark:text-indigo-400 capitalize">
-                    {"emotion" in template ? template.emotion : "N/A"}
-                  </div>
-                  <div className="text-xs text-gray-600 dark:text-gray-400">
-                    Emotion
-                  </div>
-                </div>
-                <div className="text-center bg-white/60 dark:bg-gray-800/60 p-3 rounded-lg border border-indigo-100 dark:border-indigo-800">
-                  <div className="text-lg font-bold text-purple-600 dark:text-purple-400 capitalize">
-                    {"difficulty" in template ? template.difficulty : "N/A"}
-                  </div>
-                  <div className="text-xs text-gray-600 dark:text-gray-400">
-                    Difficulty
-                  </div>
-                </div>
-                <div className="text-center bg-white/60 dark:bg-gray-800/60 p-3 rounded-lg border border-indigo-100 dark:border-indigo-800">
-                  <div className="text-lg font-bold text-indigo-600 dark:text-indigo-400 capitalize">
-                    {"gender" in template ? template.gender : "N/A"}
-                  </div>
-                  <div className="text-xs text-gray-600 dark:text-gray-400">
-                    Gender
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      )}
-
-      {/* Effect Details */}
-      {type === "effect" && "intensity" in template && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <Card className="border-red-200 dark:border-red-800 bg-gradient-to-br from-white to-red-50/30 dark:from-gray-900 dark:to-red-900/10">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-3 text-lg">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-red-500 to-pink-600 flex items-center justify-center">
-                  <Sparkles className="w-4 h-4 text-white" />
-                </div>
-                Effect Properties
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-red-700 dark:text-red-300">
-                    Intensity
-                  </label>
-                  <Badge
-                    variant="outline"
-                    className={`bg-red-50 border-red-200 text-red-800 capitalize ${
-                      template.intensity === "extreme"
-                        ? "bg-red-100 border-red-300"
-                        : ""
-                    }`}
-                  >
-                    {template.intensity}
-                  </Badge>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-red-700 dark:text-red-300">
-                    Duration
-                  </label>
-                  <Badge
-                    variant="outline"
-                    className="bg-red-50 border-red-200 text-red-800 capitalize"
-                  >
-                    {template.duration}
-                  </Badge>
-                </div>
-              </div>
-
-              {/* Visual Properties */}
-              <div className="space-y-4">
-                {template.colors && template.colors.length > 0 && (
-                  <div>
-                    <h4 className="font-semibold text-red-800 dark:text-red-200 mb-3 flex items-center gap-2">
-                      <Palette className="w-4 h-4" />
-                      Colors
-                    </h4>
-                    <div className="flex flex-wrap gap-2">
-                      {template.colors.map((color, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center gap-2 bg-white/60 dark:bg-gray-800/60 px-3 py-2 rounded-lg border border-red-100 dark:border-red-800"
-                        >
-                          <div
-                            className="w-4 h-4 rounded-full border"
-                            style={{ backgroundColor: color.toLowerCase() }}
-                          ></div>
-                          <span className="text-sm capitalize">{color}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {template.shapes && template.shapes.length > 0 && (
-                  <div>
-                    <h4 className="font-semibold text-red-800 dark:text-red-200 mb-3 flex items-center gap-2">
-                      <Layers className="w-4 h-4" />
-                      Shapes
-                    </h4>
-                    <div className="flex flex-wrap gap-2">
-                      {template.shapes.map((shape, index) => (
-                        <Badge
-                          key={index}
-                          variant="secondary"
-                          className="bg-gradient-to-r from-red-100 to-pink-100 dark:from-red-900/30 dark:to-pink-900/30 text-red-800 dark:text-red-200 border-red-200 dark:border-red-700"
-                        >
-                          {shape}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
             </CardContent>
           </Card>
         </motion.div>
@@ -2348,18 +2168,9 @@ export default function EntityDetailPanel({
                   projectData={projectData}
                 />
               )}
-              {(entityType === "outfit" ||
-                entityType === "location" ||
-                entityType === "pose" ||
-                entityType === "effect") && (
+              {(entityType === "outfit" || entityType === "location") && (
                 <TemplateDetails
-                  template={
-                    entity as
-                      | OutfitTemplate
-                      | LocationTemplate
-                      | PoseTemplate
-                      | EffectTemplate
-                  }
+                  template={entity as OutfitTemplate | LocationTemplate}
                   type={entityType}
                 />
               )}

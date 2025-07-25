@@ -3,12 +3,10 @@ import {
   assignCharacterToPanel,
   createChapter as createChapterService,
   createCharacter as createCharacterService,
-  createEffectTemplate as createEffectTemplateService,
   createLocationTemplate as createLocationTemplateService,
   createOutfitTemplate as createOutfitTemplateService,
   createPanelDialogue as createPanelDialogueService,
   createPanel as createPanelService,
-  createPoseTemplate as createPoseTemplateService,
   createProject as createProjectService,
   createScene as createSceneService,
   getChapterForContext,
@@ -23,13 +21,11 @@ import { MangaStatus } from "@/types/enums";
 import {
   chapterSchema,
   characterSchema,
-  effectTemplateSchema,
   locationTemplateSchema,
   mangaProjectSchema,
   outfitTemplateSchema,
   panelDialogueSchema,
   panelSchema,
-  poseTemplateSchema,
   sceneSchema,
 } from "@/types/schemas";
 import { z } from "zod";
@@ -1278,148 +1274,6 @@ export const createMultipleLocationTemplatesTool = ai.defineTool(
     } catch (error: any) {
       throw new Error(
         `Failed to create multiple location templates: ${error.message}`
-      );
-    }
-  }
-);
-
-// --- Create Pose Template Tool ---
-export const createPoseTemplateTool = ai.defineTool(
-  {
-    name: "createPoseTemplate",
-    description:
-      "Creates a new pose template for character positioning and body language.",
-    inputSchema: poseTemplateSchema
-      .omit({
-        id: true,
-        createdAt: true,
-        updatedAt: true,
-      })
-      .extend({
-        mangaProjectId: z.string().describe("The ID of the parent project."),
-      }),
-    outputSchema: z
-      .string()
-      .describe("The ID of the newly created pose template."),
-  },
-  async (input) => {
-    try {
-      const template = await createPoseTemplateService(input);
-      return template.id;
-    } catch (error: any) {
-      throw new Error(`Failed to create pose template: ${error.message}`);
-    }
-  }
-);
-
-// --- Create Effect Template Tool ---
-export const createEffectTemplateTool = ai.defineTool(
-  {
-    name: "createEffectTemplate",
-    description:
-      "Creates a new effect template for visual effects and stylistic elements.",
-    inputSchema: effectTemplateSchema
-      .omit({
-        id: true,
-        createdAt: true,
-        updatedAt: true,
-      })
-      .extend({
-        mangaProjectId: z.string().describe("The ID of the parent project."),
-      }),
-    outputSchema: z
-      .string()
-      .describe("The ID of the newly created effect template."),
-  },
-  async (input) => {
-    try {
-      const template = await createEffectTemplateService(input);
-      return template.id;
-    } catch (error: any) {
-      throw new Error(`Failed to create effect template: ${error.message}`);
-    }
-  }
-);
-
-// --- Create Multiple Pose Templates Tool ---
-export const createMultiplePoseTemplatesTool = ai.defineTool(
-  {
-    name: "createMultiplePoseTemplates",
-    description: "Creates multiple pose templates in one operation.",
-    inputSchema: z.object({
-      mangaProjectId: z.string().describe("The ID of the parent project."),
-      poseTemplates: z
-        .array(
-          poseTemplateSchema.omit({
-            id: true,
-            createdAt: true,
-            updatedAt: true,
-          })
-        )
-        .describe("Array of pose template data to create"),
-    }),
-    outputSchema: z
-      .array(z.string())
-      .describe("The IDs of the newly created pose templates."),
-  },
-  async (input) => {
-    try {
-      const poseIds = [];
-
-      for (const poseData of input.poseTemplates) {
-        const template = await createPoseTemplateService({
-          ...poseData,
-          mangaProjectId: input.mangaProjectId,
-        });
-        poseIds.push(template.id);
-      }
-
-      return poseIds;
-    } catch (error: any) {
-      throw new Error(
-        `Failed to create multiple pose templates: ${error.message}`
-      );
-    }
-  }
-);
-
-// --- Create Multiple Effect Templates Tool ---
-export const createMultipleEffectTemplatesTool = ai.defineTool(
-  {
-    name: "createMultipleEffectTemplates",
-    description: "Creates multiple effect templates in one operation.",
-    inputSchema: z.object({
-      mangaProjectId: z.string().describe("The ID of the parent project."),
-      effectTemplates: z
-        .array(
-          effectTemplateSchema.omit({
-            id: true,
-            createdAt: true,
-            updatedAt: true,
-          })
-        )
-        .describe("Array of effect template data to create"),
-    }),
-    outputSchema: z
-      .array(z.string())
-      .describe("The IDs of the newly created effect templates."),
-  },
-  async (input) => {
-    try {
-      const effectIds = [];
-
-      for (const effectData of input.effectTemplates) {
-        const template = await createEffectTemplateService({
-          ...effectData,
-          mangaProjectId: input.mangaProjectId,
-        });
-        effectIds.push(template.id);
-      }
-
-      return effectIds;
-    } catch (error: any) {
-      throw new Error(
-        `Failed to create multiple effect templates: ${error.message}`
       );
     }
   }

@@ -1,13 +1,11 @@
 import type {
   Chapter,
   Character,
-  EffectTemplate,
   LocationTemplate,
   MangaProject,
   OutfitTemplate,
   Panel,
   PanelDialogue,
-  PoseTemplate,
   Scene,
 } from "@/types/entities";
 import type { DeepPartial } from "@/types/utils";
@@ -368,80 +366,6 @@ export async function listLocationTemplates(filters?: {
   activeOnly?: boolean;
 }): Promise<LocationTemplate[]> {
   return activeDataService.listLocationTemplates(filters);
-}
-
-// --- Pose Templates ---
-export async function createPoseTemplate(
-  templateData: Omit<PoseTemplate, "id" | "createdAt" | "updatedAt">
-): Promise<PoseTemplate> {
-  return activeDataService.createPoseTemplate(templateData);
-}
-
-export async function getPoseTemplate(
-  id: string
-): Promise<PoseTemplate | null> {
-  return activeDataService.getPoseTemplate(id);
-}
-
-export async function updatePoseTemplate(
-  id: string,
-  templateData: DeepPartial<
-    Omit<PoseTemplate, "id" | "createdAt" | "updatedAt">
-  >
-): Promise<void> {
-  return activeDataService.updatePoseTemplate(id, templateData);
-}
-
-export async function deletePoseTemplate(id: string): Promise<void> {
-  return activeDataService.deletePoseTemplate(id);
-}
-
-export async function listPoseTemplates(filters?: {
-  category?: string;
-  emotion?: string;
-  difficulty?: string;
-  gender?: string;
-  ageGroup?: string;
-  style?: string;
-  activeOnly?: boolean;
-}): Promise<PoseTemplate[]> {
-  return activeDataService.listPoseTemplates(filters);
-}
-
-// --- Effect Templates ---
-export async function createEffectTemplate(
-  templateData: Omit<EffectTemplate, "id" | "createdAt" | "updatedAt">
-): Promise<EffectTemplate> {
-  return activeDataService.createEffectTemplate(templateData);
-}
-
-export async function getEffectTemplate(
-  id: string
-): Promise<EffectTemplate | null> {
-  return activeDataService.getEffectTemplate(id);
-}
-
-export async function updateEffectTemplate(
-  id: string,
-  templateData: DeepPartial<
-    Omit<EffectTemplate, "id" | "createdAt" | "updatedAt">
-  >
-): Promise<void> {
-  return activeDataService.updateEffectTemplate(id, templateData);
-}
-
-export async function deleteEffectTemplate(id: string): Promise<void> {
-  return activeDataService.deleteEffectTemplate(id);
-}
-
-export async function listEffectTemplates(filters?: {
-  category?: string;
-  intensity?: string;
-  duration?: string;
-  style?: string;
-  activeOnly?: boolean;
-}): Promise<EffectTemplate[]> {
-  return activeDataService.listEffectTemplates(filters);
 }
 
 // --- Initialization ---

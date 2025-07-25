@@ -4,33 +4,27 @@ import {
   getChapterForContext,
   getChapters,
   getCharacter as getCharacterService,
-  getEffectTemplate,
   getLocationTemplate,
   getOutfitTemplate,
   getPanelDialogueForContext,
   getPanelDialogues,
   getPanelForContext,
   getPanels,
-  getPoseTemplate,
   getProject as getProjectService,
   getSceneForContext,
   getScenes,
   listCharacters,
-  listEffectTemplates,
   listLocationTemplates,
   listOutfitTemplates,
-  listPoseTemplates,
 } from "@/services/data-service";
 import {
   chapterSchema,
   characterSchema,
-  effectTemplateSchema,
   locationTemplateSchema,
   mangaProjectSchema,
   outfitTemplateSchema,
   panelDialogueSchema,
   panelSchema,
-  poseTemplateSchema,
   sceneSchema,
 } from "@/types/schemas";
 import { z } from "zod";
@@ -652,169 +646,6 @@ export const listLocationTemplatesTool = ai.defineTool(
       );
     } catch (error) {
       console.error(`Error in listLocationTemplatesTool: ${error}`);
-      return [];
-    }
-  }
-);
-
-// --- Pose Template Tools ---
-export const getPoseTemplateTool = ai.defineTool(
-  {
-    name: "getPoseTemplate",
-    description: "Retrieves a pose template by ID",
-    inputSchema: z.object({
-      id: z.string().describe("ID of the pose template to retrieve"),
-    }),
-    outputSchema: poseTemplateSchema
-      .nullable()
-      .describe("Pose template details or null if not found"),
-  },
-  async ({ id }) => {
-    try {
-      const template = await getPoseTemplate(id);
-      return poseTemplateSchema.nullable().parse(template);
-    } catch (error) {
-      console.error(`Error in getPoseTemplateTool: ${error}`);
-      return null;
-    }
-  }
-);
-
-export const listPoseTemplatesTool = ai.defineTool(
-  {
-    name: "listPoseTemplates",
-    description: "Lists all available pose templates with optional filtering",
-    inputSchema: z.object({
-      category: z
-        .enum([
-          "standing",
-          "sitting",
-          "action",
-          "emotional",
-          "interaction",
-          "combat",
-          "casual",
-          "formal",
-        ])
-        .optional()
-        .describe("Filter by pose category"),
-      emotion: z
-        .enum([
-          "neutral",
-          "happy",
-          "sad",
-          "angry",
-          "surprised",
-          "confused",
-          "excited",
-          "worried",
-        ])
-        .optional()
-        .describe("Filter by emotion"),
-      difficulty: z
-        .enum(["beginner", "intermediate", "advanced", "expert"])
-        .optional()
-        .describe("Filter by difficulty level"),
-      gender: z
-        .enum(["male", "female", "unisex"])
-        .optional()
-        .describe("Filter by target gender"),
-      ageGroup: z
-        .enum(["child", "teen", "adult", "elderly"])
-        .optional()
-        .describe("Filter by age group"),
-      style: z
-        .enum(["anime", "realistic", "cartoon", "manga"])
-        .optional()
-        .describe("Filter by art style"),
-      activeOnly: z
-        .boolean()
-        .optional()
-        .describe("Only return active templates"),
-    }),
-    outputSchema: z
-      .array(poseTemplateSchema)
-      .describe("List of pose templates"),
-  },
-  async (filters) => {
-    try {
-      const templates = await listPoseTemplates(filters);
-      return templates.map((template) => poseTemplateSchema.parse(template));
-    } catch (error) {
-      console.error(`Error in listPoseTemplatesTool: ${error}`);
-      return [];
-    }
-  }
-);
-
-// --- Effect Template Tools ---
-export const getEffectTemplateTool = ai.defineTool(
-  {
-    name: "getEffectTemplate",
-    description: "Retrieves an effect template by ID",
-    inputSchema: z.object({
-      id: z.string().describe("ID of the effect template to retrieve"),
-    }),
-    outputSchema: effectTemplateSchema
-      .nullable()
-      .describe("Effect template details or null if not found"),
-  },
-  async ({ id }) => {
-    try {
-      const template = await getEffectTemplate(id);
-      return effectTemplateSchema.nullable().parse(template);
-    } catch (error) {
-      console.error(`Error in getEffectTemplateTool: ${error}`);
-      return null;
-    }
-  }
-);
-
-export const listEffectTemplatesTool = ai.defineTool(
-  {
-    name: "listEffectTemplates",
-    description: "Lists all available effect templates with optional filtering",
-    inputSchema: z.object({
-      category: z
-        .enum([
-          "weather",
-          "magical",
-          "emotional",
-          "action",
-          "background",
-          "lighting",
-          "particle",
-          "speed",
-        ])
-        .optional()
-        .describe("Filter by effect category"),
-      intensity: z
-        .enum(["subtle", "moderate", "intense", "extreme"])
-        .optional()
-        .describe("Filter by effect intensity"),
-      duration: z
-        .enum(["instant", "brief", "sustained", "permanent"])
-        .optional()
-        .describe("Filter by effect duration"),
-      style: z
-        .enum(["anime", "realistic", "cartoon", "manga"])
-        .optional()
-        .describe("Filter by art style"),
-      activeOnly: z
-        .boolean()
-        .optional()
-        .describe("Only return active templates"),
-    }),
-    outputSchema: z
-      .array(effectTemplateSchema)
-      .describe("List of effect templates"),
-  },
-  async (filters) => {
-    try {
-      const templates = await listEffectTemplates(filters);
-      return templates.map((template) => effectTemplateSchema.parse(template));
-    } catch (error) {
-      console.error(`Error in listEffectTemplatesTool: ${error}`);
       return [];
     }
   }

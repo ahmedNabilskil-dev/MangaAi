@@ -19,7 +19,6 @@ import {
   MapPin,
   Palette,
   Settings,
-  Sparkles,
   Users,
 } from "lucide-react";
 import React, { useState } from "react";
@@ -38,8 +37,6 @@ interface DetailPanelState {
     | "project"
     | "outfit"
     | "location"
-    | "pose"
-    | "effect"
     | null;
 }
 
@@ -718,9 +715,9 @@ export function EnhancedTemplateLibraryPanel({
   onEntitySelect,
   onAssetSelect, // Accept but ignore this prop
 }: EnhancedTemplateLibraryPanelProps) {
-  const [activeTab, setActiveTab] = useState<
-    "outfits" | "locations" | "poses" | "effects"
-  >("outfits");
+  const [activeTab, setActiveTab] = useState<"outfits" | "locations">(
+    "outfits"
+  );
   const [detailPanel, setDetailPanel] = useState<DetailPanelState>({
     isOpen: false,
     entity: null,
@@ -762,10 +759,6 @@ export function EnhancedTemplateLibraryPanel({
         return projectData.outfitTemplates || [];
       case "locations":
         return projectData.locationTemplates || [];
-      case "poses":
-        return projectData.poseTemplates || [];
-      case "effects":
-        return projectData.effectTemplates || [];
       default:
         return [];
     }
@@ -796,29 +789,6 @@ export function EnhancedTemplateLibraryPanel({
       borderClasses: "border-green-400/30 bg-green-500/10",
       badgeClasses: "border-green-400/50 text-green-400",
       buttonClasses: "bg-green-500 hover:bg-green-600",
-    },
-    poses: {
-      icon: Layers,
-      color: "blue",
-      label: "Poses",
-      activeClasses: "bg-blue-500/20 text-blue-400 border border-blue-400/30",
-      iconClasses: "text-blue-400",
-      bgClasses: "bg-blue-500/20",
-      borderClasses: "border-blue-400/30 bg-blue-500/10",
-      badgeClasses: "border-blue-400/50 text-blue-400",
-      buttonClasses: "bg-blue-500 hover:bg-blue-600",
-    },
-    effects: {
-      icon: Sparkles,
-      color: "purple",
-      label: "Effects",
-      activeClasses:
-        "bg-purple-500/20 text-purple-400 border border-purple-400/30",
-      iconClasses: "text-purple-400",
-      bgClasses: "bg-purple-500/20",
-      borderClasses: "border-purple-400/30 bg-purple-500/10",
-      badgeClasses: "border-purple-400/50 text-purple-400",
-      buttonClasses: "bg-purple-500 hover:bg-purple-600",
     },
   };
 

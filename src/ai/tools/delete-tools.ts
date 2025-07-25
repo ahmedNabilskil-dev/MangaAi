@@ -2,22 +2,18 @@ import { ai } from "@/ai/ai-instance";
 import {
   deleteChapter as deleteChapterService,
   deleteCharacter as deleteCharacterService,
-  deleteEffectTemplate as deleteEffectTemplateService,
   deleteLocationTemplate as deleteLocationTemplateService,
   deleteOutfitTemplate as deleteOutfitTemplateService,
   deletePanelDialogue as deletePanelDialogueService,
   deletePanel as deletePanelService,
-  deletePoseTemplate as deletePoseTemplateService,
   deleteProject as deleteProjectService,
   deleteScene as deleteSceneService,
   getChapterForContext,
   getCharacter as getCharacterForContext,
-  getEffectTemplate,
   getLocationTemplate,
   getOutfitTemplate,
   getPanelDialogueForContext,
   getPanelForContext,
-  getPoseTemplate,
   getProject as getProjectForContext,
   getSceneForContext,
 } from "@/services/data-service";
@@ -237,58 +233,6 @@ export const deleteLocationTemplateTool = ai.defineTool(
       return true;
     } catch (error) {
       console.error(`Error in deleteLocationTemplateTool: ${error}`);
-      return false;
-    }
-  }
-);
-
-export const deletePoseTemplateTool = ai.defineTool(
-  {
-    name: "deletePoseTemplate",
-    description: "Deletes a pose template permanently.",
-    inputSchema: z.object({
-      id: z.string().describe("ID of the pose template to delete"),
-    }),
-    outputSchema: z.boolean().describe("True if deletion succeeded"),
-  },
-  async ({ id }) => {
-    try {
-      const exists = await getPoseTemplate(id);
-      if (!exists) {
-        console.warn(`Pose template ${id} not found`);
-        return false;
-      }
-
-      await deletePoseTemplateService(id);
-      return true;
-    } catch (error) {
-      console.error(`Error in deletePoseTemplateTool: ${error}`);
-      return false;
-    }
-  }
-);
-
-export const deleteEffectTemplateTool = ai.defineTool(
-  {
-    name: "deleteEffectTemplate",
-    description: "Deletes an effect template permanently.",
-    inputSchema: z.object({
-      id: z.string().describe("ID of the effect template to delete"),
-    }),
-    outputSchema: z.boolean().describe("True if deletion succeeded"),
-  },
-  async ({ id }) => {
-    try {
-      const exists = await getEffectTemplate(id);
-      if (!exists) {
-        console.warn(`Effect template ${id} not found`);
-        return false;
-      }
-
-      await deleteEffectTemplateService(id);
-      return true;
-    } catch (error) {
-      console.error(`Error in deleteEffectTemplateTool: ${error}`);
       return false;
     }
   }

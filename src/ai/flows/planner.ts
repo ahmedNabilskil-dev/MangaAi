@@ -2,12 +2,8 @@ import { ai } from "@/ai/ai-instance";
 import {
   ChapterGenerationPrompt,
   CharacterGenerationPrompt,
-  EffectTemplateGenerationPrompt,
   LocationTemplateGenerationPrompt,
   OutfitTemplateGenerationPrompt,
-  PanelGenerationPrompt,
-  PoseTemplateGenerationPrompt,
-  SceneGenerationPrompt,
 } from "@/ai/flows/generation-flows";
 import {
   GenerateCharacterImage,
@@ -21,11 +17,9 @@ import {
   ChapterUpdatePrompt,
   CharacterUpdatePrompt,
   DialogueUpdatePrompt,
-  EffectTemplateUpdatePrompt,
   LocationTemplateUpdatePrompt,
   OutfitTemplateUpdatePrompt,
   PanelUpdatePrompt,
-  PoseTemplateUpdatePrompt,
   SceneUpdatePrompt,
 } from "@/ai/flows/update-flows";
 import { getSceneForContext } from "@/services/data-service";
@@ -651,8 +645,6 @@ Now analyze this user input: {{userInput}}`,
 const contentTypeToGenerationPrompt = {
   character: "CharacterGenerationPrompt",
   chapter: "ChapterGenerationPrompt",
-  scene: "SceneGenerationPrompt",
-  panel: "PanelGenerationPrompt",
 } as const;
 
 /**
@@ -971,8 +963,6 @@ const handleDirectResponse = (
 const GenerationPrompt = {
   CharacterGenerationPrompt,
   ChapterGenerationPrompt,
-  SceneGenerationPrompt,
-  PanelGenerationPrompt,
 };
 
 /**
@@ -999,6 +989,14 @@ const handleGenerateContent = async (
   }
 
   const { contentType, parentId, parentType } = result.generateContentContext;
+
+  // Only support character and chapter generation
+  if (contentType !== "character" && contentType !== "chapter") {
+    return {
+      type: "error",
+      message: `Content type "${contentType}" is not supported. Only "character" and "chapter" are currently supported.`,
+    };
+  }
 
   // Map content type to appropriate generation prompt
   const promptName = contentTypeToGenerationPrompt[contentType];
@@ -1039,16 +1037,6 @@ const handleGenerateContent = async (
       case "ChapterGenerationPrompt":
         params.existingCharacters = charactersContext;
         params.existingChapters = chaptersContext;
-        break;
-
-      case "SceneGenerationPrompt":
-        params.existingCharacters = charactersContext;
-        params.chapterContext = extractChapterContext(parentId);
-        break;
-
-      case "PanelGenerationPrompt":
-        params.characters = charactersContext;
-        params.sceneContext = extractSceneContext(parentId);
         break;
     }
 
@@ -1275,12 +1263,6 @@ const handleGenerateImage = async (
             )
           : undefined;
 
-        const poseTemplate = imageContext.templateIds?.poseId
-          ? project.poseTemplates?.find(
-              (t) => t.id === imageContext.templateIds?.poseId
-            )
-          : undefined;
-
         // Validate template existence if IDs were provided
         if (imageContext.templateIds?.outfitId && !outfitTemplate) {
           return {
@@ -1289,17 +1271,9 @@ const handleGenerateImage = async (
           };
         }
 
-        if (imageContext.templateIds?.poseId && !poseTemplate) {
-          return {
-            type: "error",
-            message: `Pose template with ID ${imageContext.templateIds.poseId} not found`,
-          };
-        }
-
         res = await GenerateCharacterWithTemplates({
           character: characterForTemplate,
           outfitTemplate,
-          poseTemplate,
           context: {
             mood: imageContext.description?.includes("happy")
               ? "happy"
@@ -1365,39 +1339,8 @@ const handleGenerateImage = async (
           };
         }
 
-        // Get effect templates with validation
-        const effectTemplates =
-          imageContext.templateIds?.effectIds
-            ?.map((effectId) => {
-              const template = project.effectTemplates?.find(
-                (t) => t.id === effectId
-              );
-              if (!template) {
-                console.warn(`Effect template with ID ${effectId} not found`);
-              }
-              return template;
-            })
-            .filter(Boolean) || [];
-
-        // Validate that all requested effect templates were found
-        const requestedEffectIds = imageContext.templateIds?.effectIds || [];
-        const foundEffectIds = effectTemplates.map((t: any) => t.id);
-        const missingEffectIds = requestedEffectIds.filter(
-          (id) => !foundEffectIds.includes(id)
-        );
-
-        if (missingEffectIds.length > 0) {
-          return {
-            type: "error",
-            message: `Effect templates not found: ${missingEffectIds.join(
-              ", "
-            )}`,
-          };
-        }
-
         res = await GenerateLocationWithEffects({
           locationTemplate: locationForEffects,
-          effectTemplates,
           cameraAngle: imageContext.cameraAngle,
           atmosphere: {
             timeOfDay: "day",
@@ -1464,8 +1407,8 @@ const handleGenerateImage = async (
         const availableTemplates = {
           outfits: project.outfitTemplates || [],
           locations: project.locationTemplates || [],
-          poses: project.poseTemplates || [],
-          effects: project.effectTemplates || [],
+          poses: [],
+          effects: [],
         };
 
         // Determine panel generation mode
@@ -1596,32 +1539,6 @@ const handleGenerateTemplate = async (
         });
         break;
 
-      case "pose":
-        generatedTemplate = await PoseTemplateGenerationPrompt({
-          userInput,
-          projectContext,
-          characterTypes:
-            (project.characters
-              ?.map((c) => c.role)
-              .filter(Boolean) as string[]) || [],
-          storyGenres: project.genre ? [project.genre] : [],
-        });
-        break;
-
-      case "effect":
-        generatedTemplate = await EffectTemplateGenerationPrompt({
-          userInput,
-          projectContext,
-          storyGenres: project.genre ? [project.genre] : [],
-          sceneTypes:
-            project.chapters?.flatMap(
-              (ch) =>
-                ch.scenes?.map((sc) => sc.sceneContext?.setting || "general") ||
-                []
-            ) || [],
-        });
-        break;
-
       default:
         return {
           type: "error",
@@ -1695,30 +1612,6 @@ const handleUpdateTemplate = async (
           };
         }
         break;
-
-      case "pose":
-        templateData = project.poseTemplates?.find(
-          (t) => t.id === templateContext.templateId
-        );
-        if (!templateData) {
-          return {
-            type: "error",
-            message: `Pose template with ID ${templateContext.templateId} not found`,
-          };
-        }
-        break;
-
-      case "effect":
-        templateData = project.effectTemplates?.find(
-          (t) => t.id === templateContext.templateId
-        );
-        if (!templateData) {
-          return {
-            type: "error",
-            message: `Effect template with ID ${templateContext.templateId} not found`,
-          };
-        }
-        break;
     }
 
     switch (templateContext.templateType) {
@@ -1754,46 +1647,6 @@ const handleUpdateTemplate = async (
                     title: sc.title,
                     chapterTitle: ch.title,
                   })) || []
-            ) || [],
-        });
-        break;
-
-      case "pose":
-        updatedTemplate = await PoseTemplateUpdatePrompt({
-          userInput,
-          poseTemplate: templateData,
-          projectContext,
-          characterReferences:
-            project.characters?.map((c) => ({
-              id: c.id,
-              name: c.name,
-              role: c.role,
-            })) || [],
-        });
-        break;
-
-      case "effect":
-        updatedTemplate = await EffectTemplateUpdatePrompt({
-          userInput,
-          effectTemplate: templateData,
-          projectContext,
-          usageReferences:
-            project.chapters?.flatMap(
-              (ch) =>
-                ch.scenes?.flatMap(
-                  (sc) =>
-                    sc.panels
-                      ?.filter((p) =>
-                        p.panelContext?.effects?.includes(
-                          templateContext.templateId
-                        )
-                      )
-                      .map((p) => ({
-                        panelId: p.id,
-                        sceneTitle: sc.title,
-                        chapterTitle: ch.title,
-                      })) || []
-                ) || []
             ) || [],
         });
         break;
@@ -1997,15 +1850,13 @@ function getAvailableTemplatesSummary(project: MangaProject) {
   return {
     outfits: project.outfitTemplates?.length || 0,
     locations: project.locationTemplates?.length || 0,
-    poses: project.poseTemplates?.length || 0,
-    effects: project.effectTemplates?.length || 0,
+    poses: 0,
+    effects: 0,
     outfitList:
       project.outfitTemplates?.map((t) => ({ id: t.id, name: t.name })) || [],
     locationList:
       project.locationTemplates?.map((t) => ({ id: t.id, name: t.name })) || [],
-    poseList:
-      project.poseTemplates?.map((t) => ({ id: t.id, name: t.name })) || [],
-    effectList:
-      project.effectTemplates?.map((t) => ({ id: t.id, name: t.name })) || [],
+    poseList: [],
+    effectList: [],
   };
 }

@@ -226,7 +226,6 @@ export const GenerateCharacterWithTemplates = ai.defineFlow(
     inputSchema: z.object({
       character: z.any().describe("Character data"),
       outfitTemplate: z.any().optional().describe("Specific outfit template"),
-      poseTemplate: z.any().optional().describe("Specific pose template"),
       context: z
         .object({
           location: z.string().optional(),
@@ -236,11 +235,10 @@ export const GenerateCharacterWithTemplates = ai.defineFlow(
         .optional(),
     }),
   },
-  async ({ character, outfitTemplate, poseTemplate, context }) => {
+  async ({ character, outfitTemplate, context }) => {
     const prompt = await CharacterWithTemplatesPrompt({
       character,
       outfitTemplate,
-      poseTemplate,
       context: context || {},
     });
 
@@ -358,7 +356,6 @@ export const GenerateLocationWithEffects = ai.defineFlow(
     name: "GenerateLocationWithEffects",
     inputSchema: z.object({
       locationTemplate: z.any().describe("Base location template"),
-      effectTemplates: z.array(z.any()).describe("Effect templates to apply"),
       cameraAngle: z.string().optional().describe("Specific camera angle"),
       atmosphere: z
         .object({
@@ -370,7 +367,7 @@ export const GenerateLocationWithEffects = ai.defineFlow(
         .optional(),
     }),
   },
-  async ({ locationTemplate, effectTemplates, cameraAngle, atmosphere }) => {
+  async ({ locationTemplate, cameraAngle, atmosphere }) => {
     const selectedAngle = cameraAngle
       ? locationTemplate.cameraAngles.find(
           (angle: any) => angle.name === cameraAngle
@@ -384,7 +381,6 @@ export const GenerateLocationWithEffects = ai.defineFlow(
     const prompt = await LocationWithEffectsPrompt({
       locationTemplate,
       cameraAngle: selectedAngle,
-      effectTemplates,
       atmosphere: atmosphere || {},
     });
 
@@ -394,22 +390,20 @@ export const GenerateLocationWithEffects = ai.defineFlow(
     });
 
     if (result?.image46) {
-      const effectNames = effectTemplates.map((e) => e.name).join("-");
-      const filename = `location-fx-${locationTemplate.name
+      const filename = `location-${locationTemplate.name
         .toLowerCase()
-        .replace(/\s+/g, "-")}-${effectNames}-${Date.now()}`;
+        .replace(/\s+/g, "-")}-${Date.now()}`;
       const imageUrl = await ImageStorage.uploadImage(result.image46, filename);
 
       return {
         imageUrl,
         cameraAngle: selectedAngle.name,
-        appliedEffects: effectTemplates.map((e) => e.name),
         atmosphere,
         success: true,
         text: result.text,
       };
     } else {
-      throw new Error("Location with effects generation failed");
+      throw new Error("Location generation failed");
     }
   }
 );
@@ -884,7 +878,6 @@ export const EnhancedPanelImagePrompt = ai.definePrompt({
   - Style: {{outfit.category}}, {{outfit.colors}}
   {{/if}}
   {{#if pose}}
-  - Pose Template: {{pose.name}} - {{pose.description}}
   - Emotion: {{pose.emotion}}
   {{/if}}
   - Panel Pose: {{poseDescription}}
@@ -960,7 +953,6 @@ export const CharacterWithTemplatesPrompt = ai.definePrompt({
     schema: z.object({
       character: z.any(),
       outfitTemplate: z.any().optional(),
-      poseTemplate: z.any().optional(),
       context: z.object({
         location: z.string().optional(),
         mood: z.string().optional(),
@@ -997,14 +989,6 @@ export const CharacterWithTemplatesPrompt = ai.definePrompt({
 - Materials: {{outfitTemplate.materials}}
 {{/if}}
 
-{{#if poseTemplate}}
-**Pose Template Applied:**
-- Name: {{poseTemplate.name}}
-- Description: {{poseTemplate.description}}
-- Body Language: {{poseTemplate.bodyParts}}
-- Emotion: {{poseTemplate.emotion}}
-- Category: {{poseTemplate.category}}
-{{/if}}
 
 ## CONTEXT INTEGRATION
 - Location Context: {{context.location || "neutral background"}}
@@ -1022,7 +1006,6 @@ Generate a complete character image that successfully combines all elements.
 
 Character: {{character}}
 Outfit Template: {{outfitTemplate}}
-Pose Template: {{poseTemplate}}
 Context: {{context}}`,
 });
 
@@ -1262,7 +1245,6 @@ export const LocationWithEffectsPrompt = ai.definePrompt({
     schema: z.object({
       locationTemplate: z.any().describe("Base location template"),
       cameraAngle: z.any().describe("Camera angle object"),
-      effectTemplates: z.array(z.any()).describe("Effect templates to apply"),
       atmosphere: z
         .object({
           timeOfDay: z.string().optional(),
@@ -1278,10 +1260,10 @@ export const LocationWithEffectsPrompt = ai.definePrompt({
       imagePrompt: z.string().describe("Enhanced location with effects prompt"),
     }),
   },
-  prompt: `You are creating an atmospherically enhanced location by combining base environmental design with specific effect templates.
+  prompt: `You are creating an atmospherically enhanced location by combining base environmental design with atmospheric conditions.
 
 ## QUALITY FOUNDATION
-**MANDATORY OPENING**: "masterpiece, best quality, high resolution, ultra detailed, anime background art with atmospheric effects, detailed environmental illustration, professional background design with special effects, dynamic atmosphere, enhanced mood lighting, cinematic environmental effects"
+**MANDATORY OPENING**: "masterpiece, best quality, high resolution, ultra detailed, anime background art with atmospheric effects, detailed environmental illustration, professional background design with atmospheric enhancements, dynamic atmosphere, enhanced mood lighting, cinematic environmental effects"
 
 ## BASE LOCATION FOUNDATION
 **Location**: {{locationTemplate.name}} ({{locationTemplate.type}})
@@ -1294,26 +1276,17 @@ export const LocationWithEffectsPrompt = ai.definePrompt({
 - **Mood**: {{atmosphere.mood || "neutral"}}
 - **Lighting**: {{atmosphere.lighting || "natural"}}
 
-## APPLIED EFFECT TEMPLATES
-{{#each effectTemplates}}
-**Effect: {{name}}**
-- Description: {{description}}
-- Category: {{category}}
-- Intensity: {{intensity}}
-- Visual Elements: {{visualElements}}
-- Atmospheric Impact: {{atmosphericImpact}}
-{{/each}}
 
 ## EFFECT INTEGRATION STRATEGY
 
 ### 1. ATMOSPHERIC LAYERING
-- Seamlessly blend base location with effect templates
+- Seamlessly blend base location with atmospheric conditions
 - Ensure effects enhance rather than overwhelm the environment
 - Maintain architectural integrity while adding atmospheric elements
 - Create depth through effect layering (foreground, midground, background)
 
 ### 2. LIGHTING ENHANCEMENT
-- Integrate effect-specific lighting with base location lighting
+- Apply atmospheric lighting enhancements to base location lighting
 - Apply time-of-day and weather lighting modifications
 - Create mood-appropriate color temperature and contrast
 - Ensure lighting supports the intended narrative atmosphere
@@ -1356,7 +1329,6 @@ Create an enhanced location that perfectly combines environmental design with at
 
 Location Template: {{locationTemplate}}
 Camera Angle: {{cameraAngle}}
-Effect Templates: {{effectTemplates}}
 Atmosphere: {{atmosphere}}`,
 });
 
@@ -1437,7 +1409,6 @@ The conversation history contains character reference images. For each character
 {{#each enhancedTemplates.characterTemplates}}
 - **{{character.name}}**: 
   {{#if outfit}}Outfit: {{outfit.name}} - {{outfit.description}}{{/if}}
-  {{#if pose}}Pose Template: {{pose.name}} - {{pose.description}}{{/if}}
 {{/each}}
 {{/if}}
 

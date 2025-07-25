@@ -2,13 +2,11 @@ import { db, getProjectWithRelations } from "@/services/db";
 import type {
   Chapter,
   Character,
-  EffectTemplate,
   LocationTemplate,
   MangaProject,
   OutfitTemplate,
   Panel,
   PanelDialogue,
-  PoseTemplate,
   Scene,
 } from "@/types/entities";
 import type { DeepPartial } from "@/types/utils";
@@ -563,156 +561,6 @@ class DexieDataService implements IDataService {
     }
     if (filters?.mood) {
       query = query.filter((template) => template.mood === filters.mood);
-    }
-    if (filters?.style) {
-      query = query.filter((template) => template.style === filters.style);
-    }
-
-    return await query.toArray();
-  }
-
-  // --- Pose Templates ---
-  async createPoseTemplate(
-    templateData: Omit<PoseTemplate, "id" | "createdAt" | "updatedAt">
-  ): Promise<PoseTemplate> {
-    const newId = uuidv4();
-    const newTemplate: PoseTemplate = {
-      ...templateData,
-      id: newId,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    await db.poseTemplates.add(newTemplate);
-    return newTemplate;
-  }
-
-  async getPoseTemplate(id: string): Promise<PoseTemplate | null> {
-    return (await db.poseTemplates.get(id)) || null;
-  }
-
-  async updatePoseTemplate(
-    id: string,
-    templateData: DeepPartial<
-      Omit<PoseTemplate, "id" | "createdAt" | "updatedAt">
-    >
-  ): Promise<void> {
-    const updateData: any = {
-      ...templateData,
-      updatedAt: new Date(),
-    };
-
-    await db.poseTemplates.update(id, updateData);
-  }
-
-  async deletePoseTemplate(id: string): Promise<void> {
-    await db.poseTemplates.delete(id);
-  }
-
-  async listPoseTemplates(filters?: {
-    category?: string;
-    emotion?: string;
-    difficulty?: string;
-    gender?: string;
-    ageGroup?: string;
-    style?: string;
-    activeOnly?: boolean;
-  }): Promise<PoseTemplate[]> {
-    let query = db.poseTemplates.toCollection();
-
-    if (filters?.activeOnly) {
-      query = query.filter((template) => template.isActive);
-    }
-    if (filters?.category) {
-      query = query.filter(
-        (template) => template.category === filters.category
-      );
-    }
-    if (filters?.emotion) {
-      query = query.filter((template) => template.emotion === filters.emotion);
-    }
-    if (filters?.difficulty) {
-      query = query.filter(
-        (template) => template.difficulty === filters.difficulty
-      );
-    }
-    if (filters?.gender) {
-      query = query.filter((template) => template.gender === filters.gender);
-    }
-    if (filters?.ageGroup) {
-      query = query.filter(
-        (template) => template.ageGroup === filters.ageGroup
-      );
-    }
-    if (filters?.style) {
-      query = query.filter((template) => template.style === filters.style);
-    }
-
-    return await query.toArray();
-  }
-
-  // --- Effect Templates ---
-  async createEffectTemplate(
-    templateData: Omit<EffectTemplate, "id" | "createdAt" | "updatedAt">
-  ): Promise<EffectTemplate> {
-    const newId = uuidv4();
-    const newTemplate: EffectTemplate = {
-      ...templateData,
-      id: newId,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    await db.effectTemplates.add(newTemplate);
-    return newTemplate;
-  }
-
-  async getEffectTemplate(id: string): Promise<EffectTemplate | null> {
-    return (await db.effectTemplates.get(id)) || null;
-  }
-
-  async updateEffectTemplate(
-    id: string,
-    templateData: DeepPartial<
-      Omit<EffectTemplate, "id" | "createdAt" | "updatedAt">
-    >
-  ): Promise<void> {
-    const updateData: any = {
-      ...templateData,
-      updatedAt: new Date(),
-    };
-
-    await db.effectTemplates.update(id, updateData);
-  }
-
-  async deleteEffectTemplate(id: string): Promise<void> {
-    await db.effectTemplates.delete(id);
-  }
-
-  async listEffectTemplates(filters?: {
-    category?: string;
-    intensity?: string;
-    duration?: string;
-    style?: string;
-    activeOnly?: boolean;
-  }): Promise<EffectTemplate[]> {
-    let query = db.effectTemplates.toCollection();
-
-    if (filters?.activeOnly) {
-      query = query.filter((template) => template.isActive);
-    }
-    if (filters?.category) {
-      query = query.filter(
-        (template) => template.category === filters.category
-      );
-    }
-    if (filters?.intensity) {
-      query = query.filter(
-        (template) => template.intensity === filters.intensity
-      );
-    }
-    if (filters?.duration) {
-      query = query.filter(
-        (template) => template.duration === filters.duration
-      );
     }
     if (filters?.style) {
       query = query.filter((template) => template.style === filters.style);

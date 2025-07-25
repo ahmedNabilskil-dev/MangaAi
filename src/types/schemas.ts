@@ -172,133 +172,6 @@ export const locationTemplateSchema = z
   })
   .describe("Template defining locations for consistent scene generation");
 
-// Pose Template Schema
-export const poseTemplateSchema = z
-  .object({
-    id: z.string().describe("Unique identifier for the pose template"),
-    name: z
-      .string()
-      .min(1, "Pose name is required")
-      .describe(
-        "Name of the pose (e.g., 'Standing Confident', 'Sitting Relaxed')"
-      ),
-    description: z.string().describe("Short description of the pose"),
-    category: z
-      .enum([
-        "standing",
-        "sitting",
-        "lying",
-        "walking",
-        "running",
-        "action",
-        "emotional",
-        "interaction",
-        "combat",
-        "dance",
-      ])
-      .describe("Pose category"),
-    subCategory: z.string().optional().describe("More specific categorization"),
-    emotion: z
-      .enum([
-        "neutral",
-        "happy",
-        "sad",
-        "angry",
-        "surprised",
-        "fearful",
-        "disgusted",
-        "excited",
-        "calm",
-        "intense",
-      ])
-      .describe("Emotion conveyed by the pose"),
-    difficulty: z
-      .enum(["easy", "medium", "hard"])
-      .describe("Difficulty level for drawing"),
-    gender: z
-      .enum(["male", "female", "unisex"])
-      .describe("Gender this pose is designed for"),
-    ageGroup: z
-      .enum(["child", "teen", "adult", "elderly"])
-      .describe("Age group this pose suits"),
-    style: z
-      .enum(["anime", "realistic", "cartoon", "manga"])
-      .describe("Art style for the pose"),
-    bodyParts: bodyPartsSchema.describe("Description of body part positions"),
-    tags: z.array(z.string()).describe("Tags for filtering and search"),
-    imagePrompt: z
-      .string()
-      .optional()
-      .describe("AI prompt for generating pose images"),
-    imageUrl: z.string().optional().describe("URL of reference image"),
-    isActive: z.boolean().describe("Whether this template is active"),
-    mangaProjectId: z.string().describe("ID of the parent manga project"),
-    createdAt: z
-      .date()
-      .or(z.string().datetime())
-      .describe("Creation timestamp"),
-    updatedAt: z
-      .date()
-      .or(z.string().datetime())
-      .describe("Last update timestamp"),
-  })
-  .describe("Template defining character poses for consistent illustration");
-
-// Effect Template Schema
-export const effectTemplateSchema = z
-  .object({
-    id: z.string().describe("Unique identifier for the effect template"),
-    name: z
-      .string()
-      .min(1, "Effect name is required")
-      .describe("Name of the effect (e.g., 'Speed Lines', 'Magic Sparkles')"),
-    description: z.string().describe("Short description of the effect"),
-    category: z
-      .enum([
-        "speed",
-        "impact",
-        "emotion",
-        "magic",
-        "weather",
-        "explosion",
-        "energy",
-        "transformation",
-        "sound",
-        "motion",
-      ])
-      .describe("Effect category"),
-    subCategory: z.string().optional().describe("More specific categorization"),
-    intensity: z
-      .enum(["low", "medium", "high", "extreme"])
-      .describe("Effect intensity level"),
-    duration: z
-      .enum(["instant", "short", "medium", "long", "persistent"])
-      .describe("Effect duration"),
-    style: z
-      .enum(["anime", "realistic", "cartoon", "manga"])
-      .describe("Art style for the effect"),
-    colors: z.array(z.string()).describe("Primary colors of the effect"),
-    shapes: z.array(z.string()).describe("Shapes used in the effect"),
-    patterns: z.array(z.string()).describe("Patterns used in the effect"),
-    tags: z.array(z.string()).describe("Tags for filtering and search"),
-    imagePrompt: z
-      .string()
-      .optional()
-      .describe("AI prompt for generating effect images"),
-    imageUrl: z.string().optional().describe("URL of reference image"),
-    isActive: z.boolean().describe("Whether this template is active"),
-    mangaProjectId: z.string().describe("ID of the parent manga project"),
-    createdAt: z
-      .date()
-      .or(z.string().datetime())
-      .describe("Creation timestamp"),
-    updatedAt: z
-      .date()
-      .or(z.string().datetime())
-      .describe("Last update timestamp"),
-  })
-  .describe("Template defining visual effects for manga panels");
-
 // Character Schema
 export const characterSchema = z
   .object({
@@ -766,14 +639,6 @@ export const mangaProjectSchema = z
       .array(locationTemplateSchema)
       .optional()
       .describe("Location templates with camera angles"),
-    poseTemplates: z
-      .array(poseTemplateSchema)
-      .optional()
-      .describe("Pose templates for character positioning"),
-    effectTemplates: z
-      .array(effectTemplateSchema)
-      .optional()
-      .describe("Effect templates for visual enhancements"),
 
     // Thematic Elements
     themes: z
@@ -845,8 +710,6 @@ export const mangaProjectSchema = z
 export const schemas = {
   outfitTemplate: outfitTemplateSchema,
   locationTemplate: locationTemplateSchema,
-  poseTemplate: poseTemplateSchema,
-  effectTemplate: effectTemplateSchema,
   mangaProject: mangaProjectSchema,
   chapter: chapterSchema,
   character: characterSchema,
@@ -859,8 +722,6 @@ export const schemas = {
 export type MangaSchemas = {
   outfitTemplate: z.infer<typeof outfitTemplateSchema>;
   locationTemplate: z.infer<typeof locationTemplateSchema>;
-  poseTemplate: z.infer<typeof poseTemplateSchema>;
-  effectTemplate: z.infer<typeof effectTemplateSchema>;
   mangaProject: z.infer<typeof mangaProjectSchema>;
   chapter: z.infer<typeof chapterSchema>;
   character: z.infer<typeof characterSchema>;

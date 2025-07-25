@@ -95,85 +95,6 @@ export interface LocationTemplate {
   updatedAt: Date | string;
 }
 
-export interface PoseTemplate {
-  id: string;
-  name: string;
-  description: string;
-  category:
-    | "standing"
-    | "sitting"
-    | "lying"
-    | "walking"
-    | "running"
-    | "action"
-    | "emotional"
-    | "interaction"
-    | "combat"
-    | "dance";
-  subCategory?: string;
-  emotion:
-    | "neutral"
-    | "happy"
-    | "sad"
-    | "angry"
-    | "surprised"
-    | "fearful"
-    | "disgusted"
-    | "excited"
-    | "calm"
-    | "intense";
-  difficulty: "easy" | "medium" | "hard";
-  gender: "male" | "female" | "unisex";
-  ageGroup: "child" | "teen" | "adult" | "elderly";
-  style: "anime" | "realistic" | "cartoon" | "manga";
-  bodyParts: {
-    head?: string;
-    arms?: string;
-    hands?: string;
-    torso?: string;
-    legs?: string;
-    feet?: string;
-  };
-  tags: string[];
-  imagePrompt?: string;
-  imageUrl?: string;
-  isActive: boolean;
-  mangaProjectId: string;
-  createdAt: Date | string;
-  updatedAt: Date | string;
-}
-
-export interface EffectTemplate {
-  id: string;
-  name: string;
-  description: string;
-  category:
-    | "speed"
-    | "impact"
-    | "emotion"
-    | "magic"
-    | "weather"
-    | "explosion"
-    | "energy"
-    | "transformation"
-    | "sound"
-    | "motion";
-  subCategory?: string;
-  intensity: "low" | "medium" | "high" | "extreme";
-  duration: "instant" | "short" | "medium" | "long" | "persistent";
-  style: "anime" | "realistic" | "cartoon" | "manga";
-  colors: string[];
-  shapes: string[];
-  patterns: string[];
-  tags: string[];
-  imagePrompt?: string;
-  imageUrl?: string;
-  isActive: boolean;
-  mangaProjectId: string;
-  createdAt: Date | string;
-  updatedAt: Date | string;
-}
-
 export interface MangaProject {
   id: string;
   title: string;
@@ -200,8 +121,6 @@ export interface MangaProject {
   };
   outfitTemplates?: OutfitTemplate[];
   locationTemplates?: LocationTemplate[];
-  poseTemplates?: PoseTemplate[];
-  effectTemplates?: EffectTemplate[];
   // Key events now directly part of project
   themes?: string[];
   motifs?: string[];

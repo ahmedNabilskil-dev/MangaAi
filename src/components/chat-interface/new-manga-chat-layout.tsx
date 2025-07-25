@@ -780,7 +780,6 @@ function ManualPanelGenerator({
   const [panelSettings, setPanelSettings] = useState({
     description: "",
     artStyle: "modern, clean anime style",
-    background: "",
     lighting: "soft, diffused lighting",
     cameraAngle: "medium shot",
     location: "",
@@ -797,7 +796,6 @@ function ManualPanelGenerator({
     dialogue: "",
     qualityKeywords: [] as string[],
     customArtStyle: "",
-    customBackground: "",
     customLighting: "",
     customCameraAngle: "",
     customLocation: "",
@@ -839,49 +837,6 @@ function ManualPanelGenerator({
         value: "custom",
         image: null,
         description: "Define your own art style",
-      },
-    ],
-    backgrounds: [
-      {
-        label: "School Rooftop",
-        value: "bright, airy school rooftop",
-        image:
-          "https://images.unsplash.com/photo-1562774053-701939374585?w=400&h=300&fit=crop",
-        description: "Peaceful school setting",
-      },
-      {
-        label: "Cherry Blossom Park",
-        value: "serene park path with cherry blossoms",
-        image:
-          "https://images.unsplash.com/photo-1522383225653-ed111181a951?w=400&h=300&fit=crop",
-        description: "Beautiful sakura scenery",
-      },
-      {
-        label: "Festival Street",
-        value: "bustling festival street",
-        image:
-          "https://images.unsplash.com/photo-1533827432537-70133748f5c8?w=400&h=300&fit=crop",
-        description: "Vibrant festival atmosphere",
-      },
-      {
-        label: "Cozy Cafe",
-        value: "cozy cafe interior",
-        image:
-          "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=400&h=300&fit=crop",
-        description: "Warm, intimate setting",
-      },
-      {
-        label: "Urban Cityscape",
-        value: "modern urban cityscape",
-        image:
-          "https://images.unsplash.com/photo-1551916776-685b9b0ad5c4?w=400&h=300&fit=crop",
-        description: "Dynamic city environment",
-      },
-      {
-        label: "Other",
-        value: "custom",
-        image: null,
-        description: "Define your own background",
       },
     ],
     locations: [
@@ -1243,14 +1198,32 @@ function ManualPanelGenerator({
   const generatePanel = async () => {
     setIsGenerating(true);
     try {
+      // Structure data according to Panel interface
+      const panelData = {
+        order: panelOrder,
+        panelContext: {
+          action: panelSettings.description,
+          characterPoses: panelSettings.characters.map((char) => ({
+            characterName: char.name,
+            characterId: char.id,
+            pose: char.customPose || char.pose,
+            expression: char.customExpression || char.expression,
+            outfitId: char.customOutfit || char.outfit, // This should be the actual outfit ID
+          })),
+          cameraAngle:
+            panelSettings.customCameraAngle || panelSettings.cameraAngle,
+          locationId: panelSettings.customLocation || panelSettings.location, // This should be the actual location ID
+          lighting: panelSettings.customLighting || panelSettings.lighting,
+          effects: [], // Could be derived from qualityKeywords or other settings
+        },
+        sceneId: selectedScene,
+        isAiGenerated: true,
+        // Other fields would be set by the actual creation function
+      };
+
       // Actual panel generation logic here
       await new Promise((resolve) => setTimeout(resolve, 2000));
-      console.log("Generating panel:", {
-        chapter: selectedChapter,
-        scene: selectedScene,
-        order: panelOrder,
-        settings: panelSettings,
-      });
+      console.log("Generating panel with structure:", panelData);
       onClose();
     } catch (error) {
       console.error("Generation failed:", error);
@@ -1267,7 +1240,6 @@ function ManualPanelGenerator({
     setPanelSettings({
       description: "",
       artStyle: "modern, clean anime style",
-      background: "",
       lighting: "soft, diffused lighting",
       cameraAngle: "medium shot",
       location: "",
@@ -1275,7 +1247,6 @@ function ManualPanelGenerator({
       dialogue: "",
       qualityKeywords: [],
       customArtStyle: "",
-      customBackground: "",
       customLighting: "",
       customCameraAngle: "",
       customLocation: "",
@@ -1858,26 +1829,6 @@ function ManualPanelGenerator({
                         }))
                       }
                       icon={<Palette className="w-5 h-5" />}
-                    />
-
-                    <VisualSelector
-                      title="Background"
-                      options={predefinedOptions.backgrounds}
-                      selectedValue={panelSettings.background}
-                      onSelect={(value: string) =>
-                        setPanelSettings((prev) => ({
-                          ...prev,
-                          background: value,
-                        }))
-                      }
-                      customValue={panelSettings.customBackground}
-                      onCustomChange={(value: string) =>
-                        setPanelSettings((prev) => ({
-                          ...prev,
-                          customBackground: value,
-                        }))
-                      }
-                      icon={<Image className="w-5 h-5" />}
                     />
                   </div>
 
