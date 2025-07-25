@@ -4,7 +4,7 @@ import { Message } from "@/ai/adapters/type";
 import { ProcessMangaRequestFlow } from "@/ai/flows/planner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -12,15 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -34,24 +26,15 @@ import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Bot,
-  ChevronDown,
-  ChevronUp,
   Eye,
   FileText,
   Image,
   Layers,
-  MapPin,
-  Palette,
-  Plus,
   Send,
   Settings,
-  Sparkles,
-  Trash2,
   Upload,
   User,
-  Users,
   Wand2,
-  Wrench,
   X,
 } from "lucide-react";
 import { useParams } from "next/navigation";
@@ -132,7 +115,6 @@ export default function NewMangaChatLayout() {
     isOpen: false,
     asset: null,
   });
-  const [toolsDropdownOpen, setToolsDropdownOpen] = useState(false);
   const [manualPanelDialog, setManualPanelDialog] = useState(false);
 
   // Refs
@@ -478,115 +460,17 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <DropdownMenu
-              open={toolsDropdownOpen}
-              onOpenChange={setToolsDropdownOpen}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setManualPanelDialog(true)}
+              className="border border-gray-300 hover:border-blue-400 bg-white hover:bg-blue-50 text-gray-700 hover:text-blue-700 transition-all duration-200 shadow-sm hover:shadow-md"
             >
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="relative overflow-hidden border border-gray-300 hover:border-blue-400 bg-white hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 text-gray-700 hover:text-blue-700 transition-all duration-200 shadow-sm hover:shadow-md"
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="p-1 rounded-md bg-gradient-to-br from-blue-100 to-purple-100">
-                      <Wrench className="w-3 h-3 text-blue-600" />
-                    </div>
-                    <span className="font-medium">Tools</span>
-                    <ChevronDown className="w-3 h-3 transition-transform duration-200" />
-                  </div>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                className="w-80 p-2 bg-white border border-gray-200 shadow-xl rounded-xl"
-                sideOffset={8}
-              >
-                <div className="mb-2">
-                  <div className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wide">
-                    Generation Tools
-                  </div>
-                </div>
-
-                <DropdownMenuItem
-                  onClick={() => {
-                    setManualPanelDialog(true);
-                    setToolsDropdownOpen(false);
-                  }}
-                  className="group relative overflow-hidden rounded-lg p-4 cursor-pointer border border-transparent hover:border-blue-200 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-all duration-200"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 shadow-sm group-hover:shadow-md transition-shadow">
-                      <Wand2 className="w-4 h-4 text-white" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-gray-900 group-hover:text-blue-700 transition-colors">
-                        Generate Panel Manually
-                      </div>
-                      <div className="text-sm text-gray-500 mt-1 group-hover:text-gray-600">
-                        Create custom manga panels with detailed scene settings
-                        and character management
-                      </div>
-                      <div className="flex items-center gap-1 mt-2">
-                        <Badge
-                          variant="secondary"
-                          className="text-xs bg-blue-100 text-blue-700"
-                        >
-                          Premium
-                        </Badge>
-                        <Badge variant="outline" className="text-xs">
-                          AI Powered
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                </DropdownMenuItem>
-
-                <div className="my-2">
-                  <div className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wide">
-                    More Tools
-                  </div>
-                </div>
-
-                <DropdownMenuItem
-                  onClick={() => setToolsDropdownOpen(false)}
-                  className="group rounded-lg p-3 cursor-pointer hover:bg-gray-50 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-gray-100 group-hover:bg-green-100 transition-colors">
-                      <Image className="w-4 h-4 text-gray-600 group-hover:text-green-600 transition-colors" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">
-                        Image Enhancement
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        Upscale and improve existing images
-                      </div>
-                    </div>
-                  </div>
-                </DropdownMenuItem>
-
-                <DropdownMenuItem
-                  onClick={() => setToolsDropdownOpen(false)}
-                  className="group rounded-lg p-3 cursor-pointer hover:bg-gray-50 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-gray-100 group-hover:bg-orange-100 transition-colors">
-                      <Settings className="w-4 h-4 text-gray-600 group-hover:text-orange-600 transition-colors" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">
-                        Project Settings
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        Configure your manga project
-                      </div>
-                    </div>
-                  </div>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              <div className="flex items-center gap-2">
+                <Wand2 className="w-4 h-4" />
+                <span className="font-medium">Generate Panel Manually</span>
+              </div>
+            </Button>
 
             <Button
               variant="outline"
@@ -872,161 +756,163 @@ function ManualPanelGenerator({
   onClose,
   projectId,
 }: ManualPanelGeneratorProps) {
-  const [activeTab, setActiveTab] = useState<"scene" | "characters">("scene");
-  const [sceneSettings, setSceneSettings] = useState({
+  const [step, setStep] = useState(1);
+  const [selectedChapter, setSelectedChapter] = useState("");
+  const [selectedScene, setSelectedScene] = useState("");
+  const [panelOrder, setPanelOrder] = useState(1);
+  const [maxPanelOrder, setMaxPanelOrder] = useState(1);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  // Panel settings
+  const [panelSettings, setPanelSettings] = useState({
     description: "",
     artStyle: "modern, clean anime style",
-    background: "school rooftop",
+    background: "",
     lighting: "soft, diffused lighting",
     cameraAngle: "medium shot",
+    selectedCharacters: [] as string[],
+    characterInteraction: "",
+    dialogue: "",
     qualityKeywords: [] as string[],
   });
-  const [characters, setCharacters] = useState<any[]>([]);
-  const [characterInteraction, setCharacterInteraction] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(
-    new Set(["description", "style", "environment"])
-  );
 
-  const predefinedOptions = {
-    artStyles: [
-      { label: "Modern Anime", value: "modern, clean anime style", icon: "🎨" },
-      {
-        label: "Pastel Anime",
-        value: "soft, pastel anime illustration",
-        icon: "🌸",
-      },
-      {
-        label: "Dynamic Shonen",
-        value: "dynamic shonen anime style",
-        icon: "⚡",
-      },
-      {
-        label: "Detailed Fantasy",
-        value: "detailed fantasy anime",
-        icon: "🧙‍♂️",
-      },
-      { label: "Chibi Style", value: "chibi style", icon: "🐱" },
-      { label: "Dark Gothic", value: "dark gothic anime style", icon: "🖤" },
+  // Mock data - replace with actual data from your project
+  const mockChapters = [
+    { id: "ch1", title: "Chapter 1: The Beginning", sceneCount: 5 },
+    { id: "ch2", title: "Chapter 2: New Friends", sceneCount: 4 },
+    { id: "ch3", title: "Chapter 3: School Festival", sceneCount: 6 },
+  ];
+
+  const mockScenes = {
+    ch1: [
+      { id: "sc1", title: "Scene 1: Morning Routine", panelCount: 3 },
+      { id: "sc2", title: "Scene 2: School Entrance", panelCount: 4 },
+      { id: "sc3", title: "Scene 3: First Class", panelCount: 5 },
+      { id: "sc4", title: "Scene 4: Lunch Break", panelCount: 2 },
+      { id: "sc5", title: "Scene 5: Going Home", panelCount: 3 },
     ],
-    backgrounds: [
-      {
-        label: "School Rooftop",
-        value: "bright, airy school rooftop",
-        icon: "🏫",
-      },
-      {
-        label: "Cherry Blossom Park",
-        value: "serene park path with cherry blossoms",
-        icon: "🌸",
-      },
-      {
-        label: "Festival Street",
-        value: "bustling festival street",
-        icon: "🎪",
-      },
-      { label: "Cozy Cafe", value: "cozy cafe interior", icon: "☕" },
-      { label: "Urban Cityscape", value: "modern urban cityscape", icon: "🏙️" },
-      { label: "Fantasy Forest", value: "mystical forest setting", icon: "🌲" },
-      { label: "Beach Sunset", value: "romantic beach at sunset", icon: "🌅" },
-      {
-        label: "Library",
-        value: "quiet library with tall bookshelves",
-        icon: "📚",
-      },
+    ch2: [
+      { id: "sc6", title: "Scene 1: New Student", panelCount: 4 },
+      { id: "sc7", title: "Scene 2: Introductions", panelCount: 3 },
+      { id: "sc8", title: "Scene 3: Classroom", panelCount: 5 },
+      { id: "sc9", title: "Scene 4: After School", panelCount: 2 },
     ],
-    lighting: [
-      { label: "Soft Diffused", value: "soft, diffused lighting", icon: "☁️" },
-      {
-        label: "Bright Sunlight",
-        value: "bright, natural sunlight",
-        icon: "☀️",
-      },
-      { label: "Warm Indoor", value: "warm, indoor lighting", icon: "🏠" },
-      {
-        label: "Dramatic Backlighting",
-        value: "dramatic backlighting",
-        icon: "🎭",
-      },
-      { label: "Golden Hour", value: "evening golden hour", icon: "🌇" },
-      { label: "Neon Cyberpunk", value: "neon cyberpunk lighting", icon: "🌃" },
-      { label: "Moonlight", value: "soft moonlight", icon: "🌙" },
-    ],
-    cameraAngles: [
-      { label: "Medium Shot", value: "medium shot", icon: "📷" },
-      { label: "Close-up Portrait", value: "close-up portrait", icon: "👤" },
-      { label: "Full Body Shot", value: "full body shot", icon: "🧍" },
-      { label: "Low Angle Hero", value: "low angle looking up", icon: "📐" },
-      {
-        label: "Bird's Eye View",
-        value: "bird's eye view from above",
-        icon: "🦅",
-      },
-      { label: "Over Shoulder", value: "over the shoulder shot", icon: "👁️" },
-    ],
-    poses: [
-      {
-        label: "Confident Stance",
-        value: "confident standing pose",
-        icon: "💪",
-      },
-      { label: "Graceful Sitting", value: "sitting gracefully", icon: "🪑" },
-      { label: "Dynamic Action", value: "dynamic action pose", icon: "🏃" },
-      { label: "Shy & Bashful", value: "shy, bashful posture", icon: "😊" },
-      { label: "Leaning Casual", value: "casually leaning", icon: "🧘" },
-      { label: "Thinking Pose", value: "thoughtful thinking pose", icon: "🤔" },
-    ],
-    expressions: [
-      { label: "Serene Smile", value: "soft, serene smile", icon: "😌" },
-      {
-        label: "Determined Gaze",
-        value: "determined, focused gaze",
-        icon: "😤",
-      },
-      { label: "Playful Wink", value: "playful wink", icon: "😉" },
-      { label: "Surprised Wonder", value: "wide-eyed surprise", icon: "😮" },
-      {
-        label: "Melancholic",
-        value: "melancholic, thoughtful gaze",
-        icon: "😔",
-      },
-      {
-        label: "Joyful Laugh",
-        value: "joyful laughing expression",
-        icon: "😄",
-      },
-    ],
-    qualityKeywords: [
-      "high-resolution",
-      "8k",
-      "detailed",
-      "intricate details",
-      "masterpiece",
-      "best quality",
-      "cinematic lighting",
-      "photorealistic",
-      "ultra-detailed",
-      "studio quality",
-      "professional artwork",
-      "vibrant colors",
-      "sharp focus",
+    ch3: [
+      { id: "sc10", title: "Scene 1: Festival Preparation", panelCount: 6 },
+      { id: "sc11", title: "Scene 2: Setting Up", panelCount: 4 },
+      { id: "sc12", title: "Scene 3: Festival Day", panelCount: 8 },
+      { id: "sc13", title: "Scene 4: Competition", panelCount: 5 },
+      { id: "sc14", title: "Scene 5: Evening", panelCount: 3 },
+      { id: "sc15", title: "Scene 6: Fireworks", panelCount: 4 },
     ],
   };
 
-  const toggleSection = (section: string) => {
-    setExpandedSections((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(section)) {
-        newSet.delete(section);
-      } else {
-        newSet.add(section);
+  const mockCharacters = [
+    { id: "char1", name: "Akira Yamamoto", description: "Main protagonist" },
+    { id: "char2", name: "Yuki Tanaka", description: "Best friend" },
+    { id: "char3", name: "Sensei Watanabe", description: "Homeroom teacher" },
+    { id: "char4", name: "Hana Sato", description: "Class president" },
+    { id: "char5", name: "Ryuu Kimura", description: "Rival character" },
+  ];
+
+  const mockLocations = [
+    {
+      id: "loc1",
+      name: "School Rooftop",
+      description: "Peaceful rooftop with city view",
+    },
+    {
+      id: "loc2",
+      name: "Classroom 2-A",
+      description: "Standard high school classroom",
+    },
+    { id: "loc3", name: "School Cafeteria", description: "Busy lunch area" },
+    {
+      id: "loc4",
+      name: "Cherry Blossom Park",
+      description: "Beautiful park with sakura trees",
+    },
+    {
+      id: "loc5",
+      name: "Festival Grounds",
+      description: "School festival area with stalls",
+    },
+  ];
+
+  const artStyles = [
+    { value: "modern, clean anime style", label: "Modern Anime" },
+    { value: "soft, pastel anime illustration", label: "Pastel Anime" },
+    { value: "dynamic shonen anime style", label: "Dynamic Shonen" },
+    { value: "detailed fantasy anime", label: "Fantasy Anime" },
+    { value: "chibi style", label: "Chibi Style" },
+  ];
+
+  const lightingOptions = [
+    { value: "soft, diffused lighting", label: "Soft Diffused" },
+    { value: "bright, natural sunlight", label: "Bright Sunlight" },
+    { value: "warm, indoor lighting", label: "Warm Indoor" },
+    { value: "dramatic backlighting", label: "Dramatic Backlighting" },
+    { value: "evening golden hour", label: "Golden Hour" },
+    { value: "moonlight", label: "Moonlight" },
+  ];
+
+  const cameraAngles = [
+    { value: "medium shot", label: "Medium Shot" },
+    { value: "close-up portrait", label: "Close-up Portrait" },
+    { value: "full body shot", label: "Full Body Shot" },
+    { value: "low angle looking up", label: "Low Angle Hero" },
+    { value: "bird's eye view from above", label: "Bird's Eye View" },
+  ];
+
+  const qualityKeywords = [
+    "high-resolution",
+    "8k",
+    "detailed",
+    "intricate details",
+    "masterpiece",
+    "best quality",
+    "cinematic lighting",
+    "photorealistic",
+    "ultra-detailed",
+    "studio quality",
+    "professional artwork",
+    "vibrant colors",
+    "sharp focus",
+  ];
+
+  // Update max panel order when scene changes
+  useEffect(() => {
+    if (selectedChapter && selectedScene) {
+      const scenes =
+        mockScenes[selectedChapter as keyof typeof mockScenes] || [];
+      const scene = scenes.find((s) => s.id === selectedScene);
+      if (scene) {
+        const newMaxOrder = scene.panelCount + 1;
+        setMaxPanelOrder(newMaxOrder);
+        setPanelOrder(newMaxOrder); // Default to adding at the end
       }
-      return newSet;
-    });
+    }
+  }, [selectedChapter, selectedScene]);
+
+  const handleNext = () => {
+    if (step < 3) setStep(step + 1);
+  };
+
+  const handleBack = () => {
+    if (step > 1) setStep(step - 1);
+  };
+
+  const handleCharacterToggle = (characterId: string) => {
+    setPanelSettings((prev) => ({
+      ...prev,
+      selectedCharacters: prev.selectedCharacters.includes(characterId)
+        ? prev.selectedCharacters.filter((id) => id !== characterId)
+        : [...prev.selectedCharacters, characterId],
+    }));
   };
 
   const handleQualityKeywordToggle = (keyword: string) => {
-    setSceneSettings((prev) => ({
+    setPanelSettings((prev) => ({
       ...prev,
       qualityKeywords: prev.qualityKeywords.includes(keyword)
         ? prev.qualityKeywords.filter((k) => k !== keyword)
@@ -1034,631 +920,495 @@ function ManualPanelGenerator({
     }));
   };
 
-  const addCharacter = () => {
-    const newCharacter = {
-      id: Date.now(),
-      name: `Character ${characters.length + 1}`,
-      description: "",
-      pose: "",
-      expression: "",
-      clothing: "",
-    };
-    setCharacters((prev) => [...prev, newCharacter]);
-  };
-
-  const updateCharacter = (id: number, field: string, value: string) => {
-    setCharacters((prev) =>
-      prev.map((char) => (char.id === id ? { ...char, [field]: value } : char))
-    );
-  };
-
-  const removeCharacter = (id: number) => {
-    setCharacters((prev) => prev.filter((char) => char.id !== id));
-  };
-
   const generatePanel = async () => {
     setIsGenerating(true);
-    // Simulate generation process
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    console.log("Generating panel with settings:", {
-      sceneSettings,
-      characters,
-      characterInteraction,
+    try {
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      console.log("Generating panel:", {
+        chapter: selectedChapter,
+        scene: selectedScene,
+        order: panelOrder,
+        settings: panelSettings,
+      });
+      onClose();
+    } catch (error) {
+      console.error("Generation failed:", error);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const resetDialog = () => {
+    setStep(1);
+    setSelectedChapter("");
+    setSelectedScene("");
+    setPanelOrder(1);
+    setPanelSettings({
+      description: "",
+      artStyle: "modern, clean anime style",
+      background: "",
+      lighting: "soft, diffused lighting",
+      cameraAngle: "medium shot",
+      selectedCharacters: [],
+      characterInteraction: "",
+      dialogue: "",
+      qualityKeywords: [],
     });
-    setIsGenerating(false);
+  };
+
+  const handleClose = () => {
+    resetDialog();
     onClose();
   };
 
+  const currentScenes = selectedChapter
+    ? mockScenes[selectedChapter as keyof typeof mockScenes] || []
+    : [];
+  const canProceed = {
+    step1: selectedChapter && selectedScene,
+    step2: panelOrder > 0,
+    step3: panelSettings.description.trim().length > 0,
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden bg-gradient-to-br from-slate-50 to-blue-50">
-        <DialogHeader className="border-b border-gray-200 pb-4">
-          <DialogTitle className="flex items-center gap-3 text-xl">
-            <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg">
-              <Wand2 className="w-6 h-6 text-white" />
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+        <DialogHeader className="border-b pb-4">
+          <DialogTitle className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg">
+              <Wand2 className="w-5 h-5 text-white" />
             </div>
             <div>
-              <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent font-bold">
-                Manual Panel Generator
-              </span>
-              <DialogDescription className="text-sm text-gray-600 mt-1">
-                Create stunning manga panels with AI-powered customization
+              <span className="text-lg font-bold">Generate Panel Manually</span>
+              <DialogDescription className="mt-1">
+                Step {step} of 3:{" "}
+                {step === 1
+                  ? "Select Location"
+                  : step === 2
+                  ? "Set Panel Order"
+                  : "Configure Panel Details"}
               </DialogDescription>
             </div>
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex h-[calc(95vh-120px)]">
-          {/* Sidebar Navigation */}
-          <div className="w-64 border-r border-gray-200 bg-white/50 backdrop-blur-sm">
-            <div className="p-4 space-y-2">
-              <button
-                className={`w-full text-left p-3 rounded-lg transition-all duration-200 ${
-                  activeTab === "scene"
-                    ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg"
-                    : "bg-white hover:bg-gray-50 text-gray-700 border border-gray-200"
-                }`}
-                onClick={() => setActiveTab("scene")}
-              >
-                <div className="flex items-center gap-3">
-                  <Image size={20} />
-                  <div>
-                    <div className="font-semibold">Scene Settings</div>
-                    <div className="text-xs opacity-80">
-                      Environment & Style
-                    </div>
-                  </div>
-                </div>
-              </button>
+        <div className="flex-1 overflow-y-auto">
+          {/* Step 1: Chapter and Scene Selection */}
+          {step === 1 && (
+            <div className="p-6 space-y-6">
+              <div className="text-center mb-8">
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                  Choose Chapter and Scene
+                </h2>
+                <p className="text-gray-600">
+                  Select where you want to add your new panel
+                </p>
+              </div>
 
-              <button
-                className={`w-full text-left p-3 rounded-lg transition-all duration-200 ${
-                  activeTab === "characters"
-                    ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg"
-                    : "bg-white hover:bg-gray-50 text-gray-700 border border-gray-200"
-                }`}
-                onClick={() => setActiveTab("characters")}
-              >
-                <div className="flex items-center gap-3">
-                  <Users size={20} />
-                  <div>
-                    <div className="font-semibold">Characters</div>
-                    <div className="text-xs opacity-80">
-                      {characters.length} added
-                    </div>
-                  </div>
-                </div>
-              </button>
-            </div>
-          </div>
-
-          {/* Main Content */}
-          <div className="flex-1 flex flex-col">
-            <ScrollArea className="flex-1 p-6">
-              {activeTab === "scene" ? (
-                <div className="space-y-6 max-w-4xl">
-                  {/* Scene Description */}
-                  <Card className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                    <CardHeader
-                      className="cursor-pointer"
-                      onClick={() => toggleSection("description")}
-                    >
-                      <CardTitle className="flex items-center justify-between text-lg">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-lg bg-gradient-to-br from-green-100 to-emerald-100">
-                            <FileText className="w-5 h-5 text-green-600" />
-                          </div>
-                          Scene Description
-                        </div>
-                        {expandedSections.has("description") ? (
-                          <ChevronUp size={20} />
-                        ) : (
-                          <ChevronDown size={20} />
-                        )}
-                      </CardTitle>
-                    </CardHeader>
-                    {expandedSections.has("description") && (
-                      <CardContent className="pt-0">
-                        <Textarea
-                          placeholder="Describe the overall scene, mood, and atmosphere... For example: 'A peaceful school rooftop at sunset with cherry blossoms floating in the warm breeze'"
-                          value={sceneSettings.description}
-                          onChange={(e) =>
-                            setSceneSettings((prev) => ({
-                              ...prev,
-                              description: e.target.value,
-                            }))
-                          }
-                          className="min-h-[120px] focus:ring-blue-500 border-gray-300"
-                        />
-                      </CardContent>
-                    )}
-                  </Card>
-
-                  {/* Art Style */}
-                  <Card className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                    <CardHeader
-                      className="cursor-pointer"
-                      onClick={() => toggleSection("style")}
-                    >
-                      <CardTitle className="flex items-center justify-between text-lg">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-lg bg-gradient-to-br from-purple-100 to-pink-100">
-                            <Palette className="w-5 h-5 text-purple-600" />
-                          </div>
-                          Art Style & Visual Settings
-                        </div>
-                        {expandedSections.has("style") ? (
-                          <ChevronUp size={20} />
-                        ) : (
-                          <ChevronDown size={20} />
-                        )}
-                      </CardTitle>
-                    </CardHeader>
-                    {expandedSections.has("style") && (
-                      <CardContent className="pt-0 space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div>
-                            <Label className="text-sm font-medium mb-3 block">
-                              Art Style
-                            </Label>
-                            <div className="grid grid-cols-2 gap-3">
-                              {predefinedOptions.artStyles.map((style) => (
-                                <button
-                                  key={style.value}
-                                  onClick={() =>
-                                    setSceneSettings((prev) => ({
-                                      ...prev,
-                                      artStyle: style.value,
-                                    }))
-                                  }
-                                  className={`p-3 rounded-lg border-2 transition-all duration-200 text-left ${
-                                    sceneSettings.artStyle === style.value
-                                      ? "border-blue-500 bg-blue-50 shadow-md"
-                                      : "border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-25"
-                                  }`}
-                                >
-                                  <div className="text-2xl mb-1">
-                                    {style.icon}
-                                  </div>
-                                  <div className="font-medium text-sm">
-                                    {style.label}
-                                  </div>
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          <div>
-                            <Label className="text-sm font-medium mb-3 block">
-                              Camera Angle
-                            </Label>
-                            <div className="grid grid-cols-2 gap-3">
-                              {predefinedOptions.cameraAngles.map((angle) => (
-                                <button
-                                  key={angle.value}
-                                  onClick={() =>
-                                    setSceneSettings((prev) => ({
-                                      ...prev,
-                                      cameraAngle: angle.value,
-                                    }))
-                                  }
-                                  className={`p-3 rounded-lg border-2 transition-all duration-200 text-left ${
-                                    sceneSettings.cameraAngle === angle.value
-                                      ? "border-blue-500 bg-blue-50 shadow-md"
-                                      : "border-gray-200 bg-white hover:border-blue-300"
-                                  }`}
-                                >
-                                  <div className="text-2xl mb-1">
-                                    {angle.icon}
-                                  </div>
-                                  <div className="font-medium text-sm">
-                                    {angle.label}
-                                  </div>
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    )}
-                  </Card>
-
-                  {/* Environment */}
-                  <Card className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                    <CardHeader
-                      className="cursor-pointer"
-                      onClick={() => toggleSection("environment")}
-                    >
-                      <CardTitle className="flex items-center justify-between text-lg">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-lg bg-gradient-to-br from-blue-100 to-cyan-100">
-                            <MapPin className="w-5 h-5 text-blue-600" />
-                          </div>
-                          Environment & Lighting
-                        </div>
-                        {expandedSections.has("environment") ? (
-                          <ChevronUp size={20} />
-                        ) : (
-                          <ChevronDown size={20} />
-                        )}
-                      </CardTitle>
-                    </CardHeader>
-                    {expandedSections.has("environment") && (
-                      <CardContent className="pt-0 space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div>
-                            <Label className="text-sm font-medium mb-3 block">
-                              Background Setting
-                            </Label>
-                            <div className="grid grid-cols-2 gap-3">
-                              {predefinedOptions.backgrounds.map((bg) => (
-                                <button
-                                  key={bg.value}
-                                  onClick={() =>
-                                    setSceneSettings((prev) => ({
-                                      ...prev,
-                                      background: bg.value,
-                                    }))
-                                  }
-                                  className={`p-3 rounded-lg border-2 transition-all duration-200 text-left ${
-                                    sceneSettings.background === bg.value
-                                      ? "border-green-500 bg-green-50 shadow-md"
-                                      : "border-gray-200 bg-white hover:border-green-300"
-                                  }`}
-                                >
-                                  <div className="text-2xl mb-1">{bg.icon}</div>
-                                  <div className="font-medium text-sm">
-                                    {bg.label}
-                                  </div>
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          <div>
-                            <Label className="text-sm font-medium mb-3 block">
-                              Lighting
-                            </Label>
-                            <div className="grid grid-cols-2 gap-3">
-                              {predefinedOptions.lighting.map((light) => (
-                                <button
-                                  key={light.value}
-                                  onClick={() =>
-                                    setSceneSettings((prev) => ({
-                                      ...prev,
-                                      lighting: light.value,
-                                    }))
-                                  }
-                                  className={`p-3 rounded-lg border-2 transition-all duration-200 text-left ${
-                                    sceneSettings.lighting === light.value
-                                      ? "border-yellow-500 bg-yellow-50 shadow-md"
-                                      : "border-gray-200 bg-white hover:border-yellow-300"
-                                  }`}
-                                >
-                                  <div className="text-2xl mb-1">
-                                    {light.icon}
-                                  </div>
-                                  <div className="font-medium text-sm">
-                                    {light.label}
-                                  </div>
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    )}
-                  </Card>
-
-                  {/* Quality Settings */}
-                  <Card className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                    <CardHeader
-                      className="cursor-pointer"
-                      onClick={() => toggleSection("quality")}
-                    >
-                      <CardTitle className="flex items-center justify-between text-lg">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-lg bg-gradient-to-br from-amber-100 to-orange-100">
-                            <Sparkles className="w-5 h-5 text-amber-600" />
-                          </div>
-                          Quality Enhancers
-                        </div>
-                        {expandedSections.has("quality") ? (
-                          <ChevronUp size={20} />
-                        ) : (
-                          <ChevronDown size={20} />
-                        )}
-                      </CardTitle>
-                    </CardHeader>
-                    {expandedSections.has("quality") && (
-                      <CardContent className="pt-0">
-                        <div className="flex flex-wrap gap-2">
-                          {predefinedOptions.qualityKeywords.map((keyword) => (
-                            <Badge
-                              key={keyword}
-                              variant={
-                                sceneSettings.qualityKeywords.includes(keyword)
-                                  ? "default"
-                                  : "outline"
-                              }
-                              className={`cursor-pointer transition-all hover:scale-105 ${
-                                sceneSettings.qualityKeywords.includes(keyword)
-                                  ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-md"
-                                  : "hover:bg-blue-50 hover:border-blue-300"
-                              }`}
-                              onClick={() =>
-                                handleQualityKeywordToggle(keyword)
-                              }
-                            >
-                              {keyword}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <Label className="text-sm font-medium mb-3 block">
+                    Chapter
+                  </Label>
+                  <Select
+                    value={selectedChapter}
+                    onValueChange={setSelectedChapter}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select a chapter" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {mockChapters.map((chapter) => (
+                        <SelectItem key={chapter.id} value={chapter.id}>
+                          <div className="flex items-center justify-between w-full">
+                            <span>{chapter.title}</span>
+                            <Badge variant="secondary" className="ml-2">
+                              {chapter.sceneCount} scenes
                             </Badge>
-                          ))}
-                        </div>
-                      </CardContent>
-                    )}
-                  </Card>
-
-                  {/* Character Interaction */}
-                  <Card className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-3 text-lg">
-                        <div className="p-2 rounded-lg bg-gradient-to-br from-pink-100 to-rose-100">
-                          <Users className="w-5 h-5 text-pink-600" />
-                        </div>
-                        Character Interaction
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <Textarea
-                        placeholder="Describe how characters interact in this scene... For example: 'Two friends laughing together while sharing a bento box'"
-                        value={characterInteraction}
-                        onChange={(e) =>
-                          setCharacterInteraction(e.target.value)
-                        }
-                        className="min-h-[100px] focus:ring-blue-500 border-gray-300"
-                      />
-                    </CardContent>
-                  </Card>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              ) : (
-                <div className="space-y-6 max-w-4xl">
-                  {characters.length === 0 ? (
-                    <Card className="border-2 border-dashed border-gray-300 bg-gradient-to-br from-gray-50 to-blue-50">
-                      <CardContent className="p-12 text-center">
-                        <div className="mx-auto h-20 w-20 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center text-blue-500 mb-4">
-                          <Users size={32} />
-                        </div>
-                        <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                          No characters added yet
-                        </h3>
-                        <p className="text-gray-600 mb-6">
-                          Add characters to bring your manga panel to life
-                        </p>
-                        <Button
-                          onClick={addCharacter}
-                          className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all"
-                        >
-                          <Plus className="mr-2 h-5 w-5" />
-                          Add Your First Character
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    <>
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-xl font-semibold text-gray-900">
-                          Characters ({characters.length})
-                        </h3>
-                        <Button
-                          onClick={addCharacter}
-                          className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-md hover:shadow-lg transition-all"
-                        >
-                          <Plus className="mr-2 h-4 w-4" />
-                          Add Character
-                        </Button>
-                      </div>
 
-                      <div className="space-y-4">
-                        {characters.map((character, index) => (
-                          <Card
-                            key={character.id}
-                            className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow"
-                          >
-                            <CardHeader className="pb-3">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-md">
-                                    {index + 1}
-                                  </div>
-                                  <div>
-                                    <CardTitle className="text-lg">
-                                      Character {index + 1}
-                                    </CardTitle>
-                                    <div className="text-sm text-gray-500">
-                                      Customize appearance and personality
-                                    </div>
-                                  </div>
-                                </div>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => removeCharacter(character.id)}
-                                  className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                              <div>
-                                <Label className="text-sm font-medium mb-2 block">
-                                  Character Name
-                                </Label>
-                                <Input
-                                  placeholder="Enter character name..."
-                                  value={character.name}
-                                  onChange={(e) =>
-                                    updateCharacter(
-                                      character.id,
-                                      "name",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="focus:ring-blue-500 border-gray-300"
-                                />
-                              </div>
-
-                              <div>
-                                <Label className="text-sm font-medium mb-2 block">
-                                  Character Description
-                                </Label>
-                                <Textarea
-                                  placeholder="Describe the character's appearance, personality, and unique features..."
-                                  value={character.description}
-                                  onChange={(e) =>
-                                    updateCharacter(
-                                      character.id,
-                                      "description",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="min-h-[80px] focus:ring-blue-500 border-gray-300"
-                                />
-                              </div>
-
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                  <Label className="text-sm font-medium mb-2 block">
-                                    Pose
-                                  </Label>
-                                  <Select
-                                    value={character.pose}
-                                    onValueChange={(value) =>
-                                      updateCharacter(
-                                        character.id,
-                                        "pose",
-                                        value
-                                      )
-                                    }
-                                  >
-                                    <SelectTrigger className="focus:ring-blue-500">
-                                      <SelectValue placeholder="Select pose" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {predefinedOptions.poses.map((pose) => (
-                                        <SelectItem
-                                          key={pose.value}
-                                          value={pose.value}
-                                        >
-                                          <div className="flex items-center gap-2">
-                                            <span>{pose.icon}</span>
-                                            {pose.label}
-                                          </div>
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-
-                                <div>
-                                  <Label className="text-sm font-medium mb-2 block">
-                                    Expression
-                                  </Label>
-                                  <Select
-                                    value={character.expression}
-                                    onValueChange={(value) =>
-                                      updateCharacter(
-                                        character.id,
-                                        "expression",
-                                        value
-                                      )
-                                    }
-                                  >
-                                    <SelectTrigger className="focus:ring-blue-500">
-                                      <SelectValue placeholder="Select expression" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {predefinedOptions.expressions.map(
-                                        (expression) => (
-                                          <SelectItem
-                                            key={expression.value}
-                                            value={expression.value}
-                                          >
-                                            <div className="flex items-center gap-2">
-                                              <span>{expression.icon}</span>
-                                              {expression.label}
-                                            </div>
-                                          </SelectItem>
-                                        )
-                                      )}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-
-                                <div>
-                                  <Label className="text-sm font-medium mb-2 block">
-                                    Clothing
-                                  </Label>
-                                  <Input
-                                    placeholder="Describe clothing..."
-                                    value={character.clothing}
-                                    onChange={(e) =>
-                                      updateCharacter(
-                                        character.id,
-                                        "clothing",
-                                        e.target.value
-                                      )
-                                    }
-                                    className="focus:ring-blue-500 border-gray-300"
-                                  />
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    </>
-                  )}
+                <div>
+                  <Label className="text-sm font-medium mb-3 block">
+                    Scene
+                  </Label>
+                  <Select
+                    value={selectedScene}
+                    onValueChange={setSelectedScene}
+                    disabled={!selectedChapter}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select a scene" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {currentScenes.map((scene) => (
+                        <SelectItem key={scene.id} value={scene.id}>
+                          <div className="flex items-center justify-between w-full">
+                            <span>{scene.title}</span>
+                            <Badge variant="outline" className="ml-2">
+                              {scene.panelCount} panels
+                            </Badge>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
+              </div>
+
+              {selectedChapter && selectedScene && (
+                <Card className="bg-blue-50 border-blue-200">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 text-blue-700">
+                      <FileText className="w-4 h-4" />
+                      <span className="font-medium">Selected:</span>
+                    </div>
+                    <p className="text-blue-600 mt-1">
+                      {
+                        mockChapters.find((c) => c.id === selectedChapter)
+                          ?.title
+                      }{" "}
+                      →{" "}
+                      {currentScenes.find((s) => s.id === selectedScene)?.title}
+                    </p>
+                  </CardContent>
+                </Card>
               )}
-            </ScrollArea>
+            </div>
+          )}
 
-            {/* Footer */}
-            <div className="border-t border-gray-200 bg-white/80 backdrop-blur-sm p-6">
-              <div className="flex justify-between items-center">
-                <div className="text-sm text-gray-600">
-                  {activeTab === "scene"
-                    ? "Configure your scene settings"
-                    : `${characters.length} characters added`}
-                </div>
-                <div className="flex gap-3">
-                  <Button
-                    variant="outline"
-                    onClick={onClose}
-                    className="border-gray-300"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={generatePanel}
-                    disabled={isGenerating}
-                    className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all min-w-[140px]"
-                  >
-                    {isGenerating ? (
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        Generating...
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <Wand2 className="w-4 h-4" />
-                        Generate Panel
-                      </div>
+          {/* Step 2: Panel Order */}
+          {step === 2 && (
+            <div className="p-6 space-y-6">
+              <div className="text-center mb-8">
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                  Set Panel Order
+                </h2>
+                <p className="text-gray-600">
+                  Choose where to insert the new panel in the scene
+                </p>
+              </div>
+
+              <div className="max-w-md mx-auto">
+                <Label className="text-sm font-medium mb-3 block">
+                  Panel Position
+                </Label>
+                <Select
+                  value={panelOrder.toString()}
+                  onValueChange={(value) => setPanelOrder(parseInt(value))}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: maxPanelOrder }, (_, i) => i + 1).map(
+                      (order) => (
+                        <SelectItem key={order} value={order.toString()}>
+                          <div className="flex items-center justify-between w-full">
+                            <span>Position {order}</span>
+                            {order === maxPanelOrder && (
+                              <Badge variant="secondary" className="ml-2">
+                                Last
+                              </Badge>
+                            )}
+                          </div>
+                        </SelectItem>
+                      )
                     )}
-                  </Button>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500 mt-2">
+                  Current scene has {maxPanelOrder - 1} panels. Adding at
+                  position {panelOrder}.
+                </p>
+              </div>
+
+              <Card className="bg-green-50 border-green-200 max-w-md mx-auto">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 text-green-700">
+                    <Settings className="w-4 h-4" />
+                    <span className="font-medium">Panel Order:</span>
+                  </div>
+                  <p className="text-green-600 mt-1">
+                    Panel will be inserted at position {panelOrder} of{" "}
+                    {maxPanelOrder}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Step 3: Panel Configuration */}
+          {step === 3 && (
+            <div className="p-6 space-y-6">
+              <div className="text-center mb-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                  Configure Panel Details
+                </h2>
+                <p className="text-gray-600">
+                  Set up the visual and narrative elements
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Left Column */}
+                <div className="space-y-6">
+                  {/* Description */}
+                  <div>
+                    <Label className="text-sm font-medium mb-2 block">
+                      Panel Description *
+                    </Label>
+                    <Textarea
+                      placeholder="Describe what happens in this panel..."
+                      value={panelSettings.description}
+                      onChange={(e) =>
+                        setPanelSettings((prev) => ({
+                          ...prev,
+                          description: e.target.value,
+                        }))
+                      }
+                      className="min-h-[100px]"
+                    />
+                  </div>
+
+                  {/* Characters */}
+                  <div>
+                    <Label className="text-sm font-medium mb-2 block">
+                      Characters
+                    </Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {mockCharacters.map((character) => (
+                        <button
+                          key={character.id}
+                          onClick={() => handleCharacterToggle(character.id)}
+                          className={`p-3 rounded-lg border text-left transition-all ${
+                            panelSettings.selectedCharacters.includes(
+                              character.id
+                            )
+                              ? "border-blue-500 bg-blue-50 text-blue-700"
+                              : "border-gray-200 hover:border-gray-300"
+                          }`}
+                        >
+                          <div className="font-medium text-sm">
+                            {character.name}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {character.description}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Location/Background */}
+                  <div>
+                    <Label className="text-sm font-medium mb-2 block">
+                      Background Location
+                    </Label>
+                    <Select
+                      value={panelSettings.background}
+                      onValueChange={(value) =>
+                        setPanelSettings((prev) => ({
+                          ...prev,
+                          background: value,
+                        }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a location" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {mockLocations.map((location) => (
+                          <SelectItem key={location.id} value={location.name}>
+                            <div>
+                              <div className="font-medium">{location.name}</div>
+                              <div className="text-xs text-gray-500">
+                                {location.description}
+                              </div>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Right Column */}
+                <div className="space-y-6">
+                  {/* Art Style */}
+                  <div>
+                    <Label className="text-sm font-medium mb-2 block">
+                      Art Style
+                    </Label>
+                    <Select
+                      value={panelSettings.artStyle}
+                      onValueChange={(value) =>
+                        setPanelSettings((prev) => ({
+                          ...prev,
+                          artStyle: value,
+                        }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {artStyles.map((style) => (
+                          <SelectItem key={style.value} value={style.value}>
+                            {style.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Lighting */}
+                  <div>
+                    <Label className="text-sm font-medium mb-2 block">
+                      Lighting
+                    </Label>
+                    <Select
+                      value={panelSettings.lighting}
+                      onValueChange={(value) =>
+                        setPanelSettings((prev) => ({
+                          ...prev,
+                          lighting: value,
+                        }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {lightingOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Camera Angle */}
+                  <div>
+                    <Label className="text-sm font-medium mb-2 block">
+                      Camera Angle
+                    </Label>
+                    <Select
+                      value={panelSettings.cameraAngle}
+                      onValueChange={(value) =>
+                        setPanelSettings((prev) => ({
+                          ...prev,
+                          cameraAngle: value,
+                        }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {cameraAngles.map((angle) => (
+                          <SelectItem key={angle.value} value={angle.value}>
+                            {angle.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Dialogue */}
+                  <div>
+                    <Label className="text-sm font-medium mb-2 block">
+                      Dialogue (Optional)
+                    </Label>
+                    <Textarea
+                      placeholder="Add any dialogue or speech bubbles..."
+                      value={panelSettings.dialogue}
+                      onChange={(e) =>
+                        setPanelSettings((prev) => ({
+                          ...prev,
+                          dialogue: e.target.value,
+                        }))
+                      }
+                      className="min-h-[80px]"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Quality Keywords */}
+              <div>
+                <Label className="text-sm font-medium mb-2 block">
+                  Quality Enhancers (Optional)
+                </Label>
+                <div className="flex flex-wrap gap-2">
+                  {qualityKeywords.map((keyword) => (
+                    <Badge
+                      key={keyword}
+                      variant={
+                        panelSettings.qualityKeywords.includes(keyword)
+                          ? "default"
+                          : "outline"
+                      }
+                      className="cursor-pointer"
+                      onClick={() => handleQualityKeywordToggle(keyword)}
+                    >
+                      {keyword}
+                    </Badge>
+                  ))}
                 </div>
               </div>
             </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="border-t p-4 flex justify-between items-center">
+          <div className="text-sm text-gray-600">Step {step} of 3</div>
+          <div className="flex gap-3">
+            {step > 1 && (
+              <Button variant="outline" onClick={handleBack}>
+                Back
+              </Button>
+            )}
+            <Button variant="outline" onClick={handleClose}>
+              Cancel
+            </Button>
+            {step < 3 ? (
+              <Button
+                onClick={handleNext}
+                disabled={
+                  (step === 1 && !canProceed.step1) ||
+                  (step === 2 && !canProceed.step2)
+                }
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                Next
+              </Button>
+            ) : (
+              <Button
+                onClick={generatePanel}
+                disabled={!canProceed.step3 || isGenerating}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 min-w-[120px]"
+              >
+                {isGenerating ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Generating...
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Wand2 className="w-4 h-4" />
+                    Generate Panel
+                  </div>
+                )}
+              </Button>
+            )}
           </div>
         </div>
       </DialogContent>
