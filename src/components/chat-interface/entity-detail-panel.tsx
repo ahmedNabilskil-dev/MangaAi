@@ -1311,7 +1311,8 @@ function SceneDetails({
                 </h3>
               </div>
               <p className="text-sm text-emerald-800 dark:text-emerald-200 break-words">
-                Location ID: {scene.sceneContext.locationId}
+                Location:{" "}
+                {getLocationName(scene.sceneContext.locationId, projectData)}
                 {scene.sceneContext.locationVariationId && (
                   <span className="block mt-1">
                     Variation: {scene.sceneContext.locationVariationId}

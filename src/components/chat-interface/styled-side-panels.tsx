@@ -706,6 +706,7 @@ interface EnhancedTemplateLibraryPanelProps {
   selectedEntity?: SelectedState | null;
   onEntitySelect?: (entity: SelectedState | null) => void;
   onAssetSelect?: (asset: any) => void; // Optional prop for consistency
+  onTemplateCreate?: (type: "outfits" | "locations") => void; // New prop for template creation
 }
 
 export function EnhancedTemplateLibraryPanel({
@@ -714,6 +715,7 @@ export function EnhancedTemplateLibraryPanel({
   selectedEntity,
   onEntitySelect,
   onAssetSelect, // Accept but ignore this prop
+  onTemplateCreate, // Accept template creation callback
 }: EnhancedTemplateLibraryPanelProps) {
   const [activeTab, setActiveTab] = useState<"outfits" | "locations">(
     "outfits"
@@ -859,7 +861,11 @@ export function EnhancedTemplateLibraryPanel({
                 })}
               </div>
               <p className="text-gray-400 mb-4">No {activeTab} templates yet</p>
-              <Button size="sm" className={tabConfig[activeTab].buttonClasses}>
+              <Button
+                size="sm"
+                className={tabConfig[activeTab].buttonClasses}
+                onClick={() => onTemplateCreate?.(activeTab)}
+              >
                 Create Template
               </Button>
             </div>

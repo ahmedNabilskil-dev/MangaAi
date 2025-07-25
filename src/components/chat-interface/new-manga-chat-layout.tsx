@@ -1,6 +1,10 @@
 "use client";
 
 import { Message } from "@/ai/adapters/type";
+import {
+  LocationTemplateGenerationPrompt,
+  OutfitTemplateGenerationPrompt,
+} from "@/ai/flows/generation-flows";
 import { ProcessMangaRequestFlow } from "@/ai/flows/planner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -249,6 +253,89 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
     }
   }, [messages, projectId]);
 
+  // Handle template creation
+  const handleTemplateCreate = useCallback(
+    async (type: "outfits" | "locations") => {
+      try {
+        setIsLoading(true);
+
+        // Add a system message indicating template generation
+        const systemMessage: ChatMessage = {
+          id: Date.now().toString(),
+          role: "assistant",
+          content: `🎨 **Creating ${
+            type === "outfits" ? "Outfit" : "Location"
+          } Templates**\n\nI'm generating new ${type} templates based on your project context. This may take a moment...`,
+          timestamp: new Date().toISOString(),
+          type: "text",
+        };
+
+        setMessages((prev) => [...prev, systemMessage]);
+
+        // Load current project data
+        const currentProjectData = await getProject(projectId);
+
+        if (type === "outfits") {
+          const result = await OutfitTemplateGenerationPrompt({
+            userInput: `Create new outfit templates for the manga project based on the existing characters and story context.`,
+            projectContext: currentProjectData,
+            existingCharacters: currentProjectData?.characters || [],
+            existingOutfitTemplates: currentProjectData?.outfitTemplates || [],
+            existingLocationTemplates:
+              currentProjectData?.locationTemplates || [],
+          });
+
+          // Add success message
+          const successMessage: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            role: "assistant",
+            content: `✅ **Outfit Templates Created Successfully!**\n\nI've generated new outfit templates for your project. You can find them in the Templates panel. These templates are designed to work with your existing characters and story context.`,
+            timestamp: new Date().toISOString(),
+            type: "text",
+          };
+          setMessages((prev) => [...prev, successMessage]);
+        } else if (type === "locations") {
+          const result = await LocationTemplateGenerationPrompt({
+            userInput: `Create new location templates for the manga project based on the existing story context and settings.`,
+            projectContext: currentProjectData,
+            existingLocationTemplates:
+              currentProjectData?.locationTemplates || [],
+          });
+
+          // Add success message
+          const successMessage: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            role: "assistant",
+            content: `✅ **Location Templates Created Successfully!**\n\nI've generated new location templates for your project. You can find them in the Templates panel. These locations complement your story's settings and atmosphere.`,
+            timestamp: new Date().toISOString(),
+            type: "text",
+          };
+          setMessages((prev) => [...prev, successMessage]);
+        }
+      } catch (error) {
+        console.error("Template creation error:", error);
+        toast({
+          title: "Template Creation Failed",
+          description: `Failed to create ${type} templates. Please try again.`,
+          variant: "destructive",
+        });
+
+        // Add error message
+        const errorMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: `❌ **Template Creation Failed**\n\nI encountered an error while creating ${type} templates. Please try again or let me know if you need assistance.`,
+          timestamp: new Date().toISOString(),
+          type: "text",
+        };
+        setMessages((prev) => [...prev, errorMessage]);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [projectId, toast, setIsLoading, setMessages]
+  );
+
   // Handle form submission
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -414,17 +501,28 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
             <div className="flex-1 min-h-0 overflow-hidden">
               {sidePanelTabs.map((tab) => {
                 if (tab.id === sidePanel.activeTab) {
+                  const commonProps = {
+                    key: tab.id,
+                    projectId,
+                    onComponentSelect: handleComponentSelect,
+                    selectedEntity,
+                    onEntitySelect: handleEntitySelect,
+                    onAssetSelect: handleAssetSelect,
+                  };
+
+                  // Handle templates panel specifically
+                  if (tab.id === "templates") {
+                    return (
+                      <EnhancedTemplateLibraryPanel
+                        {...commonProps}
+                        onTemplateCreate={handleTemplateCreate}
+                      />
+                    );
+                  }
+
+                  // Handle other panels
                   const Component = tab.component;
-                  return (
-                    <Component
-                      key={tab.id}
-                      projectId={projectId}
-                      onComponentSelect={handleComponentSelect}
-                      selectedEntity={selectedEntity}
-                      onEntitySelect={handleEntitySelect}
-                      onAssetSelect={handleAssetSelect}
-                    />
-                  );
+                  return <Component {...commonProps} />;
                 }
                 return null;
               })}
