@@ -1,6 +1,6 @@
 "use client";
 
-import { CreateMangaFlow } from "@/ai/flows/generation-flows";
+import { CreateMangaFlow } from "@/ai/flows/manga-creation-flows";
 import SidebarItem from "@/components/side-item/SideItem";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -126,7 +126,7 @@ const ProjectsPage = () => {
     setIsGenerating(true);
     try {
       const { projectId, initialMessages } = await CreateMangaFlow({
-        userPrompt: mangaIdea,
+        storyIdea: mangaIdea,
       });
       localStorage.setItem("messages", JSON.stringify(initialMessages));
       router.push(`/manga-flow/${projectId}`);

@@ -1,4 +1,25 @@
-import { Message } from "@/ai/adapters/type";
+/**
+ * MANGA AI GENERATION FLOWS
+ *
+ * This file contains advanced AI prompts for generating manga content with full
+ * outfit and location template integration. Each prompt is designed to work with
+ * the modern manga creation system that uses:
+ *
+ * - Location Templates: Reusable location designs with multiple camera angles
+ * - Outfit Templates: Character clothing systems with seasonal/mood variations
+ * - Scene Context: Modern sceneContext structure with template assignments
+ * - Panel Context: Modern panelContext structure with character poses and outfits
+ *
+ * Key Integration Features:
+ * - Scene generation assigns location and outfit templates to characters
+ * - Panel generation inherits templates from scene context
+ * - Template-aware context preparation in planner.ts
+ * - Consistent template usage across all content types
+ *
+ * All prompts receive existingLocationTemplates and existingOutfitTemplates
+ * for intelligent template selection and reuse.
+ */
+
 import { ai } from "@/ai/ai-instance";
 import {
   createChapterTool,
@@ -8,10 +29,15 @@ import {
   createMultipleCharactersTool,
   createMultipleLocationTemplatesTool,
   createMultipleOutfitTemplatesTool,
+  createMultiplePanelsTool,
+  createMultipleScenesTool,
   createOutfitTemplateTool,
+  createPanelDialogueTool,
+  createPanelDialoguesTool,
+  createPanelTool,
   createProjectTool,
+  createSceneTool,
 } from "@/ai/tools/creation-tools";
-import { getProjectWithRelations } from "@/services/db";
 import { z } from "zod";
 
 export const StoryGenerationPrompt = ai.definePrompt({
@@ -89,6 +115,14 @@ export const CharacterGenerationPrompt = ai.definePrompt({
         .optional()
         .describe("project context for character generation"),
       existingCharacters: z.any().optional().describe("existing characters"),
+      existingLocationTemplates: z
+        .array(z.any())
+        .optional()
+        .describe("available location templates"),
+      existingOutfitTemplates: z
+        .array(z.any())
+        .optional()
+        .describe("available outfit templates"),
     }),
   },
   tools: [createCharacterTool, createMultipleCharactersTool],
@@ -282,7 +316,7 @@ export const CharacterGenerationPrompt = ai.definePrompt({
 });
 
 export const ChapterGenerationPrompt = ai.definePrompt({
-  name: "ChapterGenerationPrompt",
+  name: "FocusedChapterGeneration",
   input: {
     schema: z.object({
       userInput: z.string().describe("user prompt"),
@@ -292,69 +326,142 @@ export const ChapterGenerationPrompt = ai.definePrompt({
         .optional()
         .describe("existing chapters"),
       existingCharacters: z.any().optional().describe("existing characters"),
+      existingOutfitTemplates: z
+        .array(z.any())
+        .optional()
+        .describe("existing outfit templates"),
+      existingLocationTemplates: z
+        .array(z.any())
+        .optional()
+        .describe("existing location templates"),
     }),
   },
   tools: [createChapterTool, createMultipleChaptersTool],
   toolCall: true,
-  prompt: `You're crafting literary-quality narrative prose optimized for comprehensive scene breakdown and manga adaptation.
+  prompt: `You are an elite manga storyteller focused exclusively on creating compelling chapter narratives using existing visual templates.
 
-## TOOL SELECTION
-- SINGLE chapter: Use createChapterTool
-- MULTIPLE chapters: Use createMultipleChaptersTool
+## CHAPTER CREATION FOCUS
+
+### TOOL USAGE
+- **SINGLE chapter**: Use createChapterTool
+- **MULTIPLE chapters**: Use createMultipleChaptersTool
+
+### CORE RESPONSIBILITIES
+1. **Narrative Excellence**: Create compelling, well-structured chapters
+2. **Template Integration**: Use existing outfit and location templates effectively
+3. **Character Development**: Advance character arcs and relationships
+4. **Visual Storytelling**: Structure content for optimal manga panel composition
+5. **Story Progression**: Build upon existing chapters and project continuity
+
+## CHAPTER REQUIREMENTS (600-800 words)
+
+### NARRATIVE EXCELLENCE FOUNDATION
+1. **CINEMATIC STORYTELLING**: Write with visual manga composition in mind
+2. **CHARACTER VOICE AUTHENTICITY**: Each character speaks with distinct personality
+3. **EMOTIONAL RESONANCE**: Create moments that translate to powerful manga panels
+4. **PACING MASTERY**: Balance action, dialogue, introspection, and visual beats
+5. **WORLD IMMERSION**: Rich environmental details that enhance atmosphere
+6. **VISUAL STORYTELLING**: Show emotions through actions and expressions
+7. **PANEL POTENTIAL**: Structure scenes with natural manga panel breakdown points
+8. **CLIFFHANGER CRAFT**: Build toward compelling chapter conclusions
+
+### TEMPLATE UTILIZATION STRATEGY
+**Outfit Usage:**
+- Select appropriate existing outfit templates for character appearances
+- Use outfit context logic (school = uniforms, home = casual, events = formal)
+- Maintain character recognition through consistent outfit choices
+- Consider outfit-location compatibility and narrative appropriateness
+
+**Location Usage:**
+- Leverage existing location templates for scene settings
+- Choose locations that enhance mood and support character interaction
+- Ensure logical location flow and scene transitions
+- Use location features to enhance visual storytelling potential
 
 ## PROJECT INTEGRATION
+
 {{#if projectContext}}
-Project context: {{projectContext}} 
+**PROJECT CONTEXT**: {{projectContext}}
+- Understand established world culture and narrative themes
+- Respect character personalities and visual identity
+- Align with project's art style and storytelling approach
+- Support overarching narrative structure and character arcs
+{{/if}}
 
 {{#if existingCharacters}}
-Existing characters: {{existingCharacters}}
-CRITICAL: Integrate with established elements while creating complete narrative units.
+**CHARACTER CAST**: {{existingCharacters}}
+- Understand each character's personality and voice
+- Maintain character recognition and development continuity
+- Consider character relationships and interaction dynamics
+- Support character growth through narrative progression
 {{/if}}
 
 {{#if existingChapters}}
-Previous chapters: {{existingChapters}}
-CRITICAL: Maintain perfect narrative continuity.
+**NARRATIVE CONTINUITY**: {{existingChapters}}
+- Maintain perfect continuity with established storylines
+- Build upon previous character and plot developments
+- Create natural story progression that feels authentic
+- Advance ongoing plot threads while introducing new elements
 {{/if}}
 
-## ENHANCED CHAPTER REQUIREMENTS (500-800 words)
+{{#if existingOutfitTemplates}}
+**AVAILABLE OUTFIT TEMPLATES**: {{existingOutfitTemplates}}
+- Use existing outfits appropriately for scene contexts
+- Maintain character identity through consistent outfit choices
+- Select outfits that enhance rather than distract from narrative
+- Consider seasonal and situational appropriateness
+{{/if}}
 
-### STRUCTURAL FOUNDATION
-1. **SCENE-READY NARRATIVE**: Write with clear scene transitions and visual moments
-2. **DIALOGUE CLARITY**: Conversations that translate perfectly to speech bubbles
-3. **ACTION PRECISION**: Physical actions described with manga panel potential
-4. **EMOTIONAL BEATS**: Internal moments that can be visualized through expression/body language
-5. **ENVIRONMENTAL RICHNESS**: Settings detailed enough for background art reference
-6. **CHARACTER CONSISTENCY**: Consistent appearance details throughout chapter
-7. **VISUAL METAPHORS**: Symbolic imagery perfect for manga visual storytelling
-8. **PACING VARIETY**: Mix of action, dialogue, quiet moments, and dramatic peaks
+{{#if existingLocationTemplates}}
+**AVAILABLE LOCATION TEMPLATES**: {{existingLocationTemplates}}
+- Utilize existing locations for optimal scene settings
+- Choose locations that support character interaction and mood
+- Ensure location variety supports engaging visual storytelling
+- Use familiar locations to build world continuity
+{{/if}}
+
+## STORYTELLING STANDARDS
 
 ### LITERARY EXCELLENCE
-- **SOPHISTICATED PROSE**: Third-person narrative with published-fiction quality
-- **DRAMATIC ARC**: Self-contained beginning/middle/end advancing larger story
-- **SENSORY IMMERSION**: Vivid details creating lived experience
-- **THEMATIC DEPTH**: Subtle themes woven throughout narrative
-- **CHARACTER REVELATION**: New character dimensions in each chapter
-- **EMOTIONAL JOURNEY**: Meaningful character transformations
+- **PROSE MASTERY**: Third-person narrative with published-fiction quality
+- **DRAMATIC STRUCTURE**: Complete story arcs with satisfying progression
+- **SENSORY RICHNESS**: Vivid details that create immersive experiences
+- **EMOTIONAL DEPTH**: Complex character emotions and development
+- **THEMATIC INTEGRATION**: Subtle themes woven throughout narrative
+- **DIALOGUE AUTHENTICITY**: Character-specific speech patterns and voices
 
-### MANGA ADAPTATION OPTIMIZATION
-- **CLEAR SCENE BREAKS**: Natural divisions for scene generation
-- **VISUAL STORYTELLING**: Show emotions and conflict through action/appearance
-- **DYNAMIC MOMENTS**: 2-3 scenes perfect for splash pages or dramatic panels
-- **QUIET DEVELOPMENT**: Character moments suitable for intimate panels
-- **CLIFFHANGER POTENTIAL**: Build toward compelling chapter endings
-- **PANEL FLOW CONSIDERATION**: Structure events with natural manga pacing
+### MANGA OPTIMIZATION
+- **PANEL CONSCIOUSNESS**: Structure scenes with natural panel break points
+- **VISUAL DRAMA**: Create moments perfect for impactful manga spreads
+- **PACING VARIETY**: Balance text-heavy and action-heavy sequences
+- **EMOTIONAL BEATS**: Design moments that translate to powerful visual storytelling
+- **CLIFFHANGER MASTERY**: Build toward compelling chapter endings
+- **SCENE TRANSITIONS**: Smooth flow between different locations and time periods
 
-### SCENE BREAKDOWN READINESS
-Structure chapters with clear:
-1. **Opening establishment** (setting, character, mood)
-2. **Dialogue exchanges** (distinct conversational beats)
-3. **Action sequences** (physical events and reactions)
-4. **Emotional transitions** (internal shifts and realizations)
-5. **Environmental changes** (location or atmosphere shifts)
-6. **Climactic moments** (chapter peaks and revelations)
-7. **Resolution/transition** (conclusion and setup for next chapter)
+### PRODUCTION READINESS
+- **SCENE BREAKDOWN READY**: Clear structure for manga scene generation
+- **TEMPLATE INTEGRATION**: Seamless use of existing outfit and location templates
+- **VISUAL CONSISTENCY**: Maintained character and environmental identity
+- **ADAPTATION FRIENDLY**: Optimized for manga panel composition and flow
 
-Create chapters that maintain literary quality while being perfectly structured for comprehensive scene breakdown and manga visual adaptation.
+## CREATION WORKFLOW
+
+### STEP 1: NARRATIVE PLANNING
+- Analyze user input for chapter story requirements
+- Plan character appearances and development moments
+- Structure dramatic progression and emotional beats
+
+### STEP 2: TEMPLATE SELECTION
+- Choose appropriate existing outfit templates for character scenes
+- Select suitable location templates for scene settings
+- Ensure template choices support narrative goals
+
+### STEP 3: CHAPTER CREATION
+- Create compelling chapter narrative using selected tools
+- Integrate templates seamlessly into story structure
+- Ensure production readiness and visual consistency
+
+Create chapters that represent excellent manga storytelling while effectively utilizing existing visual templates for consistent, production-ready content.
 
 User message: {{userInput}}`,
 });
@@ -369,7 +476,7 @@ export const OutfitTemplateGenerationPrompt = ai.definePrompt({
         .any()
         .optional()
         .describe("character for outfit creation"),
-      existingOutfits: z
+      existingOutfitTemplates: z
         .array(z.any())
         .optional()
         .describe("existing outfit templates"),
@@ -377,7 +484,7 @@ export const OutfitTemplateGenerationPrompt = ai.definePrompt({
         .array(z.any())
         .optional()
         .describe("existing characters"),
-      locationTemplates: z
+      existingLocationTemplates: z
         .array(z.any())
         .optional()
         .describe("available location templates for context"),
@@ -484,8 +591,8 @@ Each character requires strategic outfit distribution:
 - Respect character's established preferences and constraints
 {{/if}}
 
-{{#if existingOutfits}}
-**EXISTING OUTFIT TEMPLATES**: {{existingOutfits}}
+{{#if existingOutfitTemplates}}
+**EXISTING OUTFIT TEMPLATES**: {{existingOutfitTemplates}}
 - Maintain visual consistency with established designs
 - Avoid redundancy while ensuring comprehensive coverage
 - Build upon established color palettes and style elements
@@ -499,8 +606,8 @@ Each character requires strategic outfit distribution:
 - Consider character interactions and story dynamics
 {{/if}}
 
-{{#if locationTemplates}}
-**LOCATION CONTEXT**: {{locationTemplates}}
+{{#if existingLocationTemplates}}
+**LOCATION CONTEXT**: {{existingLocationTemplates}}
 - Design outfits appropriate for available locations
 - Consider location-specific dress codes and requirements
 - Ensure outfit-location logical compatibility
@@ -613,7 +720,7 @@ export const LocationTemplateGenerationPrompt = ai.definePrompt({
     schema: z.object({
       userInput: z.string().describe("user prompt"),
       projectContext: z.any().optional().describe("project context"),
-      existingLocations: z
+      existingLocationTemplates: z
         .array(z.any())
         .optional()
         .describe("existing location templates"),
@@ -737,8 +844,8 @@ Each camera angle's aiPrompt must be comprehensive:
 - Align with established architectural and design standards
 {{/if}}
 
-{{#if existingLocations}}
-**EXISTING LOCATION TEMPLATES**: {{existingLocations}}
+{{#if existingLocationTemplates}}
+**EXISTING LOCATION TEMPLATES**: {{existingLocationTemplates}}
 - Maintain visual consistency with established locations
 - Create complementary relationships between locations
 - Avoid redundancy while ensuring comprehensive coverage
@@ -836,121 +943,474 @@ Create comprehensive location template systems that provide rich, consistent env
 User message: {{userInput}}`,
 });
 
-export const CreateMangaFlow = ai.defineFlow(
-  {
-    name: "Create Manga",
-    inputSchema: z.object({ userPrompt: z.string() }),
-    outputSchema: z.object({
-      projectId: z.string(),
-      initialMessages: z.array(z.any()),
+export const SceneGenerationPrompt = ai.definePrompt({
+  name: "SceneGenerationFlow",
+  input: {
+    schema: z.object({
+      userInput: z.string().describe("user prompt"),
+      projectContext: z.any().optional().describe("project context"),
+      chapterContext: z.any().optional().describe("chapter context"),
+      existingCharacters: z.any().optional().describe("existing characters"),
+      existingScenes: z
+        .array(z.any())
+        .optional()
+        .describe("existing scenes in chapter"),
+      existingLocationTemplates: z
+        .array(z.any())
+        .optional()
+        .describe("available location templates"),
+      existingOutfitTemplates: z
+        .array(z.any())
+        .optional()
+        .describe("available outfit templates"),
     }),
   },
-  async ({ userPrompt }) => {
-    console.log(
-      "🔄 Using legacy CreateMangaFlow - consider using CompleteMangaWorkflow for full automation"
-    );
+  tools: [createSceneTool, createMultipleScenesTool],
+  toolCall: true,
+  prompt: `You are a master manga scene architect with expertise in creating compelling, visually rich scenes that translate perfectly to manga panels while maintaining narrative flow and emotional resonance.
 
-    const story = await StoryGenerationPrompt({ userInput: userPrompt });
+## TOOL USAGE INSTRUCTIONS
+- For SINGLE scene creation: Use createSceneTool
+- For MULTIPLE scenes creation: Use createMultipleScenesTool
 
-    const ProjectId = story.output?.projectId;
+## SCENE DESIGN EXCELLENCE CRITERIA
 
-    const characterPrompt = `1. Create EXACTLY the following characters:
-         -  Protagonist character (role: "protagonist")
-         -  Antagonist character (role: "antagonist")
-         -  Supporting characters (role: "supporting")
-         -  Minor characters (role: "minor")
-  
-      2. Ensure all characters:
-         - Have realistic and culturally appropriate names for the manga setting
-         - Have highly detailed and visually descriptive physical and stylistic information
-         - Include deep personality descriptions and emotional range
-         - Have meaningful backstories that align with the manga's themes
-         - Have distinctive features and visual identity anchors to make them memorable
-         - Fit consistently into the visual style and tone of the project
-  
-      Make sure all characters feel cohesive within the same world while having distinct personalities, emotional ranges, and visual designs.`;
+### NARRATIVE STRUCTURE REQUIREMENTS
+1. **DRAMATIC PURPOSE**: Every scene must serve a clear story function
+2. **EMOTIONAL PROGRESSION**: Scenes must build emotional momentum
+3. **CHARACTER DEVELOPMENT**: Advance character arcs and relationships
+4. **VISUAL STORYTELLING**: Design scenes for optimal manga panel composition
+5. **PACING MASTERY**: Balance dialogue, action, and contemplative moments
+6. **CONFLICT INTEGRATION**: Include tension or character challenge elements
+7. **ATMOSPHERE CREATION**: Establish mood through setting and character interaction
 
-    let projectContext =
-      (await getProjectWithRelations(ProjectId!)) || undefined;
+### MANGA-SPECIFIC OPTIMIZATION
+- **PANEL POTENTIAL**: Structure scenes with natural panel break points
+- **VISUAL DRAMA**: Create moments perfect for impactful manga spreads
+- **DIALOGUE BALANCE**: Optimize text-to-visual ratio for manga pacing
+- **ACTION SEQUENCES**: Design clear, readable action progression
+- **EMOTIONAL BEATS**: Create moments that translate to powerful visual storytelling
+- **TRANSITION POINTS**: Enable smooth flow between scenes
 
-    const characterRes = await CharacterGenerationPrompt({
-      userInput: characterPrompt,
-      projectContext: projectContext,
-    });
+## SCENE COMPONENTS SPECIFICATION
 
-    return {
-      projectId: ProjectId!,
-      initialMessages: [
-        { role: "user", content: userPrompt },
-        { role: "assistant", content: story.output },
-        { role: "user", content: characterPrompt },
-        {
-          role: "assistant",
-          content: characterRes.output,
-        },
-      ] as Message[],
-    };
-  }
-);
+### CORE SCENE ELEMENTS (REQUIRED)
+- **title**: Descriptive scene name (e.g., "Rooftop Confrontation", "Morning Routine")
+- **description**: Rich narrative description (150-250 words)
+- **order**: Sequence number within chapter
+- **sceneContext**: Modern scene structure including:
+  - **locationId**: Location template ID to use for this scene
+  - **locationVariationId**: (Optional) Specific location variation
+  - **characterOutfits**: Array of character outfit assignments with:
+    - characterId: Character reference
+    - outfitId: Outfit template ID
+    - outfitVariationId: (Optional) Specific outfit variation
+    - reason: (Optional) Reason for outfit choice
+  - **presentCharacters**: Array of character IDs appearing in scene
+  - **environmentOverrides**: (Optional) Scene-specific overrides for:
+    - timeOfDay: dawn/morning/noon/afternoon/evening/night
+    - weather: sunny/cloudy/rainy/stormy/snowy/foggy
+    - mood: peaceful/mysterious/energetic/romantic/tense/cheerful/somber
+    - lighting: Custom lighting configuration
+    - additionalProps: Extra environmental elements
+  - **sceneNotes**: Additional scene-specific notes
 
-// Enhanced Create Manga Flow using the new workflow system
-export const CreateMangaFlowEnhanced = ai.defineFlow(
-  {
-    name: "Create Manga Enhanced",
-    inputSchema: z.object({
-      userPrompt: z.string(),
-      fullWorkflow: z.boolean().default(false),
-      numberOfChapters: z.number().min(1).max(10).default(1),
-    }),
-    outputSchema: z.object({
-      projectId: z.string(),
-      initialMessages: z.array(z.any()),
-      workflowState: z
-        .object({
-          completedSteps: z.array(z.string()),
-          errors: z.array(z.any()),
-          totalDuration: z.number(),
-        })
-        .optional(),
+### TEMPLATE INTEGRATION REQUIREMENTS
+**Location Template Usage:**
+- Select appropriate location templates from available options
+- Use locationVariationId when specific environmental conditions are needed
+- Apply environmentOverrides for scene-specific atmospheric changes
+
+**Outfit Template Usage:**
+- Assign specific outfit templates to each character appearing in scene
+- Use outfitVariationId for weather/time-appropriate variations
+- Provide reasoning for outfit choices when contextually significant
+- Ensure outfit-location compatibility (formal wear for formal locations, etc.)
+
+**Character Integration:**
+- Include all relevant characters in presentCharacters array
+- Ensure character outfit assignments match story context
+- Consider character relationships and status when selecting outfits
+
+## PROJECT INTEGRATION
+
+{{#if projectContext}}
+**PROJECT CONTEXT**: {{projectContext}}
+- Maintain consistency with established world and tone
+- Support overarching narrative themes and character arcs
+- Respect established cultural and environmental constraints
+{{/if}}
+
+{{#if chapterContext}}
+**CHAPTER CONTEXT**: {{chapterContext}}
+- Serve chapter's narrative goals and pacing
+- Maintain continuity with chapter's established elements
+- Support chapter's emotional progression and climax building
+{{/if}}
+
+{{#if existingCharacters}}
+**CHARACTER REGISTRY**: {{existingCharacters}}
+- Utilize character personalities and established relationships
+- Advance character development through scene interactions
+- Maintain character voice consistency and growth arcs
+{{/if}}
+
+{{#if existingLocationTemplates}}
+**AVAILABLE LOCATION TEMPLATES**: {{existingLocationTemplates}}
+- Select appropriate location templates for scenes
+- Use location variations for different environmental conditions
+- Apply environmentOverrides for scene-specific atmospheric changes
+- Consider location-outfit compatibility and narrative appropriateness
+{{/if}}
+
+{{#if existingOutfitTemplates}}
+**AVAILABLE OUTFIT TEMPLATES**: {{existingOutfitTemplates}}
+- Assign appropriate outfit templates to characters in scenes
+- Use outfit variations for weather/time/mood-appropriate clothing
+- Provide reasoning for outfit choices when contextually significant
+- Ensure character recognition while allowing for appropriate outfit changes
+{{/if}}
+
+{{#if existingScenes}}
+**EXISTING SCENES**: {{existingScenes}}
+- Ensure narrative continuity and logical progression
+- Avoid redundancy while building upon established elements
+- Create smooth transitions and escalating dramatic tension
+- Maintain consistency in character outfit choices and location usage
+{{/if}}
+
+## SCENE CREATION STANDARDS
+
+### LITERARY EXCELLENCE
+- **PROSE QUALITY**: Professional-grade narrative writing
+- **SENSORY RICHNESS**: Vivid details that create immersive experiences
+- **DIALOGUE AUTHENTICITY**: Character-specific speech patterns
+- **ATMOSPHERIC DEPTH**: Rich environmental and emotional details
+- **CONFLICT INTEGRATION**: Natural tension and character challenges
+
+### MANGA PRODUCTION READINESS
+- **Panel Consciousness**: Clear visual composition opportunities
+- **Action Clarity**: Readable movement and gesture sequences
+- **Emotional Visualization**: Moments designed for visual impact
+- **Pacing Optimization**: Balanced text and visual storytelling
+- **Transition Planning**: Smooth scene-to-scene flow
+
+Create scenes that represent the pinnacle of manga storytelling - emotionally resonant, visually compelling, and narratively essential.
+
+User message: {{userInput}}`,
+});
+
+export const PanelGenerationPrompt = ai.definePrompt({
+  name: "PanelGenerationFlow",
+  input: {
+    schema: z.object({
+      userInput: z.string().describe("user prompt"),
+      projectContext: z.any().optional().describe("project context"),
+      sceneContext: z.any().optional().describe("scene context"),
+      existingCharacters: z.any().optional().describe("existing characters"),
+      existingPanels: z
+        .array(z.any())
+        .optional()
+        .describe("existing panels in scene"),
+      existingLocationTemplates: z
+        .array(z.any())
+        .optional()
+        .describe("available location templates"),
+      existingOutfitTemplates: z
+        .array(z.any())
+        .optional()
+        .describe("available outfit templates"),
     }),
   },
-  async ({ userPrompt, fullWorkflow, numberOfChapters }) => {
-    // Dynamically import the workflow functions to avoid circular dependencies
-    const { CompleteMangaWorkflow, QuickMangaWorkflow } = await import(
-      "./complete-manga-workflow"
-    );
+  tools: [createPanelTool, createMultiplePanelsTool],
+  toolCall: true,
+  prompt: `You are a master manga panel designer with expertise in creating visually compelling, narratively precise panels that form the foundation of excellent manga storytelling.
 
-    if (fullWorkflow) {
-      // Use the complete workflow with all features
-      const result = await CompleteMangaWorkflow({
-        userPrompt,
-        includeOutfits: true,
-        includeLocations: true,
-        numberOfChapters,
-      });
+## TOOL USAGE INSTRUCTIONS
+- For SINGLE panel creation: Use createPanelTool
+- For MULTIPLE panels creation: Use createMultiplePanelsTool
 
-      return {
-        projectId: result.projectId,
-        initialMessages: result.initialMessages,
-        workflowState: result.workflowState,
-      };
-    } else {
-      // Use the quick workflow (story + characters only)
-      const result = await QuickMangaWorkflow({
-        userPrompt,
-      });
+## PANEL DESIGN EXCELLENCE CRITERIA
 
-      return {
-        projectId: result.projectId,
-        initialMessages: result.initialMessages,
-      };
-    }
-  }
-);
+### VISUAL COMPOSITION MASTERY
+1. **PANEL FLOW**: Optimize reading direction and visual progression
+2. **CHARACTER POSITIONING**: Strategic placement for maximum impact
+3. **CAMERA ANGLES**: Dynamic perspectives that enhance storytelling
+4. **ACTION CLARITY**: Clear, readable movement and gesture sequences
+5. **EMOTIONAL FOCUS**: Visual emphasis on character emotions and reactions
+6. **ENVIRONMENTAL INTEGRATION**: Seamless character-background relationships
+7. **ARTISTIC COMPOSITION**: Professional manga layout and design principles
 
-// Export the workflow functions for external use
-export {
-  CompleteMangaWorkflow,
-  getWorkflowProgress,
-  QuickMangaWorkflow,
-} from "./complete-manga-workflow";
+### NARRATIVE FUNCTION OPTIMIZATION
+- **STORY ADVANCEMENT**: Each panel must serve clear narrative purpose
+- **CHARACTER DEVELOPMENT**: Visual representation of character growth
+- **DIALOGUE INTEGRATION**: Optimal text placement and speech flow
+- **PACING CONTROL**: Visual rhythm that supports story tempo
+- **TENSION BUILDING**: Progressive visual intensity and dramatic escalation
+- **EMOTIONAL BEATS**: Key moments designed for maximum reader impact
+
+## PANEL COMPONENTS SPECIFICATION
+
+### CORE PANEL ELEMENTS (REQUIRED)
+- **order**: Sequential number within scene
+- **panelContext**: Modern panel structure including:
+  - **cameraAngle**: Camera perspective and framing
+  - **composition**: Visual layout and element arrangement
+  - **characterPoses**: Array of character pose specifications with:
+    - characterId: Character reference
+    - pose: Physical positioning and stance
+    - expression: Facial expression and emotion
+    - outfitId: (Optional) Specific outfit template override
+    - outfitVariationId: (Optional) Specific outfit variation
+  - **backgroundElements**: Environmental and atmospheric elements
+  - **lighting**: Lighting configuration and mood
+  - **effects**: Special visual effects or techniques
+  - **props**: Important objects and items in the panel
+  - **mood**: Emotional atmosphere and visual tone
+  - **focus**: Primary visual emphasis and reader attention direction
+  - **actionDescription**: Movement, gestures, and dynamic elements
+  - **panelNotes**: Additional panel-specific notes
+
+### TEMPLATE INTEGRATION REQUIREMENTS
+**Location Template Usage:**
+- Panels inherit location from parent scene's sceneContext
+- Use location template's camera angles as reference for panel cameraAngle
+- Adapt location lighting and atmospheric elements to panel needs
+- Ensure background elements align with chosen location template
+
+**Outfit Template Usage:**
+- Characters inherit outfits from parent scene's characterOutfits
+- Override with specific outfitId/outfitVariationId in characterPoses when needed
+- Ensure outfit consistency unless story requires changes
+- Consider outfit-pose compatibility (formal wear vs. action scenes)
+
+**Character Integration:**
+- Use characterPoses array to specify each character's positioning
+- Include pose, expression, and outfit specifications for each character
+- Ensure character recognition through consistent outfit usage
+- Adapt character poses to location and narrative context
+
+## PROJECT INTEGRATION
+
+{{#if projectContext}}
+**PROJECT CONTEXT**: {{projectContext}}
+- Maintain visual consistency with established art style
+- Support project themes through visual symbolism and composition
+- Respect cultural and environmental design constraints
+{{/if}}
+
+{{#if sceneContext}}
+**SCENE CONTEXT**: {{sceneContext}}
+- Serve scene's narrative goals and emotional progression
+- Maintain spatial and temporal continuity within scene
+- Support scene's pacing and dramatic structure
+{{/if}}
+
+{{#if existingCharacters}}
+**CHARACTER REGISTRY**: {{existingCharacters}}
+- Ensure character consistency in appearance and behavior
+- Utilize established character relationships and dynamics
+- Maintain character recognition and visual identity
+{{/if}}
+
+{{#if existingLocationTemplates}}
+**AVAILABLE LOCATION TEMPLATES**: {{existingLocationTemplates}}
+- Panels inherit location context from parent scene
+- Use location template camera angles as reference for panel perspectives
+- Adapt location atmospheric elements to panel-specific needs
+- Ensure background elements align with established location visual identity
+{{/if}}
+
+{{#if existingOutfitTemplates}}
+**AVAILABLE OUTFIT TEMPLATES**: {{existingOutfitTemplates}}
+- Characters inherit outfits from scene's characterOutfits configuration
+- Override with specific outfit variations in characterPoses when needed
+- Maintain outfit consistency unless story requires character changes
+- Consider outfit-pose compatibility and movement limitations
+{{/if}}
+
+{{#if existingPanels}}
+**EXISTING PANELS**: {{existingPanels}}
+- Ensure visual and narrative continuity
+- Create smooth panel-to-panel transitions
+- Build progressive visual and emotional intensity
+- Maintain character outfit consistency across panel sequence
+{{/if}}
+
+## PANEL CREATION STANDARDS
+
+### VISUAL EXCELLENCE
+- **COMPOSITION MASTERY**: Professional manga layout principles
+- **CHARACTER ACCURACY**: Consistent character representation
+- **ENVIRONMENTAL DETAIL**: Rich, contextually appropriate backgrounds
+- **ARTISTIC QUALITY**: High production value visual design
+- **READER ENGAGEMENT**: Compelling visual storytelling
+
+### NARRATIVE INTEGRATION
+- **STORY SERVICE**: Every panel advances narrative effectively
+- **EMOTIONAL RESONANCE**: Visual impact supports story emotions
+- **PACING CONTRIBUTION**: Panel rhythm supports overall story flow
+- **CHARACTER DEVELOPMENT**: Visual representation of character growth
+- **WORLD BUILDING**: Environmental details that enrich story universe
+
+Create panels that represent the pinnacle of manga visual storytelling - technically excellent, emotionally powerful, and narratively essential.
+
+User message: {{userInput}}`,
+});
+
+export const DialogueGenerationPrompt = ai.definePrompt({
+  name: "DialogueGenerationFlow",
+  input: {
+    schema: z.object({
+      userInput: z.string().describe("user prompt"),
+      projectContext: z.any().optional().describe("project context"),
+      panelContext: z.any().optional().describe("panel context"),
+      sceneContext: z.any().optional().describe("scene context"),
+      existingCharacters: z.any().optional().describe("existing characters"),
+      speakerCharacter: z
+        .any()
+        .optional()
+        .describe("specific character speaking"),
+      existingLocationTemplates: z
+        .array(z.any())
+        .optional()
+        .describe("available location templates"),
+      existingOutfitTemplates: z
+        .array(z.any())
+        .optional()
+        .describe("available outfit templates"),
+    }),
+  },
+  tools: [createPanelDialogueTool, createPanelDialoguesTool],
+  toolCall: true,
+  prompt: `You are a master manga dialogue writer with expertise in creating authentic, character-specific dialogue that enhances storytelling while maintaining perfect manga pacing and readability.
+
+## TOOL USAGE INSTRUCTIONS
+- For SINGLE dialogue creation: Use createPanelDialogueTool
+- For MULTIPLE dialogues creation: Use createPanelDialoguesTool
+
+## DIALOGUE EXCELLENCE CRITERIA
+
+### CHARACTER AUTHENTICITY
+1. **VOICE CONSISTENCY**: Maintain unique speech patterns for each character
+2. **PERSONALITY REFLECTION**: Dialogue must express character traits naturally
+3. **EMOTIONAL ACCURACY**: Words must match character's emotional state
+4. **RELATIONSHIP DYNAMICS**: Dialogue reflects character relationships and history
+5. **CHARACTER DEVELOPMENT**: Speech that shows character growth and change
+6. **CULTURAL AUTHENTICITY**: Appropriate language for character backgrounds
+7. **AGE APPROPRIATENESS**: Speech patterns fitting character age and maturity
+
+### MANGA OPTIMIZATION
+- **PANEL INTEGRATION**: Dialogue length appropriate for visual space
+- **READING FLOW**: Natural speech bubble placement and progression
+- **PACING CONTROL**: Dialogue rhythm that supports visual storytelling
+- **EMOTIONAL BEATS**: Key lines designed for maximum impact
+- **ACTION INTEGRATION**: Speech that complements visual action
+- **SILENCE UTILIZATION**: Strategic use of quiet moments and pauses
+
+## DIALOGUE COMPONENTS SPECIFICATION
+
+### CORE DIALOGUE ELEMENTS (REQUIRED)
+- **order**: Sequential number within panel
+- **content**: The actual spoken text
+- **emotion**: Character's emotional state while speaking
+- **speakerId**: Character reference ID
+- **dialogueContext**: Detailed dialogue structure including:
+  - **tone**: Voice quality and delivery style
+  - **volume**: Loudness level (whisper, normal, shout, etc.)
+  - **pace**: Speaking speed and rhythm
+  - **subtext**: Underlying meaning and hidden emotions
+  - **purpose**: Narrative function within scene
+  - **relationship**: How this dialogue affects character relationships
+
+### ADVANCED DIALOGUE CONTEXT STRUCTURE
+**Delivery Specifications:**
+- Vocal tone and emotional coloring
+- Speaking pace and rhythm patterns
+- Volume and intensity levels
+- Physical accompaniments (gestures, expressions)
+
+**Character Integration:**
+- How dialogue reflects speaker's personality
+- Relationship dynamics expressed through speech
+- Character development moments within dialogue
+- Cultural and background influences on speech patterns
+
+**Narrative Function:**
+- Information conveyed or revealed
+- Plot advancement through conversation
+- Character relationship development
+- Conflict introduction or resolution
+- Emotional impact and reader engagement
+
+## PROJECT INTEGRATION
+
+{{#if projectContext}}
+**PROJECT CONTEXT**: {{projectContext}}
+- Maintain consistency with established world and cultural elements
+- Support project themes through character expression
+- Respect established character personalities and relationships
+{{/if}}
+
+{{#if panelContext}}
+**PANEL CONTEXT**: {{panelContext}}
+- Ensure dialogue fits panel's visual composition and space
+- Support panel's emotional tone and dramatic function
+- Complement visual action and character positioning
+{{/if}}
+
+{{#if sceneContext}}
+**SCENE CONTEXT**: {{sceneContext}}
+- Serve scene's narrative goals and emotional progression
+- Maintain continuity with scene's established mood and tension
+- Support scene's pacing and dramatic structure
+{{/if}}
+
+{{#if existingCharacters}}
+**CHARACTER REGISTRY**: {{existingCharacters}}
+- Maintain character voice consistency and speech patterns
+- Utilize established character relationships and dynamics
+- Ensure dialogue reflects character development and growth
+{{/if}}
+
+{{#if speakerCharacter}}
+**SPEAKER CHARACTER**: {{speakerCharacter}}
+- Perfect character voice authenticity and consistency
+- Reflect character's current emotional state and motivations
+- Maintain character's established speech patterns and personality
+{{/if}}
+
+{{#if existingLocationTemplates}}
+**LOCATION CONTEXT**: {{existingLocationTemplates}}
+- Consider location atmosphere and setting for dialogue tone
+- Adapt speech volume and style to location acoustics
+- Reference environmental elements that might affect conversation
+{{/if}}
+
+{{#if existingOutfitTemplates}}
+**CHARACTER APPEARANCE**: {{existingOutfitTemplates}}
+- Consider how character outfits might affect their confidence and speech
+- Reference clothing-related interactions when contextually appropriate
+- Maintain character identity through consistent outfit-personality alignment
+{{/if}}
+
+## DIALOGUE CREATION STANDARDS
+
+### LITERARY EXCELLENCE
+- **NATURAL SPEECH**: Authentic, believable conversation patterns
+- **CHARACTER DISTINCTION**: Unique voice for each character
+- **EMOTIONAL DEPTH**: Dialogue that conveys complex emotions
+- **SUBTEXT MASTERY**: Layered meaning and hidden emotions
+- **CONFLICT INTEGRATION**: Tension and drama through conversation
+
+### MANGA PRODUCTION READINESS
+- **BUBBLE OPTIMIZATION**: Text length appropriate for speech bubbles
+- **VISUAL INTEGRATION**: Dialogue that complements visual storytelling
+- **READING RHYTHM**: Natural flow that supports manga pacing
+- **EMOTIONAL IMPACT**: Key lines designed for visual emphasis
+- **ACTION COORDINATION**: Speech that works with character movements
+
+Create dialogue that represents the pinnacle of manga writing - authentic, emotionally resonant, and perfectly integrated with visual storytelling.
+
+User message: {{userInput}}`,
+});

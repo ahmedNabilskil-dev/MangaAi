@@ -1370,3 +1370,177 @@ export const createMultipleLocationTemplatesTool = ai.defineTool(
     }
   }
 );
+
+// --- Create Outfit Variation Tool ---
+export const createOutfitVariationTool = ai.defineTool(
+  {
+    name: "createOutfitVariation",
+    description:
+      "Creates a variation of an existing outfit template (seasonal, mood, activity-specific).",
+    inputSchema: z.object({
+      baseOutfitId: z
+        .string()
+        .describe("ID of the base outfit template to create variation from"),
+      variationType: z
+        .enum(["seasonal", "weather", "mood", "activity", "formal", "casual"])
+        .describe("Type of variation"),
+      variationName: z
+        .string()
+        .describe(
+          "Name for this variation (e.g., 'Winter Version', 'Rainy Day')"
+        ),
+      description: z
+        .string()
+        .describe("Description of how this variation differs from the base"),
+      modifications: z
+        .object({
+          addComponents: z
+            .array(
+              z.object({
+                type: z.string(),
+                item: z.string(),
+                defaultColor: z.string().optional(),
+                defaultMaterial: z.string().optional(),
+              })
+            )
+            .optional()
+            .describe("Components to add"),
+          removeComponents: z
+            .array(z.string())
+            .optional()
+            .describe("Component types to remove"),
+          modifyComponents: z
+            .array(
+              z.object({
+                type: z.string(),
+                newItem: z.string().optional(),
+                newColor: z.string().optional(),
+                newMaterial: z.string().optional(),
+              })
+            )
+            .optional()
+            .describe("Components to modify"),
+          colorPaletteChanges: z
+            .array(z.string())
+            .optional()
+            .describe("New or additional colors"),
+          materialChanges: z
+            .array(z.string())
+            .optional()
+            .describe("New or additional materials"),
+          seasonOverride: z
+            .enum(["spring", "summer", "fall", "winter", "any"])
+            .optional(),
+        })
+        .describe("Specific modifications to make to the base outfit"),
+      mangaProjectId: z.string().describe("The ID of the parent project."),
+    }),
+    outputSchema: z
+      .string()
+      .describe("The ID of the newly created outfit variation."),
+  },
+  async (input) => {
+    try {
+      // This would need to be implemented in the data service
+      // For now, we'll create a placeholder that shows the structure
+      const variationData = {
+        name: `${input.variationName}`,
+        characterId: "placeholder", // Would be fetched from base outfit
+        description: input.description,
+        baseOutfitId: input.baseOutfitId,
+        variationType: input.variationType,
+        modifications: input.modifications,
+        mangaProjectId: input.mangaProjectId,
+      };
+
+      // TODO: Implement createOutfitVariation in data service
+      throw new Error(
+        "Outfit variation creation not yet implemented - need to add to data service"
+      );
+    } catch (error: any) {
+      throw new Error(`Failed to create outfit variation: ${error.message}`);
+    }
+  }
+);
+
+// --- Create Location Variation Tool ---
+export const createLocationVariationTool = ai.defineTool(
+  {
+    name: "createLocationVariation",
+    description:
+      "Creates a variation of an existing location template (time of day, weather, seasonal).",
+    inputSchema: z.object({
+      baseLocationId: z
+        .string()
+        .describe("ID of the base location template to create variation from"),
+      variationType: z
+        .enum(["time", "weather", "seasonal", "event", "mood"])
+        .describe("Type of variation"),
+      variationName: z
+        .string()
+        .describe(
+          "Name for this variation (e.g., 'Night Version', 'Rainy Day')"
+        ),
+      description: z
+        .string()
+        .describe("Description of how this variation differs from the base"),
+      modifications: z
+        .object({
+          lightingChanges: z
+            .string()
+            .optional()
+            .describe("How lighting differs from base"),
+          weatherEffects: z
+            .string()
+            .optional()
+            .describe("Weather-specific changes"),
+          seasonalElements: z
+            .string()
+            .optional()
+            .describe("Seasonal modifications"),
+          additionalProps: z
+            .array(z.string())
+            .optional()
+            .describe("Additional environmental elements"),
+          moodAdjustments: z
+            .string()
+            .optional()
+            .describe("Atmospheric mood changes"),
+          cameraAngleModifications: z
+            .array(
+              z.object({
+                angleName: z.string(),
+                promptChanges: z.string(),
+              })
+            )
+            .optional()
+            .describe("Specific camera angle modifications"),
+        })
+        .describe("Specific modifications to make to the base location"),
+      mangaProjectId: z.string().describe("The ID of the parent project."),
+    }),
+    outputSchema: z
+      .string()
+      .describe("The ID of the newly created location variation."),
+  },
+  async (input) => {
+    try {
+      // This would need to be implemented in the data service
+      const variationData = {
+        name: `${input.variationName}`,
+        baseLocationId: input.baseLocationId,
+        variationType: input.variationType,
+        description: input.description,
+        modifications: input.modifications,
+        mangaProjectId: input.mangaProjectId,
+      };
+
+      // TODO: Implement createLocationVariation in data service
+      throw new Error(
+        "Location variation creation not yet implemented - need to add to data service"
+      );
+    } catch (error: any) {
+      throw new Error(`Failed to create location variation: ${error.message}`);
+    }
+  }
+);

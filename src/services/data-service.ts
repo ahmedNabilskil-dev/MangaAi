@@ -2,8 +2,10 @@ import type {
   Chapter,
   Character,
   LocationTemplate,
+  LocationVariation,
   MangaProject,
   OutfitTemplate,
+  OutfitVariation,
   Panel,
   PanelDialogue,
   Scene,
@@ -366,6 +368,101 @@ export async function listLocationTemplates(filters?: {
   activeOnly?: boolean;
 }): Promise<LocationTemplate[]> {
   return activeDataService.listLocationTemplates(filters);
+}
+
+// --- Outfit Variations ---
+export async function createOutfitVariation(
+  baseOutfitId: string,
+  variationData: Omit<
+    OutfitVariation,
+    "id" | "createdAt" | "updatedAt" | "usageCount" | "lastUsed"
+  >
+): Promise<OutfitVariation> {
+  // Create the variation
+  const variation: OutfitVariation = {
+    ...variationData,
+    id: crypto.randomUUID(),
+    usageCount: 0,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  // Get the base outfit template and add the variation to it
+  const baseOutfit = await activeDataService.getOutfitTemplate(baseOutfitId);
+  if (!baseOutfit) {
+    throw new Error(`Base outfit template with ID ${baseOutfitId} not found`);
+  }
+
+  // Add variation to the base outfit
+  const updatedOutfit = {
+    ...baseOutfit,
+    variations: [...(baseOutfit.variations || []), variation],
+    updatedAt: new Date(),
+  };
+
+  await activeDataService.updateOutfitTemplate(baseOutfitId, updatedOutfit);
+  return variation;
+}
+
+export async function getOutfitVariation(
+  outfitId: string,
+  variationId: string
+): Promise<OutfitVariation | null> {
+  const outfit = await activeDataService.getOutfitTemplate(outfitId);
+  if (!outfit || !outfit.variations) return null;
+
+  return outfit.variations.find((v) => v.id === variationId) || null;
+}
+
+// --- Location Variations ---
+export async function createLocationVariation(
+  baseLocationId: string,
+  variationData: Omit<
+    LocationVariation,
+    "id" | "createdAt" | "updatedAt" | "usageCount" | "lastUsed"
+  >
+): Promise<LocationVariation> {
+  // Create the variation
+  const variation: LocationVariation = {
+    ...variationData,
+    id: crypto.randomUUID(),
+    usageCount: 0,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  // Get the base location template and add the variation to it
+  const baseLocation = await activeDataService.getLocationTemplate(
+    baseLocationId
+  );
+  if (!baseLocation) {
+    throw new Error(
+      `Base location template with ID ${baseLocationId} not found`
+    );
+  }
+
+  // Add variation to the base location
+  const updatedLocation = {
+    ...baseLocation,
+    variations: [...(baseLocation.variations || []), variation],
+    updatedAt: new Date(),
+  };
+
+  await activeDataService.updateLocationTemplate(
+    baseLocationId,
+    updatedLocation
+  );
+  return variation;
+}
+
+export async function getLocationVariation(
+  locationId: string,
+  variationId: string
+): Promise<LocationVariation | null> {
+  const location = await activeDataService.getLocationTemplate(locationId);
+  if (!location || !location.variations) return null;
+
+  return location.variations.find((v) => v.id === variationId) || null;
 }
 
 // --- Initialization ---
