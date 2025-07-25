@@ -23,17 +23,28 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import {
+  getChapters,
+  getProject,
+  getScenes,
+  listCharacters,
+} from "@/services/data-service";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Bot,
+  ChevronDown,
+  ChevronUp,
   Eye,
   FileText,
   Image,
   Layers,
+  MapPin,
+  Palette,
   Send,
   Settings,
   Upload,
   User,
+  Users,
   Wand2,
   X,
 } from "lucide-react";
@@ -762,8 +773,9 @@ function ManualPanelGenerator({
   const [panelOrder, setPanelOrder] = useState(1);
   const [maxPanelOrder, setMaxPanelOrder] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [projectData, setProjectData] = useState<any>(null);
 
-  // Panel settings
+  // Panel settings with enhanced visual structure
   const [panelSettings, setPanelSettings] = useState({
     description: "",
     artStyle: "modern, clean anime style",
@@ -774,125 +786,198 @@ function ManualPanelGenerator({
     characterInteraction: "",
     dialogue: "",
     qualityKeywords: [] as string[],
+    customArtStyle: "",
+    customBackground: "",
+    customLighting: "",
+    customCameraAngle: "",
   });
 
-  // Mock data - replace with actual data from your project
-  const mockChapters = [
-    { id: "ch1", title: "Chapter 1: The Beginning", sceneCount: 5 },
-    { id: "ch2", title: "Chapter 2: New Friends", sceneCount: 4 },
-    { id: "ch3", title: "Chapter 3: School Festival", sceneCount: 6 },
-  ];
-
-  const mockScenes = {
-    ch1: [
-      { id: "sc1", title: "Scene 1: Morning Routine", panelCount: 3 },
-      { id: "sc2", title: "Scene 2: School Entrance", panelCount: 4 },
-      { id: "sc3", title: "Scene 3: First Class", panelCount: 5 },
-      { id: "sc4", title: "Scene 4: Lunch Break", panelCount: 2 },
-      { id: "sc5", title: "Scene 5: Going Home", panelCount: 3 },
+  // Enhanced predefined options with visual appeal
+  const predefinedOptions = {
+    artStyles: [
+      {
+        label: "Modern Anime",
+        value: "modern, clean anime style",
+        image:
+          "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=300&fit=crop",
+        description: "Clean, contemporary anime aesthetic",
+      },
+      {
+        label: "Pastel Anime",
+        value: "soft, pastel anime illustration",
+        image:
+          "https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=400&h=300&fit=crop",
+        description: "Soft, dreamy pastel colors",
+      },
+      {
+        label: "Dynamic Shonen",
+        value: "dynamic shonen anime style",
+        image:
+          "https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=400&h=300&fit=crop",
+        description: "Action-packed, energetic style",
+      },
+      {
+        label: "Custom Style",
+        value: "custom",
+        image: null,
+        description: "Define your own art style",
+      },
     ],
-    ch2: [
-      { id: "sc6", title: "Scene 1: New Student", panelCount: 4 },
-      { id: "sc7", title: "Scene 2: Introductions", panelCount: 3 },
-      { id: "sc8", title: "Scene 3: Classroom", panelCount: 5 },
-      { id: "sc9", title: "Scene 4: After School", panelCount: 2 },
+    backgrounds: [
+      {
+        label: "School Rooftop",
+        value: "bright, airy school rooftop",
+        image:
+          "https://images.unsplash.com/photo-1562774053-701939374585?w=400&h=300&fit=crop",
+        description: "Peaceful school setting",
+      },
+      {
+        label: "Cherry Blossom Park",
+        value: "serene park path with cherry blossoms",
+        image:
+          "https://images.unsplash.com/photo-1522383225653-ed111181a951?w=400&h=300&fit=crop",
+        description: "Beautiful sakura scenery",
+      },
+      {
+        label: "Festival Street",
+        value: "bustling festival street",
+        image:
+          "https://images.unsplash.com/photo-1533827432537-70133748f5c8?w=400&h=300&fit=crop",
+        description: "Vibrant festival atmosphere",
+      },
+      {
+        label: "Custom Background",
+        value: "custom",
+        image: null,
+        description: "Define your own background",
+      },
     ],
-    ch3: [
-      { id: "sc10", title: "Scene 1: Festival Preparation", panelCount: 6 },
-      { id: "sc11", title: "Scene 2: Setting Up", panelCount: 4 },
-      { id: "sc12", title: "Scene 3: Festival Day", panelCount: 8 },
-      { id: "sc13", title: "Scene 4: Competition", panelCount: 5 },
-      { id: "sc14", title: "Scene 5: Evening", panelCount: 3 },
-      { id: "sc15", title: "Scene 6: Fireworks", panelCount: 4 },
+    lighting: [
+      {
+        label: "Soft Diffused",
+        value: "soft, diffused lighting",
+        image:
+          "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop",
+        description: "Gentle, even illumination",
+      },
+      {
+        label: "Golden Hour",
+        value: "evening golden hour",
+        image:
+          "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop",
+        description: "Warm sunset glow",
+      },
+      {
+        label: "Dramatic Backlighting",
+        value: "dramatic backlighting",
+        image:
+          "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop",
+        description: "Striking silhouette effect",
+      },
+      {
+        label: "Custom Lighting",
+        value: "custom",
+        image: null,
+        description: "Define your own lighting",
+      },
+    ],
+    cameraAngles: [
+      {
+        label: "Medium Shot",
+        value: "medium shot",
+        image:
+          "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=400&h=300&fit=crop",
+        description: "Balanced character framing",
+      },
+      {
+        label: "Close-up Portrait",
+        value: "close-up portrait",
+        image:
+          "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=400&h=300&fit=crop",
+        description: "Intimate facial focus",
+      },
+      {
+        label: "Bird's Eye View",
+        value: "bird's eye view from above",
+        image:
+          "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=400&h=300&fit=crop",
+        description: "Top-down perspective",
+      },
+      {
+        label: "Custom Angle",
+        value: "custom",
+        image: null,
+        description: "Define your own camera angle",
+      },
+    ],
+    qualityKeywords: [
+      "high-resolution",
+      "8k",
+      "detailed",
+      "intricate details",
+      "masterpiece",
+      "best quality",
+      "cinematic lighting",
+      "photorealistic",
+      "ultra-detailed",
+      "studio quality",
+      "professional artwork",
+      "vibrant colors",
+      "sharp focus",
     ],
   };
 
-  const mockCharacters = [
-    { id: "char1", name: "Akira Yamamoto", description: "Main protagonist" },
-    { id: "char2", name: "Yuki Tanaka", description: "Best friend" },
-    { id: "char3", name: "Sensei Watanabe", description: "Homeroom teacher" },
-    { id: "char4", name: "Hana Sato", description: "Class president" },
-    { id: "char5", name: "Ryuu Kimura", description: "Rival character" },
-  ];
+  // Load actual project data
+  useEffect(() => {
+    const loadProjectData = async () => {
+      try {
+        // Load project, chapters, and characters separately since there's no single function
+        const [project, chapters, characters] = await Promise.all([
+          getProject(projectId),
+          getChapters(projectId),
+          listCharacters(projectId),
+        ]);
 
-  const mockLocations = [
-    {
-      id: "loc1",
-      name: "School Rooftop",
-      description: "Peaceful rooftop with city view",
-    },
-    {
-      id: "loc2",
-      name: "Classroom 2-A",
-      description: "Standard high school classroom",
-    },
-    { id: "loc3", name: "School Cafeteria", description: "Busy lunch area" },
-    {
-      id: "loc4",
-      name: "Cherry Blossom Park",
-      description: "Beautiful park with sakura trees",
-    },
-    {
-      id: "loc5",
-      name: "Festival Grounds",
-      description: "School festival area with stalls",
-    },
-  ];
+        // Load scenes for each chapter
+        const chaptersWithScenes = await Promise.all(
+          (chapters || []).map(async (chapter: any) => {
+            const scenes = await getScenes(chapter.id);
+            return { ...chapter, scenes: scenes || [] };
+          })
+        );
 
-  const artStyles = [
-    { value: "modern, clean anime style", label: "Modern Anime" },
-    { value: "soft, pastel anime illustration", label: "Pastel Anime" },
-    { value: "dynamic shonen anime style", label: "Dynamic Shonen" },
-    { value: "detailed fantasy anime", label: "Fantasy Anime" },
-    { value: "chibi style", label: "Chibi Style" },
-  ];
+        // Create a combined structure with the data we have
+        const projectWithRelations = {
+          ...project,
+          chapters: chaptersWithScenes,
+          characters: characters || [],
+        };
 
-  const lightingOptions = [
-    { value: "soft, diffused lighting", label: "Soft Diffused" },
-    { value: "bright, natural sunlight", label: "Bright Sunlight" },
-    { value: "warm, indoor lighting", label: "Warm Indoor" },
-    { value: "dramatic backlighting", label: "Dramatic Backlighting" },
-    { value: "evening golden hour", label: "Golden Hour" },
-    { value: "moonlight", label: "Moonlight" },
-  ];
+        setProjectData(projectWithRelations);
+      } catch (error) {
+        console.error("Failed to load project data:", error);
+      }
+    };
 
-  const cameraAngles = [
-    { value: "medium shot", label: "Medium Shot" },
-    { value: "close-up portrait", label: "Close-up Portrait" },
-    { value: "full body shot", label: "Full Body Shot" },
-    { value: "low angle looking up", label: "Low Angle Hero" },
-    { value: "bird's eye view from above", label: "Bird's Eye View" },
-  ];
-
-  const qualityKeywords = [
-    "high-resolution",
-    "8k",
-    "detailed",
-    "intricate details",
-    "masterpiece",
-    "best quality",
-    "cinematic lighting",
-    "photorealistic",
-    "ultra-detailed",
-    "studio quality",
-    "professional artwork",
-    "vibrant colors",
-    "sharp focus",
-  ];
+    if (projectId && isOpen) {
+      loadProjectData();
+    }
+  }, [projectId, isOpen]);
 
   // Update max panel order when scene changes
   useEffect(() => {
-    if (selectedChapter && selectedScene) {
-      const scenes =
-        mockScenes[selectedChapter as keyof typeof mockScenes] || [];
-      const scene = scenes.find((s) => s.id === selectedScene);
+    if (selectedChapter && selectedScene && projectData) {
+      const chapter = projectData.chapters?.find(
+        (c: any) => c.id === selectedChapter
+      );
+      const scene = chapter?.scenes?.find((s: any) => s.id === selectedScene);
       if (scene) {
-        const newMaxOrder = scene.panelCount + 1;
+        const newMaxOrder = (scene.panels?.length || 0) + 1;
         setMaxPanelOrder(newMaxOrder);
         setPanelOrder(newMaxOrder); // Default to adding at the end
       }
     }
-  }, [selectedChapter, selectedScene]);
+  }, [selectedChapter, selectedScene, projectData]);
 
   const handleNext = () => {
     if (step < 3) setStep(step + 1);
@@ -923,7 +1008,7 @@ function ManualPanelGenerator({
   const generatePanel = async () => {
     setIsGenerating(true);
     try {
-      // Simulate API call
+      // Actual panel generation logic here
       await new Promise((resolve) => setTimeout(resolve, 2000));
       console.log("Generating panel:", {
         chapter: selectedChapter,
@@ -954,6 +1039,10 @@ function ManualPanelGenerator({
       characterInteraction: "",
       dialogue: "",
       qualityKeywords: [],
+      customArtStyle: "",
+      customBackground: "",
+      customLighting: "",
+      customCameraAngle: "",
     });
   };
 
@@ -962,26 +1051,139 @@ function ManualPanelGenerator({
     onClose();
   };
 
-  const currentScenes = selectedChapter
-    ? mockScenes[selectedChapter as keyof typeof mockScenes] || []
-    : [];
+  const currentScenes =
+    selectedChapter && projectData
+      ? projectData.chapters?.find((c: any) => c.id === selectedChapter)
+          ?.scenes || []
+      : [];
+
   const canProceed = {
     step1: selectedChapter && selectedScene,
     step2: panelOrder > 0,
     step3: panelSettings.description.trim().length > 0,
   };
 
+  // Visual selector component for enhanced UI
+  const VisualSelector = ({
+    title,
+    options,
+    selectedValue,
+    onSelect,
+    customValue,
+    onCustomChange,
+    icon,
+  }: any) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+    const [showCustom, setShowCustom] = useState(selectedValue === "custom");
+
+    return (
+      <div className="space-y-3">
+        <button
+          className="flex items-center justify-between w-full p-4 bg-white rounded-xl shadow-sm border border-gray-200 hover:border-purple-300 transition-all hover:shadow-md"
+          onClick={() => setIsExpanded(!isExpanded)}
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-purple-100 to-blue-100 text-purple-600">
+              {icon}
+            </div>
+            <span className="font-medium text-gray-800">{title}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {selectedValue && selectedValue !== "custom" && (
+              <Badge variant="secondary" className="text-xs">
+                {options.find((o: any) => o.value === selectedValue)?.label}
+              </Badge>
+            )}
+            {isExpanded ? (
+              <ChevronUp className="w-4 h-4 text-gray-500" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-gray-500" />
+            )}
+          </div>
+        </button>
+
+        {isExpanded && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 animate-in slide-in-from-top-2 duration-200">
+            {options.map((option: any) => (
+              <div
+                key={option.value}
+                className={`relative group cursor-pointer transition-all duration-200 ${
+                  selectedValue === option.value
+                    ? "ring-2 ring-purple-500 ring-offset-2 rounded-xl"
+                    : "hover:ring-1 hover:ring-purple-300 rounded-xl"
+                }`}
+                onClick={() => {
+                  onSelect(option.value);
+                  if (option.value === "custom") {
+                    setShowCustom(true);
+                  } else {
+                    setShowCustom(false);
+                  }
+                }}
+              >
+                <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 aspect-square">
+                  {option.image ? (
+                    <img
+                      src={option.image}
+                      alt={option.label}
+                      className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50">
+                      <Wand2 className="w-6 h-6 text-purple-400" />
+                    </div>
+                  )}
+
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+
+                  {selectedValue === option.value && (
+                    <div className="absolute top-2 right-2 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center shadow-lg">
+                      <div className="w-2 h-2 bg-white rounded-full" />
+                    </div>
+                  )}
+
+                  <div className="absolute bottom-0 left-0 right-0 p-3">
+                    <h3 className="font-semibold text-white text-sm mb-1">
+                      {option.label}
+                    </h3>
+                    <p className="text-xs text-white/90 line-clamp-2">
+                      {option.description}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {showCustom && onCustomChange && (
+          <div className="mt-3 p-4 bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl border border-purple-200">
+            <Textarea
+              className="w-full bg-white border-purple-200 focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none transition-all"
+              placeholder={`Describe your custom ${title.toLowerCase()}...`}
+              value={customValue || ""}
+              onChange={(e) => onCustomChange(e.target.value)}
+              rows={2}
+            />
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
-        <DialogHeader className="border-b pb-4">
-          <DialogTitle className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg">
-              <Wand2 className="w-5 h-5 text-white" />
+      <DialogContent className="max-w-5xl max-h-[95vh] overflow-hidden bg-gradient-to-br from-white to-purple-50/30">
+        <DialogHeader className="border-b border-gray-200 pb-6">
+          <DialogTitle className="flex items-center gap-4">
+            <div className="p-3 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl shadow-lg">
+              <Wand2 className="w-6 h-6 text-white" />
             </div>
             <div>
-              <span className="text-lg font-bold">Generate Panel Manually</span>
-              <DialogDescription className="mt-1">
+              <span className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                Generate Panel Manually
+              </span>
+              <DialogDescription className="mt-1 text-gray-600">
                 Step {step} of 3:{" "}
                 {step === 1
                   ? "Select Location"
@@ -991,14 +1193,38 @@ function ManualPanelGenerator({
               </DialogDescription>
             </div>
           </DialogTitle>
+
+          {/* Progress indicator */}
+          <div className="flex items-center gap-2 mt-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all ${
+                    i <= step
+                      ? "bg-purple-600 text-white shadow-lg"
+                      : "bg-gray-200 text-gray-500"
+                  }`}
+                >
+                  {i}
+                </div>
+                {i < 3 && (
+                  <div
+                    className={`w-12 h-1 mx-2 rounded-full transition-all ${
+                      i < step ? "bg-purple-600" : "bg-gray-200"
+                    }`}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto">
           {/* Step 1: Chapter and Scene Selection */}
           {step === 1 && (
-            <div className="p-6 space-y-6">
-              <div className="text-center mb-8">
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            <div className="p-6 space-y-8">
+              <div className="text-center">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
                   Choose Chapter and Scene
                 </h2>
                 <p className="text-gray-600">
@@ -1006,75 +1232,98 @@ function ManualPanelGenerator({
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <Label className="text-sm font-medium mb-3 block">
-                    Chapter
-                  </Label>
-                  <Select
-                    value={selectedChapter}
-                    onValueChange={setSelectedChapter}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a chapter" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {mockChapters.map((chapter) => (
-                        <SelectItem key={chapter.id} value={chapter.id}>
-                          <div className="flex items-center justify-between w-full">
-                            <span>{chapter.title}</span>
-                            <Badge variant="secondary" className="ml-2">
-                              {chapter.sceneCount} scenes
-                            </Badge>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <Card className="border-2 border-dashed border-gray-300 hover:border-purple-400 transition-all">
+                  <CardContent className="p-6">
+                    <Label className="text-base font-semibold mb-4 flex items-center gap-2">
+                      <FileText className="w-5 h-5 text-purple-600" />
+                      Chapter
+                    </Label>
+                    <Select
+                      value={selectedChapter}
+                      onValueChange={setSelectedChapter}
+                    >
+                      <SelectTrigger className="w-full h-12 border-2">
+                        <SelectValue placeholder="Select a chapter" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {projectData?.chapters?.map((chapter: any) => (
+                          <SelectItem key={chapter.id} value={chapter.id}>
+                            <div className="flex items-center justify-between w-full">
+                              <span className="font-medium">
+                                {chapter.title}
+                              </span>
+                              <Badge variant="secondary" className="ml-2">
+                                {chapter.scenes?.length || 0} scenes
+                              </Badge>
+                            </div>
+                          </SelectItem>
+                        )) || (
+                          <SelectItem value="no-chapters" disabled>
+                            No chapters available
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </CardContent>
+                </Card>
 
-                <div>
-                  <Label className="text-sm font-medium mb-3 block">
-                    Scene
-                  </Label>
-                  <Select
-                    value={selectedScene}
-                    onValueChange={setSelectedScene}
-                    disabled={!selectedChapter}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a scene" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {currentScenes.map((scene) => (
-                        <SelectItem key={scene.id} value={scene.id}>
-                          <div className="flex items-center justify-between w-full">
-                            <span>{scene.title}</span>
-                            <Badge variant="outline" className="ml-2">
-                              {scene.panelCount} panels
-                            </Badge>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <Card className="border-2 border-dashed border-gray-300 hover:border-purple-400 transition-all">
+                  <CardContent className="p-6">
+                    <Label className="text-base font-semibold mb-4 flex items-center gap-2">
+                      <Image className="w-5 h-5 text-purple-600" />
+                      Scene
+                    </Label>
+                    <Select
+                      value={selectedScene}
+                      onValueChange={setSelectedScene}
+                      disabled={!selectedChapter}
+                    >
+                      <SelectTrigger className="w-full h-12 border-2">
+                        <SelectValue placeholder="Select a scene" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {currentScenes.map((scene: any) => (
+                          <SelectItem key={scene.id} value={scene.id}>
+                            <div className="flex items-center justify-between w-full">
+                              <span className="font-medium">{scene.title}</span>
+                              <Badge variant="outline" className="ml-2">
+                                {scene.panels?.length || 0} panels
+                              </Badge>
+                            </div>
+                          </SelectItem>
+                        ))}
+                        {currentScenes.length === 0 && selectedChapter && (
+                          <SelectItem value="no-scenes" disabled>
+                            No scenes available
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </CardContent>
+                </Card>
               </div>
 
               {selectedChapter && selectedScene && (
-                <Card className="bg-blue-50 border-blue-200">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2 text-blue-700">
-                      <FileText className="w-4 h-4" />
-                      <span className="font-medium">Selected:</span>
+                <Card className="bg-gradient-to-br from-blue-50 to-purple-50 border-blue-300 shadow-lg">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-3 text-blue-700 mb-2">
+                      <FileText className="w-5 h-5" />
+                      <span className="font-semibold text-lg">
+                        Selected Location
+                      </span>
                     </div>
-                    <p className="text-blue-600 mt-1">
+                    <p className="text-blue-600 text-lg">
                       {
-                        mockChapters.find((c) => c.id === selectedChapter)
-                          ?.title
+                        projectData?.chapters?.find(
+                          (c: any) => c.id === selectedChapter
+                        )?.title
                       }{" "}
                       →{" "}
-                      {currentScenes.find((s) => s.id === selectedScene)?.title}
+                      {
+                        currentScenes.find((s: any) => s.id === selectedScene)
+                          ?.title
+                      }
                     </p>
                   </CardContent>
                 </Card>
@@ -1084,9 +1333,9 @@ function ManualPanelGenerator({
 
           {/* Step 2: Panel Order */}
           {step === 2 && (
-            <div className="p-6 space-y-6">
-              <div className="text-center mb-8">
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            <div className="p-6 space-y-8">
+              <div className="text-center">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
                   Set Panel Order
                 </h2>
                 <p className="text-gray-600">
@@ -1095,46 +1344,56 @@ function ManualPanelGenerator({
               </div>
 
               <div className="max-w-md mx-auto">
-                <Label className="text-sm font-medium mb-3 block">
-                  Panel Position
-                </Label>
-                <Select
-                  value={panelOrder.toString()}
-                  onValueChange={(value) => setPanelOrder(parseInt(value))}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: maxPanelOrder }, (_, i) => i + 1).map(
-                      (order) => (
-                        <SelectItem key={order} value={order.toString()}>
-                          <div className="flex items-center justify-between w-full">
-                            <span>Position {order}</span>
-                            {order === maxPanelOrder && (
-                              <Badge variant="secondary" className="ml-2">
-                                Last
-                              </Badge>
-                            )}
-                          </div>
-                        </SelectItem>
-                      )
-                    )}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-gray-500 mt-2">
-                  Current scene has {maxPanelOrder - 1} panels. Adding at
-                  position {panelOrder}.
-                </p>
+                <Card className="border-2 border-dashed border-gray-300">
+                  <CardContent className="p-6">
+                    <Label className="text-base font-semibold mb-4 flex items-center gap-2">
+                      <Settings className="w-5 h-5 text-purple-600" />
+                      Panel Position
+                    </Label>
+                    <Select
+                      value={panelOrder.toString()}
+                      onValueChange={(value) => setPanelOrder(parseInt(value))}
+                    >
+                      <SelectTrigger className="w-full h-12 border-2">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from(
+                          { length: maxPanelOrder },
+                          (_, i) => i + 1
+                        ).map((order) => (
+                          <SelectItem key={order} value={order.toString()}>
+                            <div className="flex items-center justify-between w-full">
+                              <span className="font-medium">
+                                Position {order}
+                              </span>
+                              {order === maxPanelOrder && (
+                                <Badge className="ml-2 bg-green-100 text-green-700">
+                                  New
+                                </Badge>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-sm text-gray-500 mt-3">
+                      Current scene has {maxPanelOrder - 1} panels. Adding at
+                      position {panelOrder}.
+                    </p>
+                  </CardContent>
+                </Card>
               </div>
 
-              <Card className="bg-green-50 border-green-200 max-w-md mx-auto">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2 text-green-700">
-                    <Settings className="w-4 h-4" />
-                    <span className="font-medium">Panel Order:</span>
+              <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-300 shadow-lg max-w-md mx-auto">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-3 text-green-700 mb-2">
+                    <Settings className="w-5 h-5" />
+                    <span className="font-semibold text-lg">
+                      Panel Order Confirmed
+                    </span>
                   </div>
-                  <p className="text-green-600 mt-1">
+                  <p className="text-green-600 text-lg">
                     Panel will be inserted at position {panelOrder} of{" "}
                     {maxPanelOrder}
                   </p>
@@ -1143,11 +1402,11 @@ function ManualPanelGenerator({
             </div>
           )}
 
-          {/* Step 3: Panel Configuration */}
+          {/* Step 3: Enhanced Panel Configuration */}
           {step === 3 && (
-            <div className="p-6 space-y-6">
-              <div className="text-center mb-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            <div className="p-6 space-y-8">
+              <div className="text-center">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
                   Configure Panel Details
                 </h2>
                 <p className="text-gray-600">
@@ -1155,16 +1414,16 @@ function ManualPanelGenerator({
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Left Column */}
-                <div className="space-y-6">
-                  {/* Description */}
-                  <div>
-                    <Label className="text-sm font-medium mb-2 block">
+              <div className="space-y-8">
+                {/* Description */}
+                <Card className="border-2 border-dashed border-gray-300 hover:border-purple-400 transition-all">
+                  <CardContent className="p-6">
+                    <Label className="text-base font-semibold mb-4 flex items-center gap-2">
+                      <FileText className="w-5 h-5 text-purple-600" />
                       Panel Description *
                     </Label>
                     <Textarea
-                      placeholder="Describe what happens in this panel..."
+                      placeholder="Describe what happens in this panel in detail..."
                       value={panelSettings.description}
                       onChange={(e) =>
                         setPanelSettings((prev) => ({
@@ -1172,158 +1431,139 @@ function ManualPanelGenerator({
                           description: e.target.value,
                         }))
                       }
-                      className="min-h-[100px]"
+                      className="min-h-[120px] border-2 focus:ring-2 focus:ring-purple-500"
                     />
-                  </div>
+                  </CardContent>
+                </Card>
 
-                  {/* Characters */}
-                  <div>
-                    <Label className="text-sm font-medium mb-2 block">
+                {/* Characters */}
+                <Card className="border-2 border-dashed border-gray-300 hover:border-purple-400 transition-all">
+                  <CardContent className="p-6">
+                    <Label className="text-base font-semibold mb-4 flex items-center gap-2">
+                      <Users className="w-5 h-5 text-purple-600" />
                       Characters
                     </Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {mockCharacters.map((character) => (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {projectData?.characters?.map((character: any) => (
                         <button
                           key={character.id}
                           onClick={() => handleCharacterToggle(character.id)}
-                          className={`p-3 rounded-lg border text-left transition-all ${
+                          className={`p-4 rounded-xl border-2 text-left transition-all hover:shadow-md ${
                             panelSettings.selectedCharacters.includes(
                               character.id
                             )
-                              ? "border-blue-500 bg-blue-50 text-blue-700"
-                              : "border-gray-200 hover:border-gray-300"
+                              ? "border-purple-500 bg-purple-50 text-purple-700 shadow-md"
+                              : "border-gray-200 hover:border-purple-300"
                           }`}
                         >
-                          <div className="font-medium text-sm">
+                          <div className="font-semibold text-sm">
                             {character.name}
                           </div>
-                          <div className="text-xs text-gray-500">
+                          <div className="text-xs text-gray-500 mt-1">
                             {character.description}
                           </div>
                         </button>
-                      ))}
+                      )) || (
+                        <p className="text-gray-500 col-span-full text-center py-4">
+                          No characters available in this project
+                        </p>
+                      )}
                     </div>
-                  </div>
+                  </CardContent>
+                </Card>
 
-                  {/* Location/Background */}
-                  <div>
-                    <Label className="text-sm font-medium mb-2 block">
-                      Background Location
-                    </Label>
-                    <Select
-                      value={panelSettings.background}
-                      onValueChange={(value) =>
-                        setPanelSettings((prev) => ({
-                          ...prev,
-                          background: value,
-                        }))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a location" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {mockLocations.map((location) => (
-                          <SelectItem key={location.id} value={location.name}>
-                            <div>
-                              <div className="font-medium">{location.name}</div>
-                              <div className="text-xs text-gray-500">
-                                {location.description}
-                              </div>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {/* Right Column */}
-                <div className="space-y-6">
-                  {/* Art Style */}
-                  <div>
-                    <Label className="text-sm font-medium mb-2 block">
-                      Art Style
-                    </Label>
-                    <Select
-                      value={panelSettings.artStyle}
-                      onValueChange={(value) =>
+                {/* Visual Selectors */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  <div className="space-y-6">
+                    <VisualSelector
+                      title="Art Style"
+                      options={predefinedOptions.artStyles}
+                      selectedValue={panelSettings.artStyle}
+                      onSelect={(value: string) =>
                         setPanelSettings((prev) => ({
                           ...prev,
                           artStyle: value,
                         }))
                       }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {artStyles.map((style) => (
-                          <SelectItem key={style.value} value={style.value}>
-                            {style.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      customValue={panelSettings.customArtStyle}
+                      onCustomChange={(value: string) =>
+                        setPanelSettings((prev) => ({
+                          ...prev,
+                          customArtStyle: value,
+                        }))
+                      }
+                      icon={<Palette className="w-5 h-5" />}
+                    />
+
+                    <VisualSelector
+                      title="Background"
+                      options={predefinedOptions.backgrounds}
+                      selectedValue={panelSettings.background}
+                      onSelect={(value: string) =>
+                        setPanelSettings((prev) => ({
+                          ...prev,
+                          background: value,
+                        }))
+                      }
+                      customValue={panelSettings.customBackground}
+                      onCustomChange={(value: string) =>
+                        setPanelSettings((prev) => ({
+                          ...prev,
+                          customBackground: value,
+                        }))
+                      }
+                      icon={<MapPin className="w-5 h-5" />}
+                    />
                   </div>
 
-                  {/* Lighting */}
-                  <div>
-                    <Label className="text-sm font-medium mb-2 block">
-                      Lighting
-                    </Label>
-                    <Select
-                      value={panelSettings.lighting}
-                      onValueChange={(value) =>
+                  <div className="space-y-6">
+                    <VisualSelector
+                      title="Lighting"
+                      options={predefinedOptions.lighting}
+                      selectedValue={panelSettings.lighting}
+                      onSelect={(value: string) =>
                         setPanelSettings((prev) => ({
                           ...prev,
                           lighting: value,
                         }))
                       }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {lightingOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                      customValue={panelSettings.customLighting}
+                      onCustomChange={(value: string) =>
+                        setPanelSettings((prev) => ({
+                          ...prev,
+                          customLighting: value,
+                        }))
+                      }
+                      icon={<Eye className="w-5 h-5" />}
+                    />
 
-                  {/* Camera Angle */}
-                  <div>
-                    <Label className="text-sm font-medium mb-2 block">
-                      Camera Angle
-                    </Label>
-                    <Select
-                      value={panelSettings.cameraAngle}
-                      onValueChange={(value) =>
+                    <VisualSelector
+                      title="Camera Angle"
+                      options={predefinedOptions.cameraAngles}
+                      selectedValue={panelSettings.cameraAngle}
+                      onSelect={(value: string) =>
                         setPanelSettings((prev) => ({
                           ...prev,
                           cameraAngle: value,
                         }))
                       }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {cameraAngles.map((angle) => (
-                          <SelectItem key={angle.value} value={angle.value}>
-                            {angle.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      customValue={panelSettings.customCameraAngle}
+                      onCustomChange={(value: string) =>
+                        setPanelSettings((prev) => ({
+                          ...prev,
+                          customCameraAngle: value,
+                        }))
+                      }
+                      icon={<Image className="w-5 h-5" />}
+                    />
                   </div>
+                </div>
 
-                  {/* Dialogue */}
-                  <div>
-                    <Label className="text-sm font-medium mb-2 block">
+                {/* Dialogue */}
+                <Card className="border-2 border-dashed border-gray-300 hover:border-purple-400 transition-all">
+                  <CardContent className="p-6">
+                    <Label className="text-base font-semibold mb-4 flex items-center gap-2">
+                      <Users className="w-5 h-5 text-purple-600" />
                       Dialogue (Optional)
                     </Label>
                     <Textarea
@@ -1335,80 +1575,100 @@ function ManualPanelGenerator({
                           dialogue: e.target.value,
                         }))
                       }
-                      className="min-h-[80px]"
+                      className="min-h-[100px] border-2 focus:ring-2 focus:ring-purple-500"
                     />
-                  </div>
-                </div>
-              </div>
+                  </CardContent>
+                </Card>
 
-              {/* Quality Keywords */}
-              <div>
-                <Label className="text-sm font-medium mb-2 block">
-                  Quality Enhancers (Optional)
-                </Label>
-                <div className="flex flex-wrap gap-2">
-                  {qualityKeywords.map((keyword) => (
-                    <Badge
-                      key={keyword}
-                      variant={
-                        panelSettings.qualityKeywords.includes(keyword)
-                          ? "default"
-                          : "outline"
-                      }
-                      className="cursor-pointer"
-                      onClick={() => handleQualityKeywordToggle(keyword)}
-                    >
-                      {keyword}
-                    </Badge>
-                  ))}
-                </div>
+                {/* Quality Keywords */}
+                <Card className="border-2 border-dashed border-gray-300 hover:border-purple-400 transition-all">
+                  <CardContent className="p-6">
+                    <Label className="text-base font-semibold mb-4 flex items-center gap-2">
+                      <Wand2 className="w-5 h-5 text-purple-600" />
+                      Quality Enhancers (Optional)
+                    </Label>
+                    <div className="flex flex-wrap gap-3">
+                      {predefinedOptions.qualityKeywords.map((keyword) => (
+                        <Badge
+                          key={keyword}
+                          variant={
+                            panelSettings.qualityKeywords.includes(keyword)
+                              ? "default"
+                              : "outline"
+                          }
+                          className={`cursor-pointer transition-all hover:scale-105 ${
+                            panelSettings.qualityKeywords.includes(keyword)
+                              ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-md"
+                              : "hover:bg-purple-50 hover:text-purple-600 border-2"
+                          }`}
+                          onClick={() => handleQualityKeywordToggle(keyword)}
+                        >
+                          {keyword}
+                        </Badge>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             </div>
           )}
         </div>
 
-        {/* Footer */}
-        <div className="border-t p-4 flex justify-between items-center">
-          <div className="text-sm text-gray-600">Step {step} of 3</div>
-          <div className="flex gap-3">
-            {step > 1 && (
-              <Button variant="outline" onClick={handleBack}>
-                Back
-              </Button>
-            )}
-            <Button variant="outline" onClick={handleClose}>
-              Cancel
-            </Button>
-            {step < 3 ? (
+        {/* Enhanced Footer */}
+        <div className="border-t border-gray-200 bg-white/80 backdrop-blur-sm p-6">
+          <div className="flex justify-between items-center">
+            <div className="text-sm text-gray-600 font-medium">
+              Step {step} of 3{" "}
+              {step === 3 && canProceed.step3 && "- Ready to Generate!"}
+            </div>
+            <div className="flex gap-3">
+              {step > 1 && (
+                <Button
+                  variant="outline"
+                  onClick={handleBack}
+                  className="border-2"
+                >
+                  Back
+                </Button>
+              )}
               <Button
-                onClick={handleNext}
-                disabled={
-                  (step === 1 && !canProceed.step1) ||
-                  (step === 2 && !canProceed.step2)
-                }
-                className="bg-blue-600 hover:bg-blue-700"
+                variant="outline"
+                onClick={handleClose}
+                className="border-2"
               >
-                Next
+                Cancel
               </Button>
-            ) : (
-              <Button
-                onClick={generatePanel}
-                disabled={!canProceed.step3 || isGenerating}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 min-w-[120px]"
-              >
-                {isGenerating ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Generating...
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <Wand2 className="w-4 h-4" />
-                    Generate Panel
-                  </div>
-                )}
-              </Button>
-            )}
+              {step < 3 ? (
+                <Button
+                  onClick={handleNext}
+                  disabled={
+                    (step === 1 && !canProceed.step1) ||
+                    (step === 2 && !canProceed.step2)
+                  }
+                  className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all"
+                >
+                  Next Step
+                </Button>
+              ) : (
+                <Button
+                  onClick={generatePanel}
+                  disabled={!canProceed.step3 || isGenerating}
+                  className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all min-w-[140px]"
+                >
+                  {isGenerating ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Generating...
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Wand2 className="w-4 h-4" />
+                      Generate Panel
+                    </div>
+                  )}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </DialogContent>
