@@ -217,11 +217,19 @@ Analyze the newly created chapter and identify what templates or variations are 
 - A completely new outfit or location is mentioned that doesn't exist
 - The chapter introduces a new setting or character outfit concept
 - There's a significant new visual element that needs to be standardized
+- Check for similarity: If a template with >80% similar description exists, consider creating a variation instead
 
 **Create VARIATIONS when:**
 - An existing template needs a different version (winter outfit, night scene, etc.)
 - The chapter mentions different conditions for existing templates
 - Characters need the same basic outfit but in different contexts
+
+## TEMPLATE SIMILARITY CHECK
+
+Before creating new templates, check existing templates for similarity:
+- For outfits: Compare clothing items, style, and character compatibility
+- For locations: Compare setting type, architectural elements, and atmosphere
+- If very similar template exists, create a variation instead of new template
 
 ## OUTPUT REQUIREMENTS
 
@@ -261,18 +269,146 @@ export async function processChapterAnalysisResults(
     createdOutfitVariations: [] as string[],
     createdLocationVariations: [] as string[],
     errors: [] as string[],
+    skippedDuplicates: [] as string[],
+  };
+
+  // Helper function to check template similarity
+  const checkOutfitSimilarity = (newOutfit: any, existingTemplates: any[]) => {
+    return existingTemplates.find((existing) => {
+      // Check name similarity
+      const nameSimilarity =
+        newOutfit.outfitName
+          .toLowerCase()
+          .includes(existing.name.toLowerCase()) ||
+        existing.name
+          .toLowerCase()
+          .includes(newOutfit.outfitName.toLowerCase());
+
+      // Check description similarity (basic keyword matching)
+      const descWords = newOutfit.description.toLowerCase().split(" ");
+      const existingWords = existing.description.toLowerCase().split(" ");
+      const commonWords = descWords.filter((word: string) =>
+        existingWords.includes(word)
+      );
+      const descSimilarity =
+        commonWords.length / Math.max(descWords.length, existingWords.length) >
+        0.6;
+
+      // Check character compatibility
+      const sameCharacter = newOutfit.characterId === existing.characterId;
+
+      return (nameSimilarity || descSimilarity) && sameCharacter;
+    });
+  };
+
+  const checkLocationSimilarity = (
+    newLocation: any,
+    existingTemplates: any[]
+  ) => {
+    return existingTemplates.find((existing) => {
+      // Check name similarity
+      const nameSimilarity =
+        newLocation.locationName
+          .toLowerCase()
+          .includes(existing.name.toLowerCase()) ||
+        existing.name
+          .toLowerCase()
+          .includes(newLocation.locationName.toLowerCase());
+
+      // Check description similarity
+      const descWords = newLocation.description.toLowerCase().split(" ");
+      const existingWords = existing.description.toLowerCase().split(" ");
+      const commonWords = descWords.filter((word: string) =>
+        existingWords.includes(word)
+      );
+      const descSimilarity =
+        commonWords.length / Math.max(descWords.length, existingWords.length) >
+        0.6;
+
+      // Check type similarity
+      const sameType = newLocation.locationType === existing.category;
+
+      return (nameSimilarity || descSimilarity) && sameType;
+    });
   };
 
   // Create new outfit templates
   for (const outfit of analysisResult.newOutfitTemplates || []) {
     try {
+      // Check for similar existing templates first
+      const similarTemplate = checkOutfitSimilarity(
+        outfit,
+        analysisResult.existingOutfitTemplates || []
+      );
+
+      if (similarTemplate) {
+        console.log(
+          `⚠️ Skipping duplicate outfit: ${outfit.outfitName} (similar to ${similarTemplate.name})`
+        );
+        results.skippedDuplicates.push(
+          `Outfit: ${outfit.outfitName} -> similar to ${similarTemplate.name}`
+        );
+        continue;
+      }
+
+      // Get character info for intelligent template creation
+      const characterInfo = (analysisResult.existingCharacters || []).find(
+        (char: any) => char.id === outfit.characterId
+      );
+
+      // Intelligent category derivation
+      const deriveCategory = (occasion: string, role?: string) => {
+        if (occasion.includes("formal") || occasion.includes("business"))
+          return "formal";
+        if (occasion.includes("battle") || occasion.includes("fight"))
+          return "special";
+        if (occasion.includes("traditional") || occasion.includes("cultural"))
+          return "traditional";
+        if (occasion.includes("fantasy") || occasion.includes("magical"))
+          return "fantasy";
+        if (occasion.includes("vintage") || occasion.includes("retro"))
+          return "vintage";
+        if (occasion.includes("futuristic") || occasion.includes("sci-fi"))
+          return "futuristic";
+        if (occasion.includes("seasonal") || occasion.includes("holiday"))
+          return "seasonal";
+        return "casual";
+      };
+
       const outfitData = {
         name: outfit.outfitName,
         description: outfit.description,
-        category: "casual" as const, // Default, can be improved based on analysis
-        gender: "unisex" as const, // Default, should be determined from character
-        ageGroup: "teen" as const, // Default, should be determined from character
-        season: outfit.season,
+        category: deriveCategory(outfit.occasion, characterInfo?.role) as
+          | "casual"
+          | "formal"
+          | "traditional"
+          | "fantasy"
+          | "modern"
+          | "vintage"
+          | "futuristic"
+          | "seasonal"
+          | "special",
+        gender: (characterInfo?.gender?.toLowerCase() === "male"
+          ? "male"
+          : characterInfo?.gender?.toLowerCase() === "female"
+          ? "female"
+          : "unisex") as "male" | "female" | "unisex",
+        ageGroup: (characterInfo?.age < 13
+          ? "child"
+          : characterInfo?.age < 18
+          ? "teen"
+          : characterInfo?.age < 30
+          ? "adult"
+          : "elderly") as "child" | "teen" | "adult" | "elderly",
+        season:
+          outfit.season === "fall"
+            ? "autumn"
+            : (outfit.season as
+                | "spring"
+                | "summer"
+                | "autumn"
+                | "winter"
+                | "all"),
         style: "manga" as const,
         components: outfit.components.map((comp: any) => ({
           type: comp.type,
@@ -323,6 +459,22 @@ export async function processChapterAnalysisResults(
   // Create new location templates
   for (const location of analysisResult.newLocationTemplates || []) {
     try {
+      // Check for similar existing templates first
+      const similarTemplate = checkLocationSimilarity(
+        location,
+        analysisResult.existingLocationTemplates || []
+      );
+
+      if (similarTemplate) {
+        console.log(
+          `⚠️ Skipping duplicate location: ${location.locationName} (similar to ${similarTemplate.name})`
+        );
+        results.skippedDuplicates.push(
+          `Location: ${location.locationName} -> similar to ${similarTemplate.name}`
+        );
+        continue;
+      }
+
       const locationData = {
         name: location.locationName,
         description: location.description,
@@ -365,6 +517,14 @@ export async function processChapterAnalysisResults(
   // Create outfit variations
   for (const variation of analysisResult.outfitVariations || []) {
     try {
+      // Extract context from the created chapter for more intelligent variations
+      const chapterContext = analysisResult.createdChapter;
+      const extractedWeather =
+        chapterContext?.sceneContext?.weather ||
+        chapterContext?.environmentOverrides?.weather;
+      const extractedActivity =
+        chapterContext?.mainActivity || variation.variationType;
+
       const variationData = {
         name: variation.variationName,
         description: variation.description,
@@ -384,8 +544,12 @@ export async function processChapterAnalysisResults(
             defaultMaterial: comp.defaultMaterial,
           })) || [],
         conditions: {
-          weather: variation.modifications.seasonOverride ? [] : undefined,
-          activity: [variation.variationType], // Use variation type as activity context
+          weather: extractedWeather
+            ? [extractedWeather]
+            : variation.modifications.seasonOverride
+            ? []
+            : undefined,
+          activity: [extractedActivity || variation.variationType], // Use extracted activity context
         },
         promptModifiers: [
           ...(variation.modifications.colorPaletteChanges || []),
@@ -410,16 +574,52 @@ export async function processChapterAnalysisResults(
   // Create location variations
   for (const variation of analysisResult.locationVariations || []) {
     try {
+      // Extract context from the created chapter for more intelligent variations
+      const chapterContext = analysisResult.createdChapter;
+      const extractedWeather =
+        chapterContext?.sceneContext?.weather ||
+        chapterContext?.environmentOverrides?.weather ||
+        "sunny";
+      const extractedTimeOfDay =
+        chapterContext?.sceneContext?.timeOfDay ||
+        chapterContext?.environmentOverrides?.timeOfDay ||
+        "morning";
+      const extractedMood =
+        chapterContext?.overallMood ||
+        chapterContext?.sceneContext?.mood ||
+        "neutral";
+
       const variationData = {
         name: variation.variationName,
         timeOfDay:
-          variation.variationType === "time" ? ("evening" as const) : undefined,
+          variation.variationType === "time"
+            ? (extractedTimeOfDay as
+                | "dawn"
+                | "morning"
+                | "noon"
+                | "afternoon"
+                | "evening"
+                | "night")
+            : undefined,
         weather:
           variation.variationType === "weather"
-            ? ("rainy" as const)
+            ? (extractedWeather as
+                | "sunny"
+                | "cloudy"
+                | "rainy"
+                | "stormy"
+                | "snowy"
+                | "foggy")
             : undefined,
         mood: variation.modifications.moodAdjustments
-          ? ("mysterious" as const)
+          ? (extractedMood as
+              | "peaceful"
+              | "mysterious"
+              | "energetic"
+              | "romantic"
+              | "tense"
+              | "cheerful"
+              | "somber")
           : undefined,
         lighting: variation.modifications.lightingChanges
           ? {

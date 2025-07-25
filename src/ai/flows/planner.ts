@@ -828,6 +828,7 @@ const handleGenerateContent = async (
             outfitVariations: creationResults.createdOutfitVariations.length,
             locationVariations:
               creationResults.createdLocationVariations.length,
+            skippedDuplicates: creationResults.skippedDuplicates?.length || 0,
             errors: creationResults.errors.length,
           });
 
@@ -844,6 +845,12 @@ const handleGenerateContent = async (
                 locationTemplates: creationResults.createdLocationTemplates,
                 outfitVariations: creationResults.createdOutfitVariations,
                 locationVariations: creationResults.createdLocationVariations,
+              },
+              intelligentOptimizations: {
+                duplicatesAvoided: creationResults.skippedDuplicates || [],
+                contextAwareVariations:
+                  creationResults.createdOutfitVariations.length +
+                  creationResults.createdLocationVariations.length,
               },
               errors:
                 creationResults.errors.length > 0
