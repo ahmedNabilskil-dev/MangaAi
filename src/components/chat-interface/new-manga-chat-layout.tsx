@@ -1079,25 +1079,28 @@ function ManualPanelGenerator({
     return (
       <div className="space-y-3">
         <button
-          className="flex items-center justify-between w-full p-4 bg-white rounded-xl shadow-sm border border-gray-200 hover:border-purple-300 transition-all hover:shadow-md"
+          className="flex items-center justify-between w-full p-4 bg-gray-800 rounded-xl shadow-sm border border-gray-600 hover:border-purple-400 transition-all hover:shadow-md"
           onClick={() => setIsExpanded(!isExpanded)}
         >
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-gradient-to-br from-purple-100 to-blue-100 text-purple-600">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-purple-800 to-blue-800 text-purple-400">
               {icon}
             </div>
-            <span className="font-medium text-gray-800">{title}</span>
+            <span className="font-medium text-white">{title}</span>
           </div>
           <div className="flex items-center gap-2">
             {selectedValue && selectedValue !== "custom" && (
-              <Badge variant="secondary" className="text-xs">
+              <Badge
+                variant="secondary"
+                className="text-xs bg-gray-700 text-gray-300"
+              >
                 {options.find((o: any) => o.value === selectedValue)?.label}
               </Badge>
             )}
             {isExpanded ? (
-              <ChevronUp className="w-4 h-4 text-gray-500" />
+              <ChevronUp className="w-4 h-4 text-gray-400" />
             ) : (
-              <ChevronDown className="w-4 h-4 text-gray-500" />
+              <ChevronDown className="w-4 h-4 text-gray-400" />
             )}
           </div>
         </button>
@@ -1109,8 +1112,8 @@ function ManualPanelGenerator({
                 key={option.value}
                 className={`relative group cursor-pointer transition-all duration-200 ${
                   selectedValue === option.value
-                    ? "ring-2 ring-purple-500 ring-offset-2 rounded-xl"
-                    : "hover:ring-1 hover:ring-purple-300 rounded-xl"
+                    ? "ring-2 ring-purple-400 ring-offset-2 ring-offset-gray-900 rounded-xl"
+                    : "hover:ring-1 hover:ring-purple-400 ring-offset-gray-900 rounded-xl"
                 }`}
                 onClick={() => {
                   onSelect(option.value);
@@ -1121,7 +1124,7 @@ function ManualPanelGenerator({
                   }
                 }}
               >
-                <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 aspect-square">
+                <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-gray-800 to-gray-700 aspect-square">
                   {option.image ? (
                     <img
                       src={option.image}
@@ -1129,7 +1132,7 @@ function ManualPanelGenerator({
                       className="w-full h-full object-cover transition-transform group-hover:scale-105"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50">
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-900 to-blue-900">
                       <Wand2 className="w-6 h-6 text-purple-400" />
                     </div>
                   )}
@@ -1137,7 +1140,7 @@ function ManualPanelGenerator({
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
 
                   {selectedValue === option.value && (
-                    <div className="absolute top-2 right-2 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center shadow-lg">
+                    <div className="absolute top-2 right-2 w-6 h-6 bg-purple-400 rounded-full flex items-center justify-center shadow-lg">
                       <div className="w-2 h-2 bg-white rounded-full" />
                     </div>
                   )}
@@ -1157,9 +1160,9 @@ function ManualPanelGenerator({
         )}
 
         {showCustom && onCustomChange && (
-          <div className="mt-3 p-4 bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl border border-purple-200">
+          <div className="mt-3 p-4 bg-gradient-to-br from-purple-900/50 to-blue-900/50 rounded-xl border border-purple-600">
             <Textarea
-              className="w-full bg-white border-purple-200 focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none transition-all"
+              className="w-full bg-gray-700 border-purple-400 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none transition-all"
               placeholder={`Describe your custom ${title.toLowerCase()}...`}
               value={customValue || ""}
               onChange={(e) => onCustomChange(e.target.value)}
@@ -1173,17 +1176,17 @@ function ManualPanelGenerator({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-5xl max-h-[95vh] overflow-hidden bg-gradient-to-br from-white to-purple-50/30">
-        <DialogHeader className="border-b border-gray-200 pb-6">
+      <DialogContent className="max-w-5xl max-h-[95vh] flex flex-col bg-gray-900 dark:bg-gray-900 border-gray-700">
+        <DialogHeader className="border-b border-gray-700 pb-6 flex-shrink-0">
           <DialogTitle className="flex items-center gap-4">
             <div className="p-3 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl shadow-lg">
               <Wand2 className="w-6 h-6 text-white" />
             </div>
             <div>
-              <span className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+              <span className="text-xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
                 Generate Panel Manually
               </span>
-              <DialogDescription className="mt-1 text-gray-600">
+              <DialogDescription className="mt-1 text-gray-400">
                 Step {step} of 3:{" "}
                 {step === 1
                   ? "Select Location"
@@ -1202,7 +1205,7 @@ function ManualPanelGenerator({
                   className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all ${
                     i <= step
                       ? "bg-purple-600 text-white shadow-lg"
-                      : "bg-gray-200 text-gray-500"
+                      : "bg-gray-700 text-gray-400"
                   }`}
                 >
                   {i}
@@ -1210,7 +1213,7 @@ function ManualPanelGenerator({
                 {i < 3 && (
                   <div
                     className={`w-12 h-1 mx-2 rounded-full transition-all ${
-                      i < step ? "bg-purple-600" : "bg-gray-200"
+                      i < step ? "bg-purple-600" : "bg-gray-700"
                     }`}
                   />
                 )}
@@ -1219,47 +1222,58 @@ function ManualPanelGenerator({
           </div>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto min-h-0">
           {/* Step 1: Chapter and Scene Selection */}
           {step === 1 && (
             <div className="p-6 space-y-8">
               <div className="text-center">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                <h2 className="text-2xl font-bold text-white mb-2">
                   Choose Chapter and Scene
                 </h2>
-                <p className="text-gray-600">
+                <p className="text-gray-400">
                   Select where you want to add your new panel
                 </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <Card className="border-2 border-dashed border-gray-300 hover:border-purple-400 transition-all">
+                <Card className="border-2 border-dashed border-gray-600 hover:border-purple-500 transition-all bg-gray-800">
                   <CardContent className="p-6">
-                    <Label className="text-base font-semibold mb-4 flex items-center gap-2">
-                      <FileText className="w-5 h-5 text-purple-600" />
+                    <Label className="text-base font-semibold mb-4 flex items-center gap-2 text-white">
+                      <FileText className="w-5 h-5 text-purple-400" />
                       Chapter
                     </Label>
                     <Select
                       value={selectedChapter}
                       onValueChange={setSelectedChapter}
                     >
-                      <SelectTrigger className="w-full h-12 border-2">
+                      <SelectTrigger className="w-full h-12 border-2 border-gray-600 bg-gray-700 text-white">
                         <SelectValue placeholder="Select a chapter" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-gray-800 border-gray-600">
                         {projectData?.chapters?.map((chapter: any) => (
-                          <SelectItem key={chapter.id} value={chapter.id}>
+                          <SelectItem
+                            key={chapter.id}
+                            value={chapter.id}
+                            className="text-white hover:bg-gray-700"
+                          >
                             <div className="flex items-center justify-between w-full">
                               <span className="font-medium">
                                 {chapter.title}
                               </span>
-                              <Badge variant="secondary" className="ml-2">
+                              <Badge
+                                variant="secondary"
+                                className="ml-2 bg-gray-600 text-gray-200"
+                              >
                                 {chapter.scenes?.length || 0} scenes
                               </Badge>
                             </div>
                           </SelectItem>
                         )) || (
-                          <SelectItem value="no-chapters" disabled>
+                          <SelectItem
+                            value="no-chapters"
+                            disabled
+                            className="text-gray-400"
+                          >
                             No chapters available
                           </SelectItem>
                         )}
@@ -1268,10 +1282,10 @@ function ManualPanelGenerator({
                   </CardContent>
                 </Card>
 
-                <Card className="border-2 border-dashed border-gray-300 hover:border-purple-400 transition-all">
+                <Card className="border-2 border-dashed border-gray-600 hover:border-purple-500 transition-all bg-gray-800">
                   <CardContent className="p-6">
-                    <Label className="text-base font-semibold mb-4 flex items-center gap-2">
-                      <Image className="w-5 h-5 text-purple-600" />
+                    <Label className="text-base font-semibold mb-4 flex items-center gap-2 text-white">
+                      <Image className="w-5 h-5 text-purple-400" />
                       Scene
                     </Label>
                     <Select
@@ -1279,22 +1293,33 @@ function ManualPanelGenerator({
                       onValueChange={setSelectedScene}
                       disabled={!selectedChapter}
                     >
-                      <SelectTrigger className="w-full h-12 border-2">
+                      <SelectTrigger className="w-full h-12 border-2 border-gray-600 bg-gray-700 text-white">
                         <SelectValue placeholder="Select a scene" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-gray-800 border-gray-600">
                         {currentScenes.map((scene: any) => (
-                          <SelectItem key={scene.id} value={scene.id}>
+                          <SelectItem
+                            key={scene.id}
+                            value={scene.id}
+                            className="text-white hover:bg-gray-700"
+                          >
                             <div className="flex items-center justify-between w-full">
                               <span className="font-medium">{scene.title}</span>
-                              <Badge variant="outline" className="ml-2">
+                              <Badge
+                                variant="outline"
+                                className="ml-2 border-gray-500 text-gray-300"
+                              >
                                 {scene.panels?.length || 0} panels
                               </Badge>
                             </div>
                           </SelectItem>
                         ))}
                         {currentScenes.length === 0 && selectedChapter && (
-                          <SelectItem value="no-scenes" disabled>
+                          <SelectItem
+                            value="no-scenes"
+                            disabled
+                            className="text-gray-400"
+                          >
                             No scenes available
                           </SelectItem>
                         )}
@@ -1305,15 +1330,15 @@ function ManualPanelGenerator({
               </div>
 
               {selectedChapter && selectedScene && (
-                <Card className="bg-gradient-to-br from-blue-50 to-purple-50 border-blue-300 shadow-lg">
+                <Card className="bg-gradient-to-br from-blue-900/50 to-purple-900/50 border-blue-600 shadow-lg">
                   <CardContent className="p-6">
-                    <div className="flex items-center gap-3 text-blue-700 mb-2">
+                    <div className="flex items-center gap-3 text-blue-300 mb-2">
                       <FileText className="w-5 h-5" />
                       <span className="font-semibold text-lg">
                         Selected Location
                       </span>
                     </div>
-                    <p className="text-blue-600 text-lg">
+                    <p className="text-blue-200 text-lg">
                       {
                         projectData?.chapters?.find(
                           (c: any) => c.id === selectedChapter
@@ -1335,40 +1360,44 @@ function ManualPanelGenerator({
           {step === 2 && (
             <div className="p-6 space-y-8">
               <div className="text-center">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                <h2 className="text-2xl font-bold text-white mb-2">
                   Set Panel Order
                 </h2>
-                <p className="text-gray-600">
+                <p className="text-gray-400">
                   Choose where to insert the new panel in the scene
                 </p>
               </div>
 
               <div className="max-w-md mx-auto">
-                <Card className="border-2 border-dashed border-gray-300">
+                <Card className="border-2 border-dashed border-gray-600 bg-gray-800">
                   <CardContent className="p-6">
-                    <Label className="text-base font-semibold mb-4 flex items-center gap-2">
-                      <Settings className="w-5 h-5 text-purple-600" />
+                    <Label className="text-base font-semibold mb-4 flex items-center gap-2 text-white">
+                      <Settings className="w-5 h-5 text-purple-400" />
                       Panel Position
                     </Label>
                     <Select
                       value={panelOrder.toString()}
                       onValueChange={(value) => setPanelOrder(parseInt(value))}
                     >
-                      <SelectTrigger className="w-full h-12 border-2">
+                      <SelectTrigger className="w-full h-12 border-2 border-gray-600 bg-gray-700 text-white">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-gray-800 border-gray-600">
                         {Array.from(
                           { length: maxPanelOrder },
                           (_, i) => i + 1
                         ).map((order) => (
-                          <SelectItem key={order} value={order.toString()}>
+                          <SelectItem
+                            key={order}
+                            value={order.toString()}
+                            className="text-white hover:bg-gray-700"
+                          >
                             <div className="flex items-center justify-between w-full">
                               <span className="font-medium">
                                 Position {order}
                               </span>
                               {order === maxPanelOrder && (
-                                <Badge className="ml-2 bg-green-100 text-green-700">
+                                <Badge className="ml-2 bg-green-800 text-green-300">
                                   New
                                 </Badge>
                               )}
@@ -1393,7 +1422,7 @@ function ManualPanelGenerator({
                       Panel Order Confirmed
                     </span>
                   </div>
-                  <p className="text-green-600 text-lg">
+                  <p className="text-green-400 text-lg">
                     Panel will be inserted at position {panelOrder} of{" "}
                     {maxPanelOrder}
                   </p>
@@ -1406,20 +1435,20 @@ function ManualPanelGenerator({
           {step === 3 && (
             <div className="p-6 space-y-8">
               <div className="text-center">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                <h2 className="text-2xl font-bold text-white mb-2">
                   Configure Panel Details
                 </h2>
-                <p className="text-gray-600">
+                <p className="text-gray-400">
                   Set up the visual and narrative elements
                 </p>
               </div>
 
               <div className="space-y-8">
                 {/* Description */}
-                <Card className="border-2 border-dashed border-gray-300 hover:border-purple-400 transition-all">
+                <Card className="border-2 border-dashed border-gray-600 bg-gray-800 hover:border-purple-400 transition-all">
                   <CardContent className="p-6">
-                    <Label className="text-base font-semibold mb-4 flex items-center gap-2">
-                      <FileText className="w-5 h-5 text-purple-600" />
+                    <Label className="text-base font-semibold mb-4 flex items-center gap-2 text-white">
+                      <FileText className="w-5 h-5 text-purple-400" />
                       Panel Description *
                     </Label>
                     <Textarea
@@ -1431,16 +1460,16 @@ function ManualPanelGenerator({
                           description: e.target.value,
                         }))
                       }
-                      className="min-h-[120px] border-2 focus:ring-2 focus:ring-purple-500"
+                      className="min-h-[120px] border-2 border-gray-600 bg-gray-700 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-purple-500"
                     />
                   </CardContent>
                 </Card>
 
                 {/* Characters */}
-                <Card className="border-2 border-dashed border-gray-300 hover:border-purple-400 transition-all">
+                <Card className="border-2 border-dashed border-gray-600 bg-gray-800 hover:border-purple-400 transition-all">
                   <CardContent className="p-6">
-                    <Label className="text-base font-semibold mb-4 flex items-center gap-2">
-                      <Users className="w-5 h-5 text-purple-600" />
+                    <Label className="text-base font-semibold mb-4 flex items-center gap-2 text-white">
+                      <Users className="w-5 h-5 text-purple-400" />
                       Characters
                     </Label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1452,19 +1481,19 @@ function ManualPanelGenerator({
                             panelSettings.selectedCharacters.includes(
                               character.id
                             )
-                              ? "border-purple-500 bg-purple-50 text-purple-700 shadow-md"
-                              : "border-gray-200 hover:border-purple-300"
+                              ? "border-purple-500 bg-purple-900/50 text-purple-300 shadow-md"
+                              : "border-gray-600 bg-gray-700 text-white hover:border-purple-400"
                           }`}
                         >
                           <div className="font-semibold text-sm">
                             {character.name}
                           </div>
-                          <div className="text-xs text-gray-500 mt-1">
+                          <div className="text-xs text-gray-400 mt-1">
                             {character.description}
                           </div>
                         </button>
                       )) || (
-                        <p className="text-gray-500 col-span-full text-center py-4">
+                        <p className="text-gray-400 col-span-full text-center py-4">
                           No characters available in this project
                         </p>
                       )}
@@ -1560,10 +1589,10 @@ function ManualPanelGenerator({
                 </div>
 
                 {/* Dialogue */}
-                <Card className="border-2 border-dashed border-gray-300 hover:border-purple-400 transition-all">
+                <Card className="border-2 border-dashed border-gray-600 bg-gray-800 hover:border-purple-400 transition-all">
                   <CardContent className="p-6">
-                    <Label className="text-base font-semibold mb-4 flex items-center gap-2">
-                      <Users className="w-5 h-5 text-purple-600" />
+                    <Label className="text-base font-semibold mb-4 flex items-center gap-2 text-white">
+                      <Users className="w-5 h-5 text-purple-400" />
                       Dialogue (Optional)
                     </Label>
                     <Textarea
@@ -1575,16 +1604,16 @@ function ManualPanelGenerator({
                           dialogue: e.target.value,
                         }))
                       }
-                      className="min-h-[100px] border-2 focus:ring-2 focus:ring-purple-500"
+                      className="min-h-[100px] border-2 border-gray-600 bg-gray-700 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-purple-500"
                     />
                   </CardContent>
                 </Card>
 
                 {/* Quality Keywords */}
-                <Card className="border-2 border-dashed border-gray-300 hover:border-purple-400 transition-all">
+                <Card className="border-2 border-dashed border-gray-600 bg-gray-800 hover:border-purple-400 transition-all">
                   <CardContent className="p-6">
-                    <Label className="text-base font-semibold mb-4 flex items-center gap-2">
-                      <Wand2 className="w-5 h-5 text-purple-600" />
+                    <Label className="text-base font-semibold mb-4 flex items-center gap-2 text-white">
+                      <Wand2 className="w-5 h-5 text-purple-400" />
                       Quality Enhancers (Optional)
                     </Label>
                     <div className="flex flex-wrap gap-3">
@@ -1599,7 +1628,7 @@ function ManualPanelGenerator({
                           className={`cursor-pointer transition-all hover:scale-105 ${
                             panelSettings.qualityKeywords.includes(keyword)
                               ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-md"
-                              : "hover:bg-purple-50 hover:text-purple-600 border-2"
+                              : "hover:bg-purple-900/50 hover:text-purple-400 border-2 border-gray-600 text-gray-300"
                           }`}
                           onClick={() => handleQualityKeywordToggle(keyword)}
                         >
@@ -1615,9 +1644,9 @@ function ManualPanelGenerator({
         </div>
 
         {/* Enhanced Footer */}
-        <div className="border-t border-gray-200 bg-white/80 backdrop-blur-sm p-6">
+        <div className="border-t border-gray-700 bg-gray-900/80 backdrop-blur-sm p-6 flex-shrink-0">
           <div className="flex justify-between items-center">
-            <div className="text-sm text-gray-600 font-medium">
+            <div className="text-sm text-gray-400 font-medium">
               Step {step} of 3{" "}
               {step === 3 && canProceed.step3 && "- Ready to Generate!"}
             </div>
@@ -1626,7 +1655,7 @@ function ManualPanelGenerator({
                 <Button
                   variant="outline"
                   onClick={handleBack}
-                  className="border-2"
+                  className="border-2 border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white"
                 >
                   Back
                 </Button>
@@ -1634,7 +1663,7 @@ function ManualPanelGenerator({
               <Button
                 variant="outline"
                 onClick={handleClose}
-                className="border-2"
+                className="border-2 border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white"
               >
                 Cancel
               </Button>
