@@ -1,11 +1,5 @@
 "use client";
 
-import { Message } from "@/ai/adapters/type";
-import {
-  LocationTemplateGenerationPrompt,
-  OutfitTemplateGenerationPrompt,
-} from "@/ai/flows/generation-flows";
-import { ProcessMangaRequestFlow } from "@/ai/flows/planner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useMcpClient } from "@/hooks/use-mcp-client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import {
@@ -33,6 +28,7 @@ import {
   getScenes,
   listCharacters,
 } from "@/services/data-service";
+import { geminiService } from "@/services/gemini-service";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Bot,
@@ -58,6 +54,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import AssetDetailPanel from "./asset-detail-panel";
 import { GeneratedAssetsPanel } from "./generated-assets-panel";
+import { McpProjectStructurePanel } from "./mcp-project-structure-panel";
+import { McpPromptSelector } from "./mcp-prompt-selector";
+import { McpStatusIndicator } from "./mcp-status-indicator";
 import {
   EnhancedProjectStructurePanel,
   EnhancedTemplateLibraryPanel,
@@ -93,7 +92,11 @@ interface SidePanelTab {
   }>;
 }
 
-interface ChatMessage extends Message {
+interface ChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp?: string;
   type?: "text" | "image" | "component-created" | "component-updated";
   metadata?: {
     componentType?: "character" | "scene" | "chapter" | "panel";
@@ -110,6 +113,9 @@ export default function NewMangaChatLayout() {
   const params = useParams();
   const projectId = params.id as string;
   const { toast } = useToast();
+
+  // MCP Client Integration
+  const { state: mcpState, actions: mcpActions } = useMcpClient("chat");
 
   // State
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -132,6 +138,7 @@ export default function NewMangaChatLayout() {
     asset: null,
   });
   const [manualPanelDialog, setManualPanelDialog] = useState(false);
+  const [mcpPromptDialog, setMcpPromptDialog] = useState(false);
 
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -182,7 +189,9 @@ export default function NewMangaChatLayout() {
       id: "structure",
       name: "Structure",
       icon: FileText,
-      component: EnhancedProjectStructurePanel,
+      component: mcpState.isConnected
+        ? McpProjectStructurePanel
+        : EnhancedProjectStructurePanel,
     },
     {
       id: "templates",
@@ -276,14 +285,31 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
         const currentProjectData = await getProject(projectId);
 
         if (type === "outfits") {
-          const result = await OutfitTemplateGenerationPrompt({
-            userInput: `Create new outfit templates for the manga project based on the existing characters and story context.`,
-            projectContext: currentProjectData,
-            existingCharacters: currentProjectData?.characters || [],
-            existingOutfitTemplates: currentProjectData?.outfitTemplates || [],
-            existingLocationTemplates:
-              currentProjectData?.locationTemplates || [],
-          });
+          const prompt = `Create new outfit templates for the manga project based on the existing characters and story context.
+          
+Project Context: ${JSON.stringify(currentProjectData, null, 2)}
+Existing Characters: ${JSON.stringify(
+            currentProjectData?.characters || [],
+            null,
+            2
+          )}
+Existing Outfit Templates: ${JSON.stringify(
+            currentProjectData?.outfitTemplates || [],
+            null,
+            2
+          )}
+Existing Location Templates: ${JSON.stringify(
+            currentProjectData?.locationTemplates || [],
+            null,
+            2
+          )}
+
+Please generate creative and diverse outfit templates that fit the manga's style and characters.`;
+
+          const result = await geminiService.sendMessage(
+            prompt,
+            "You are a helpful AI assistant for manga creation. Generate outfit templates in a structured format."
+          );
 
           // Add success message
           const successMessage: ChatMessage = {
@@ -295,12 +321,21 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
           };
           setMessages((prev) => [...prev, successMessage]);
         } else if (type === "locations") {
-          const result = await LocationTemplateGenerationPrompt({
-            userInput: `Create new location templates for the manga project based on the existing story context and settings.`,
-            projectContext: currentProjectData,
-            existingLocationTemplates:
-              currentProjectData?.locationTemplates || [],
-          });
+          const prompt = `Create new location templates for the manga project based on the existing story context and settings.
+          
+Project Context: ${JSON.stringify(currentProjectData, null, 2)}
+Existing Location Templates: ${JSON.stringify(
+            currentProjectData?.locationTemplates || [],
+            null,
+            2
+          )}
+
+Please generate diverse and atmospheric location templates that enhance the manga's world-building.`;
+
+          const result = await geminiService.sendMessage(
+            prompt,
+            "You are a helpful AI assistant for manga creation. Generate location templates in a structured format."
+          );
 
           // Add success message
           const successMessage: ChatMessage = {
@@ -358,12 +393,144 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
       setIsLoading(true);
 
       try {
-        // Call AI flow
-        const response = await ProcessMangaRequestFlow({
-          userInput: textToSend,
-          projectId,
-          prevChats: messages,
-        });
+        let response;
+
+        // Try to use MCP client if available and connected
+        if (mcpState.isConnected && mcpState.prompts.length > 0) {
+          // Check if this looks like a request that should use MCP prompts
+          const isContentRequest = /create|generate|add|make|new/i.test(
+            textToSend
+          );
+          const isCharacterRequest =
+            /character|person|protagonist|hero|villain/i.test(textToSend);
+          const isChapterRequest = /chapter|story|plot|narrative/i.test(
+            textToSend
+          );
+          const isSceneRequest = /scene|setting|location/i.test(textToSend);
+          const isPanelRequest = /panel|frame|image|visual/i.test(textToSend);
+
+          if (isContentRequest) {
+            // Determine which MCP prompt to use based on context
+            let promptName = "";
+            if (isCharacterRequest) {
+              promptName = "character-generation";
+            } else if (isChapterRequest) {
+              promptName = "chapter-generation";
+            } else if (isSceneRequest) {
+              promptName = "scene-generation";
+            } else if (isPanelRequest) {
+              promptName = "panel-generation";
+            } else {
+              promptName = "story-generation"; // Default
+            }
+
+            // Get MCP prompt template and use it with Gemini
+            try {
+              const promptTemplate = await mcpActions.getPromptTemplate(
+                promptName,
+                {
+                  userInput: textToSend,
+                  projectId: projectId,
+                  selectedEntity: selectedEntity,
+                }
+              );
+
+              // Use Gemini service directly with the prompt template
+              const geminiResponse = await geminiService.sendMessage(
+                promptTemplate,
+                "You are a helpful AI assistant for manga creation."
+              );
+
+              response = {
+                message: geminiResponse.text,
+                type: geminiResponse.error
+                  ? ("error" as const)
+                  : ("success" as const),
+              };
+            } catch (mcpError) {
+              console.warn(
+                "MCP prompt failed, falling back to Gemini direct:",
+                mcpError
+              );
+              // Fall back to Gemini direct
+              const geminiResponse = await geminiService.sendMessage(
+                textToSend,
+                "You are a helpful AI assistant for manga creation. Help users create characters, chapters, scenes, and panels for their manga projects."
+              );
+
+              response = {
+                message: geminiResponse.text,
+                type: geminiResponse.error
+                  ? ("error" as const)
+                  : ("success" as const),
+              };
+            }
+          } else {
+            // Use Gemini directly for non-content requests with conversation history
+            try {
+              const geminiMessages = geminiService.convertToGeminiMessages(
+                messages.map((m) => ({ role: m.role, content: m.content }))
+              );
+
+              geminiMessages.push({
+                role: "user",
+                parts: [{ text: textToSend }],
+              });
+
+              const geminiResponse = await geminiService.sendConversation(
+                geminiMessages,
+                "You are a helpful AI assistant for manga creation. Help users create characters, chapters, scenes, and panels for their manga projects."
+              );
+
+              response = {
+                message: geminiResponse.text,
+                type: geminiResponse.error
+                  ? ("error" as const)
+                  : ("success" as const),
+              };
+            } catch (error) {
+              console.warn("Gemini direct call failed:", error);
+              // Final fallback - simple error message
+              response = {
+                message:
+                  "I encountered an issue processing your request. Please try again or rephrase your message.",
+                type: "error" as const,
+              };
+            }
+          }
+        } else {
+          // MCP not available, use Gemini directly or fall back to regular flow
+          try {
+            const geminiMessages = geminiService.convertToGeminiMessages(
+              messages.map((m) => ({ role: m.role, content: m.content }))
+            );
+
+            geminiMessages.push({
+              role: "user",
+              parts: [{ text: textToSend }],
+            });
+
+            const geminiResponse = await geminiService.sendConversation(
+              geminiMessages,
+              "You are a helpful AI assistant for manga creation. Help users create characters, chapters, scenes, and panels for their manga projects."
+            );
+
+            response = {
+              message: geminiResponse.text,
+              type: geminiResponse.error
+                ? ("error" as const)
+                : ("success" as const),
+            };
+          } catch (error) {
+            console.warn("Gemini failed:", error);
+            // Final error response
+            response = {
+              message:
+                "I encountered an issue processing your request. Please try again or rephrase your message.",
+              type: "error" as const,
+            };
+          }
+        }
 
         // Add AI response
         const aiMessage: ChatMessage = {
@@ -394,7 +561,17 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
         setIsLoading(false);
       }
     },
-    [input, isLoading, messages, projectId, toast]
+    [
+      input,
+      isLoading,
+      messages,
+      projectId,
+      toast,
+      mcpState.isConnected,
+      mcpState.prompts,
+      mcpActions,
+      selectedEntity,
+    ]
   );
 
   // Handle entity selection (for editing)
@@ -437,6 +614,45 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
     []
   );
 
+  // Handle MCP prompt selection (populate input field)
+  const handleMcpPromptExecute = useCallback(
+    async (promptName: string, promptArgs?: any) => {
+      try {
+        // Get the prompt template from MCP server
+        const promptTemplate = await mcpActions.getPromptTemplate(promptName, {
+          projectId: projectId,
+          selectedEntity: selectedEntity,
+          ...promptArgs,
+        });
+
+        // Populate the input field with the prompt template
+        setInput(promptTemplate);
+
+        // Focus the textarea so user can see the populated content
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+        }
+
+        toast({
+          title: "Prompt Template Loaded",
+          description: `${promptName
+            .replace(/-/g, " ")
+            .replace(/\b\w/g, (l) =>
+              l.toUpperCase()
+            )} template has been loaded into the input field.`,
+        });
+      } catch (error) {
+        console.error("Failed to load MCP prompt:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load prompt template. Please try again.",
+          variant: "destructive",
+        });
+      }
+    },
+    [mcpActions, projectId, selectedEntity, toast]
+  );
+
   // Handle Enter key (with Shift+Enter for new line)
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -463,9 +679,12 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
           >
             {/* Side Panel Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="font-semibold text-gray-900 dark:text-gray-100">
-                Manga Studio
-              </h2>
+              <div className="flex flex-col gap-2">
+                <h2 className="font-semibold text-gray-900 dark:text-gray-100">
+                  Manga Studio
+                </h2>
+                <McpStatusIndicator />
+              </div>
               <button
                 onClick={() =>
                   setSidePanel((prev) => ({ ...prev, isOpen: false }))
@@ -820,6 +1039,17 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
                 rows={1}
                 disabled={isLoading}
               />
+              {/* MCP Prompt Button */}
+              {mcpState.isConnected && mcpState.prompts.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setMcpPromptDialog(true)}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 text-purple-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors"
+                  title="Use MCP Prompts"
+                >
+                  <Wand2 className="w-4 h-4" />
+                </button>
+              )}
             </div>
             <button
               type="submit"
@@ -846,6 +1076,15 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
         isOpen={assetDetailPanel.isOpen}
         onClose={handleAssetDetailClose}
         onNavigateToSource={handleNavigateToSource}
+      />
+
+      {/* MCP Prompt Selector */}
+      <McpPromptSelector
+        isOpen={mcpPromptDialog}
+        onClose={() => setMcpPromptDialog(false)}
+        onPromptExecute={handleMcpPromptExecute}
+        selectedEntity={selectedEntity}
+        projectId={projectId}
       />
     </div>
   );

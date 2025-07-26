@@ -738,7 +738,6 @@ const MangaComponent: React.FC<MangaWebtoonProps> = ({
         updatePanelDialogue(dialogue.id, { config: dialogue.config })
       );
       await Promise.all(updatePromises);
-      console.log("All dialogues saved successfully");
       setEditMode(false);
     } catch (error) {
       console.error("Failed to save dialogues:", error);
@@ -849,7 +848,6 @@ const MangaComponent: React.FC<MangaWebtoonProps> = ({
     if (panelElements[index]) {
       panelElements[index].scrollIntoView({ behavior: "smooth" });
       setCurrentPanelIndex(index);
-      console.log(index);
     }
   }, []);
 

@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "manga-ai": {
+      "command": "npm",
+      "args": ["run", "mcp:dev"],
+      "cwd": "/Users/ahmednabil/Desktop/MangaAi",
+      "env": {}
+    }
+  }
+}

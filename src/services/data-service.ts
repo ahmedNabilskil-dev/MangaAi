@@ -12,25 +12,32 @@ import type {
 } from "@/types/entities";
 import type { DeepPartial } from "@/types/utils";
 import type { IDataService } from "./data-service.interface";
-import { dexieDataService } from "./dexie-service";
 
-let activeDataService: IDataService;
+let activeDataService: IDataService | null = null;
 
-activeDataService = dexieDataService;
+// Function to get the appropriate data service
+export function getDataService(): IDataService {
+  if (!activeDataService) {
+    throw new Error(
+      "Data service not initialized. Call initializeDataService first."
+    );
+  }
+  return activeDataService;
+}
 
 // --- Project ---
 export async function getAllProjects(): Promise<MangaProject[]> {
-  return activeDataService.getAllProjects();
+  return getDataService().getAllProjects();
 }
 
 export async function getProject(id: string): Promise<MangaProject | null> {
-  return activeDataService.getProject(id);
+  return getDataService().getProject(id);
 }
 
 export async function createProject(
   projectData: Partial<MangaProject>
 ): Promise<MangaProject> {
-  return activeDataService.createProject(projectData);
+  return getDataService().createProject(projectData);
 }
 
 export async function updateProject(
@@ -42,22 +49,53 @@ export async function updateProject(
     >
   >
 ): Promise<void> {
-  return activeDataService.updateProject(id, projectData);
+  return getDataService().updateProject(id, projectData);
 }
 
 export async function deleteProject(id: string): Promise<void> {
-  const chapters = await activeDataService.listChapters(id);
+  const chapters = await getDataService().listChapters(id);
   for (const chapter of chapters) {
     await deleteChapter(chapter.id); // will cascade
   }
-  await activeDataService.deleteProject(id);
+  await getDataService().deleteProject(id);
+}
+
+export async function getProjectWithRelations(
+  id: string
+): Promise<MangaProject | null> {
+  const project = await getDataService().getProject(id);
+  if (!project) return null;
+
+  // Load chapters with their scenes and panels
+  const chapters = await getDataService().listChapters(id);
+  for (const chapter of chapters) {
+    const scenes = await getDataService().listScenes(chapter.id);
+    for (const scene of scenes) {
+      const panels = await getDataService().listPanels(scene.id);
+      for (const panel of panels) {
+        const dialogues = await getDataService().listPanelDialogues(panel.id);
+        panel.dialogues = dialogues;
+      }
+      scene.panels = panels;
+    }
+    chapter.scenes = scenes;
+  }
+
+  // Load characters
+  const characters = await getDataService().listCharacters(id);
+
+  return {
+    ...project,
+    chapters,
+    characters,
+  };
 }
 
 // --- Chapter ---
 export async function createChapter(
   chapterData: Omit<Chapter, "id" | "createdAt" | "updatedAt" | "scenes">
 ): Promise<Chapter> {
-  return activeDataService.createChapter(chapterData);
+  return getDataService().createChapter(chapterData);
 }
 
 export async function updateChapter(
@@ -66,28 +104,28 @@ export async function updateChapter(
     Omit<Chapter, "id" | "createdAt" | "updatedAt" | "scenes">
   >
 ): Promise<void> {
-  return activeDataService.updateChapter(id, chapterData);
+  return getDataService().updateChapter(id, chapterData);
 }
 
 export async function deleteChapter(id: string): Promise<void> {
-  const scenes = await activeDataService.listScenes(id);
+  const scenes = await getDataService().listScenes(id);
   for (const scene of scenes) {
     await deleteScene(scene.id); // will cascade
   }
-  await activeDataService.deleteChapter(id);
+  await getDataService().deleteChapter(id);
 }
 
 export async function getChapterForContext(
   id: string
 ): Promise<Chapter | null> {
-  return activeDataService.getChapterForContext(id);
+  return getDataService().getChapterForContext(id);
 }
 
 // --- Scene ---
 export async function createScene(
   sceneData: Omit<Scene, "id" | "createdAt" | "updatedAt" | "panels">
 ): Promise<Scene> {
-  return activeDataService.createScene(sceneData);
+  return getDataService().createScene(sceneData);
 }
 
 export async function updateScene(
@@ -96,19 +134,19 @@ export async function updateScene(
     Omit<Scene, "id" | "createdAt" | "updatedAt" | "panels">
   >
 ): Promise<void> {
-  return activeDataService.updateScene(id, sceneData);
+  return getDataService().updateScene(id, sceneData);
 }
 
 export async function deleteScene(id: string): Promise<void> {
-  const panels = await activeDataService.listPanels(id);
+  const panels = await getDataService().listPanels(id);
   for (const panel of panels) {
     await deletePanel(panel.id); // will cascade
   }
-  await activeDataService.deleteScene(id);
+  await getDataService().deleteScene(id);
 }
 
 export async function getSceneForContext(id: string): Promise<Scene | null> {
-  return activeDataService.getSceneForContext(id);
+  return getDataService().getSceneForContext(id);
 }
 
 // --- Panel ---
@@ -118,7 +156,7 @@ export async function createPanel(
     "id" | "createdAt" | "updatedAt" | "dialogues" | "characters"
   >
 ): Promise<Panel> {
-  return activeDataService.createPanel(panelData);
+  return getDataService().createPanel(panelData);
 }
 
 export async function updatePanel(
@@ -127,33 +165,33 @@ export async function updatePanel(
     Omit<Panel, "id" | "createdAt" | "updatedAt" | "dialogues" | "characters">
   >
 ): Promise<void> {
-  return activeDataService.updatePanel(id, panelData);
+  return getDataService().updatePanel(id, panelData);
 }
 
 export async function deletePanel(id: string): Promise<void> {
-  const dialogues = await activeDataService.listPanelDialogues(id);
+  const dialogues = await getDataService().listPanelDialogues(id);
   for (const dialogue of dialogues) {
     await deletePanelDialogue(dialogue.id);
   }
-  await activeDataService.deletePanel(id);
+  await getDataService().deletePanel(id);
 }
 
 export async function assignCharacterToPanel(
   panelId: string,
   characterId: string
 ): Promise<void> {
-  return activeDataService.assignCharacterToPanel(panelId, characterId);
+  return getDataService().assignCharacterToPanel(panelId, characterId);
 }
 
 export async function removeCharacterFromPanel(
   panelId: string,
   characterId: string
 ): Promise<void> {
-  return activeDataService.removeCharacterFromPanel(panelId, characterId);
+  return getDataService().removeCharacterFromPanel(panelId, characterId);
 }
 
 export async function getPanelForContext(id: string): Promise<Panel | null> {
-  return activeDataService.getPanelForContext(id);
+  return getDataService().getPanelForContext(id);
 }
 
 // --- Dialogue ---
@@ -163,7 +201,7 @@ export async function createPanelDialogue(
     "id" | "createdAt" | "updatedAt" | "speaker"
   >
 ): Promise<PanelDialogue> {
-  return activeDataService.createPanelDialogue(dialogueData);
+  return getDataService().createPanelDialogue(dialogueData);
 }
 
 export async function updatePanelDialogue(
@@ -172,71 +210,71 @@ export async function updatePanelDialogue(
     Omit<PanelDialogue, "id" | "createdAt" | "updatedAt" | "speaker">
   >
 ): Promise<void> {
-  return activeDataService.updatePanelDialogue(id, dialogueData);
+  return getDataService().updatePanelDialogue(id, dialogueData);
 }
 
 export async function deletePanelDialogue(id: string): Promise<void> {
-  return activeDataService.deletePanelDialogue(id);
+  return getDataService().deletePanelDialogue(id);
 }
 
 export async function getPanelDialogueForContext(
   id: string
 ): Promise<PanelDialogue | null> {
-  return activeDataService.getPanelDialogueForContext(id);
+  return getDataService().getPanelDialogueForContext(id);
 }
 
 // --- Character ---
 export async function listCharacters(projectId: string): Promise<Character[]> {
-  return activeDataService.listCharacters(projectId);
+  return getDataService().listCharacters(projectId);
 }
 
 export async function getCharacter(id: string): Promise<Character | null> {
-  return activeDataService.getCharacter(id);
+  return getDataService().getCharacter(id);
 }
 
 export async function createCharacter(
   characterData: Omit<Character, "id" | "createdAt" | "updatedAt">
 ): Promise<Character> {
-  return activeDataService.createCharacter(characterData);
+  return getDataService().createCharacter(characterData);
 }
 
 export async function updateCharacter(
   id: string,
   characterData: DeepPartial<Omit<Character, "id" | "createdAt" | "updatedAt">>
 ): Promise<void> {
-  return activeDataService.updateCharacter(id, characterData);
+  return getDataService().updateCharacter(id, characterData);
 }
 
 export async function deleteCharacter(id: string): Promise<void> {
-  return activeDataService.deleteCharacter(id);
+  return getDataService().deleteCharacter(id);
 }
 
 export async function getCharacterForContext(
   id: string
 ): Promise<Character | null> {
-  return activeDataService.getCharacterForContext(id);
+  return getDataService().getCharacterForContext(id);
 }
 
 export async function getMangaProjects(): Promise<MangaProject[]> {
-  return await activeDataService.listMangaProjects();
+  return await getDataService().listMangaProjects();
 }
 
 export async function getChapters(projectId: string): Promise<Chapter[]> {
-  return await activeDataService.listChapters(projectId);
+  return await getDataService().listChapters(projectId);
 }
 
 export async function getScenes(chapterId: string): Promise<Scene[]> {
-  return await activeDataService.listScenes(chapterId);
+  return await getDataService().listScenes(chapterId);
 }
 
 export async function getPanels(sceneId: string): Promise<Panel[]> {
-  return await activeDataService.listPanels(sceneId);
+  return await getDataService().listPanels(sceneId);
 }
 
 export async function getPanelDialogues(
   panelId: string
 ): Promise<PanelDialogue[]> {
-  return await activeDataService.listPanelDialogues(panelId);
+  return await getDataService().listPanelDialogues(panelId);
 }
 
 //////////////////////////////////////////////////////////////////
@@ -245,7 +283,7 @@ export async function cleanOrphanedData(): Promise<void> {
   // --- Clean Chapters with missing Projects ---
   const projects = await getAllProjects();
   const projectIds = new Set(projects.map((p) => p.id));
-  const allChaptersRaw = await activeDataService.getAllChapters(); // Add this method if not exists
+  const allChaptersRaw = await getDataService().getAllChapters(); // Add this method if not exists
 
   for (const chapter of allChaptersRaw) {
     if (!projectIds.has(chapter.mangaProjectId)) {
@@ -255,9 +293,9 @@ export async function cleanOrphanedData(): Promise<void> {
 
   // --- Clean Scenes with missing Chapters ---
   const chapterIds = new Set(
-    (await activeDataService.getAllChapters()).map((c) => c.id)
+    (await getDataService().getAllChapters()).map((c) => c.id)
   );
-  const allScenes = await activeDataService.getAllScenes(); // Add this method if not exists
+  const allScenes = await getDataService().getAllScenes(); // Add this method if not exists
 
   for (const scene of allScenes) {
     if (!chapterIds.has(scene.chapterId)) {
@@ -267,7 +305,7 @@ export async function cleanOrphanedData(): Promise<void> {
 
   // --- Clean Panels with missing Scenes ---
   const sceneIds = new Set(allScenes.map((s) => s.id));
-  const allPanels = await activeDataService.getAllPanels(); // Add this method if not exists
+  const allPanels = await getDataService().getAllPanels(); // Add this method if not exists
 
   for (const panel of allPanels) {
     if (!sceneIds.has(panel.sceneId)) {
@@ -277,7 +315,7 @@ export async function cleanOrphanedData(): Promise<void> {
 
   // --- Clean Dialogues with missing Panels ---
   const panelIds = new Set(allPanels.map((p) => p.id));
-  const allDialogues = await activeDataService.getAllPanelDialogues(); // Add this method if not exists
+  const allDialogues = await getDataService().getAllPanelDialogues(); // Add this method if not exists
 
   for (const dialogue of allDialogues) {
     if (!panelIds.has(dialogue.panelId)) {
@@ -286,7 +324,7 @@ export async function cleanOrphanedData(): Promise<void> {
   }
 
   // --- Clean Characters not linked to any Project  ---
-  const characterList = await activeDataService.getAllCharacters(); // Add this if needed
+  const characterList = await getDataService().getAllCharacters(); // Add this if needed
   for (const character of characterList) {
     if (!projectIds.has(character.mangaProjectId)) {
       await deleteCharacter(character.id);
@@ -300,13 +338,13 @@ export async function cleanOrphanedData(): Promise<void> {
 export async function createOutfitTemplate(
   templateData: Omit<OutfitTemplate, "id" | "createdAt" | "updatedAt">
 ): Promise<OutfitTemplate> {
-  return activeDataService.createOutfitTemplate(templateData);
+  return getDataService().createOutfitTemplate(templateData);
 }
 
 export async function getOutfitTemplate(
   id: string
 ): Promise<OutfitTemplate | null> {
-  return activeDataService.getOutfitTemplate(id);
+  return getDataService().getOutfitTemplate(id);
 }
 
 export async function updateOutfitTemplate(
@@ -315,11 +353,11 @@ export async function updateOutfitTemplate(
     Omit<OutfitTemplate, "id" | "createdAt" | "updatedAt">
   >
 ): Promise<void> {
-  return activeDataService.updateOutfitTemplate(id, templateData);
+  return getDataService().updateOutfitTemplate(id, templateData);
 }
 
 export async function deleteOutfitTemplate(id: string): Promise<void> {
-  return activeDataService.deleteOutfitTemplate(id);
+  return getDataService().deleteOutfitTemplate(id);
 }
 
 export async function listOutfitTemplates(filters?: {
@@ -330,20 +368,20 @@ export async function listOutfitTemplates(filters?: {
   style?: string;
   activeOnly?: boolean;
 }): Promise<OutfitTemplate[]> {
-  return activeDataService.listOutfitTemplates(filters);
+  return getDataService().listOutfitTemplates(filters);
 }
 
 // --- Location Templates ---
 export async function createLocationTemplate(
   templateData: Omit<LocationTemplate, "id" | "createdAt" | "updatedAt">
 ): Promise<LocationTemplate> {
-  return activeDataService.createLocationTemplate(templateData);
+  return getDataService().createLocationTemplate(templateData);
 }
 
 export async function getLocationTemplate(
   id: string
 ): Promise<LocationTemplate | null> {
-  return activeDataService.getLocationTemplate(id);
+  return getDataService().getLocationTemplate(id);
 }
 
 export async function updateLocationTemplate(
@@ -352,11 +390,11 @@ export async function updateLocationTemplate(
     Omit<LocationTemplate, "id" | "createdAt" | "updatedAt">
   >
 ): Promise<void> {
-  return activeDataService.updateLocationTemplate(id, templateData);
+  return getDataService().updateLocationTemplate(id, templateData);
 }
 
 export async function deleteLocationTemplate(id: string): Promise<void> {
-  return activeDataService.deleteLocationTemplate(id);
+  return getDataService().deleteLocationTemplate(id);
 }
 
 export async function listLocationTemplates(filters?: {
@@ -367,7 +405,7 @@ export async function listLocationTemplates(filters?: {
   style?: string;
   activeOnly?: boolean;
 }): Promise<LocationTemplate[]> {
-  return activeDataService.listLocationTemplates(filters);
+  return getDataService().listLocationTemplates(filters);
 }
 
 // --- Outfit Variations ---
@@ -388,7 +426,7 @@ export async function createOutfitVariation(
   };
 
   // Get the base outfit template and add the variation to it
-  const baseOutfit = await activeDataService.getOutfitTemplate(baseOutfitId);
+  const baseOutfit = await getDataService().getOutfitTemplate(baseOutfitId);
   if (!baseOutfit) {
     throw new Error(`Base outfit template with ID ${baseOutfitId} not found`);
   }
@@ -400,7 +438,7 @@ export async function createOutfitVariation(
     updatedAt: new Date(),
   };
 
-  await activeDataService.updateOutfitTemplate(baseOutfitId, updatedOutfit);
+  await getDataService().updateOutfitTemplate(baseOutfitId, updatedOutfit);
   return variation;
 }
 
@@ -408,7 +446,7 @@ export async function getOutfitVariation(
   outfitId: string,
   variationId: string
 ): Promise<OutfitVariation | null> {
-  const outfit = await activeDataService.getOutfitTemplate(outfitId);
+  const outfit = await getDataService().getOutfitTemplate(outfitId);
   if (!outfit || !outfit.variations) return null;
 
   return outfit.variations.find((v) => v.id === variationId) || null;
@@ -432,7 +470,7 @@ export async function createLocationVariation(
   };
 
   // Get the base location template and add the variation to it
-  const baseLocation = await activeDataService.getLocationTemplate(
+  const baseLocation = await getDataService().getLocationTemplate(
     baseLocationId
   );
   if (!baseLocation) {
@@ -448,7 +486,7 @@ export async function createLocationVariation(
     updatedAt: new Date(),
   };
 
-  await activeDataService.updateLocationTemplate(
+  await getDataService().updateLocationTemplate(
     baseLocationId,
     updatedLocation
   );
@@ -459,7 +497,7 @@ export async function getLocationVariation(
   locationId: string,
   variationId: string
 ): Promise<LocationVariation | null> {
-  const location = await activeDataService.getLocationTemplate(locationId);
+  const location = await getDataService().getLocationTemplate(locationId);
   if (!location || !location.variations) return null;
 
   return location.variations.find((v) => v.id === variationId) || null;
@@ -467,8 +505,14 @@ export async function getLocationVariation(
 
 // --- Initialization ---
 export async function initializeDataService(): Promise<void> {
-  if (activeDataService.initialize) {
-    return activeDataService.initialize();
+  // Always use SQLite for all environments
+  try {
+    const { sqliteDataService } = await import("./sqlite-service.js");
+    activeDataService = sqliteDataService;
+    await sqliteDataService.initialize();
+    console.log("✅ SQLite data service initialized");
+  } catch (error) {
+    console.error("❌ Failed to initialize SQLite data service:", error);
+    throw error;
   }
-  return Promise.resolve();
 }

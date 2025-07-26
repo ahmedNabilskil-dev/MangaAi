@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "manga-ai-http": {
+      "transport": "http",
+      "url": "http://localhost:3001/mcp",
+      "description": "MangaAI MCP Server (HTTP)",
+      "capabilities": {
+        "tools": true,
+        "resources": true,
+        "prompts": true
+      }
+    }
+  }
+}

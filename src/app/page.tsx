@@ -1,10 +1,10 @@
 "use client";
 
-import { CreateMangaFlow } from "@/ai/flows/manga-creation-flows";
 import SidebarItem from "@/components/side-item/SideItem";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { mcpClient } from "@/services/mcp-client";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   BookMarked,
@@ -63,10 +63,48 @@ const HomePage = () => {
 
     setIsGenerating(true);
     try {
-      const { projectId, initialMessages } = await CreateMangaFlow({
-        storyIdea: mangaIdea,
-      });
-      localStorage.setItem("messages", JSON.stringify(initialMessages));
+      // Check if MCP server is available for project creation
+      const isConnected = await mcpClient.checkConnection();
+
+      if (isConnected) {
+        // Use MCP story-generation prompt to create the project concept
+        const promptTemplate = await mcpClient.getPromptTemplate(
+          "story-generation",
+          {
+            user_input: mangaIdea,
+            target_audience: "young-adult", // Could be made configurable
+            preferred_genre: "", // Could be made configurable
+          }
+        );
+
+        // Use the create-project tool to actually create the project
+        const projectResult = await mcpClient.callTool("create-project", {
+          promptResponse: promptTemplate,
+        });
+
+        if (projectResult && projectResult.projectId) {
+          // Navigate to the created project
+          router.push(`/manga-flow/${projectResult.projectId}`);
+        } else {
+          throw new Error("Project creation failed");
+        }
+      } else {
+        // Fallback: Create a simple project reference and navigate
+        console.warn("MCP server not available, using simple navigation");
+        const projectId = `project-${Date.now()}`;
+
+        // Store the manga idea for later use
+        localStorage.setItem(`manga-idea-${projectId}`, mangaIdea);
+
+        // Navigate to the manga creation interface
+        router.push(`/manga-flow/${projectId}`);
+      }
+    } catch (error) {
+      console.error("Failed to create manga project:", error);
+
+      // Fallback navigation on error
+      const projectId = `project-${Date.now()}`;
+      localStorage.setItem(`manga-idea-${projectId}`, mangaIdea);
       router.push(`/manga-flow/${projectId}`);
     } finally {
       setIsGenerating(false);

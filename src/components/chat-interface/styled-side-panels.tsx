@@ -4,9 +4,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { getProjectWithRelations } from "@/services/db";
-import { Chapter, Character, Scene } from "@/types/entities";
-import { useLiveQuery } from "dexie-react-hooks";
+import { getProjectWithRelations } from "@/services/data-service";
+import { Chapter, Character, MangaProject, Scene } from "@/types/entities";
 import { motion } from "framer-motion";
 import {
   BookOpen,
@@ -21,7 +20,7 @@ import {
   Settings,
   Users,
 } from "lucide-react";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import EntityDetailPanel, { DetailableEntity } from "./entity-detail-panel";
 
 // ============================================================================
@@ -72,14 +71,24 @@ export function EnhancedProjectStructurePanel({
     entity: null,
     entityType: null,
   });
+  const [projectData, setProjectData] = useState<MangaProject | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const projectData = useLiveQuery(async () => {
-    try {
-      return await getProjectWithRelations(projectId);
-    } catch (error) {
-      console.error("Failed to load project:", error);
-      return null;
-    }
+  useEffect(() => {
+    const loadProject = async () => {
+      setIsLoading(true);
+      try {
+        const data = await getProjectWithRelations(projectId);
+        setProjectData(data);
+      } catch (error) {
+        console.error("Failed to load project:", error);
+        setProjectData(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadProject();
   }, [projectId]);
 
   const toggleExpanded = (id: string) => {
@@ -124,6 +133,18 @@ export function EnhancedProjectStructurePanel({
       entityType: null,
     });
   };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="h-full flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
+        <div className="text-center">
+          <Users className="w-8 h-8 text-gray-400 animate-pulse mx-auto mb-2" />
+          <p className="text-sm text-gray-400">Loading project structure...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!projectData) {
     return (
@@ -725,14 +746,24 @@ export function EnhancedTemplateLibraryPanel({
     entity: null,
     entityType: null,
   });
+  const [projectData, setProjectData] = useState<MangaProject | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const projectData = useLiveQuery(async () => {
-    try {
-      return await getProjectWithRelations(projectId);
-    } catch (error) {
-      console.error("Failed to load project:", error);
-      return null;
-    }
+  useEffect(() => {
+    const loadProject = async () => {
+      setIsLoading(true);
+      try {
+        const data = await getProjectWithRelations(projectId);
+        setProjectData(data);
+      } catch (error) {
+        console.error("Failed to load project:", error);
+        setProjectData(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadProject();
   }, [projectId]);
 
   const showEntityDetails = (

@@ -12,10 +12,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getProjectWithRelations } from "@/services/db";
-import { useLiveQuery } from "dexie-react-hooks";
+import { getProjectWithRelations } from "@/services/data-service";
+import { MangaProject } from "@/types/entities";
 import { Download, Eye, Filter, Image, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 // ============================================================================
 // GENERATED ASSETS PANEL
@@ -65,17 +65,28 @@ export function GeneratedAssetsPanel({
     search: "",
   });
   const [showFilters, setShowFilters] = useState(false);
-  const projectData = useLiveQuery(async () => {
-    try {
-      return await getProjectWithRelations(projectId);
-    } catch (error) {
-      console.error("Failed to load project:", error);
-      return null;
-    }
+  const [projectData, setProjectData] = useState<MangaProject | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadProject = async () => {
+      setIsLoading(true);
+      try {
+        const data = await getProjectWithRelations(projectId);
+        setProjectData(data);
+      } catch (error) {
+        console.error("Failed to load project:", error);
+        setProjectData(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadProject();
   }, [projectId]);
 
   const getAssets = (): Asset[] => {
-    if (!projectData) return [];
+    if (!projectData || isLoading) return [];
 
     const assets: Asset[] = [];
 
@@ -353,7 +364,14 @@ export function GeneratedAssetsPanel({
       <div className="flex-1 min-h-0 overflow-hidden">
         <ScrollArea className="h-full w-full">
           <div className="p-4 pb-6">
-            {filteredAssets.length === 0 ? (
+            {isLoading ? (
+              <div className="text-center py-8">
+                <div className="w-12 h-12 bg-gray-700/50 rounded-lg mx-auto mb-3 flex items-center justify-center">
+                  <Image className="w-6 h-6 text-gray-400 animate-pulse" />
+                </div>
+                <p className="text-sm text-gray-400">Loading assets...</p>
+              </div>
+            ) : filteredAssets.length === 0 ? (
               <div className="text-center py-8">
                 <div className="w-12 h-12 bg-gray-700/50 rounded-lg mx-auto mb-3 flex items-center justify-center">
                   <Image className="w-6 h-6 text-gray-400" />

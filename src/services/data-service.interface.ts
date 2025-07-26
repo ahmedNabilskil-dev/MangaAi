@@ -13,7 +13,7 @@ import type { DeepPartial } from "@/types/utils";
 
 /**
  * Interface defining the contract for data storage services.
- * Any data service implementation (Dexie, In-Memory, Firebase, etc.)
+ * Any data service implementation (SQLite, In-Memory, Firebase, etc.)
  * must adhere to this interface.
  */
 export interface IDataService {
