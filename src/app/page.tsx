@@ -29,6 +29,7 @@ const HomePage = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [mangaIdea, setMangaIdea] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const router = useRouter();
 
@@ -44,6 +45,7 @@ const HomePage = () => {
   const closeDialog = () => {
     setIsDialogOpen(false);
     setMangaIdea("");
+    setErrorMessage("");
   };
 
   const [isApiKeyDialogOpen, setIsApiKeyDialogOpen] = useState(false);
@@ -62,6 +64,7 @@ const HomePage = () => {
     }
 
     setIsGenerating(true);
+    setErrorMessage(""); // Clear any previous errors
     try {
       // Check if MCP server is available for project creation
       const isConnected = await mcpClient.checkConnection();
@@ -77,38 +80,66 @@ const HomePage = () => {
           }
         );
 
-        // Use the create-project tool to actually create the project
-        const projectResult = await mcpClient.callTool("create-project", {
-          promptResponse: promptTemplate,
+        // Use the createProject tool to actually create the project
+        const projectResult = await mcpClient.callTool("createProject", {
+          title:
+            mangaIdea.substring(0, 50) + (mangaIdea.length > 50 ? "..." : ""),
+          description: mangaIdea,
+          genre: "sci-fi",
+          targetAudience: "young-adult",
+          worldDetails: {
+            summary: "A unique world based on: " + mangaIdea,
+            history: "To be developed",
+            society: "To be developed",
+            uniqueSystems: "To be developed",
+          },
+          concept: mangaIdea,
+          plotStructure: {
+            incitingIncident: "To be developed",
+            plotTwist: "To be developed",
+            climax: "To be developed",
+            resolution: "To be developed",
+          },
+          themes: [],
+          motifs: [],
+          symbols: [],
+          messages: [],
+          viewCount: 0,
+          likeCount: 0,
+          published: false,
         });
 
-        if (projectResult && projectResult.projectId) {
-          // Navigate to the created project
-          router.push(`/manga-flow/${projectResult.projectId}`);
+        if (projectResult && projectResult.content) {
+          // Parse the project result to get the project ID
+          const projectData = JSON.parse(projectResult.content[0].text);
+          const projectId = projectData.createdProject.id;
+
+          if (projectId) {
+            // Navigate to the created project
+            router.push(`/manga-flow/${projectId}`);
+            closeDialog(); // Only close dialog on success
+          } else {
+            throw new Error("Project creation failed - no project ID returned");
+          }
         } else {
-          throw new Error("Project creation failed");
+          throw new Error("Project creation failed - no result returned");
         }
       } else {
-        // Fallback: Create a simple project reference and navigate
-        console.warn("MCP server not available, using simple navigation");
-        const projectId = `project-${Date.now()}`;
-
-        // Store the manga idea for later use
-        localStorage.setItem(`manga-idea-${projectId}`, mangaIdea);
-
-        // Navigate to the manga creation interface
-        router.push(`/manga-flow/${projectId}`);
+        throw new Error(
+          "MCP server is not available. Please check your connection and try again."
+        );
       }
     } catch (error) {
       console.error("Failed to create manga project:", error);
 
-      // Fallback navigation on error
-      const projectId = `project-${Date.now()}`;
-      localStorage.setItem(`manga-idea-${projectId}`, mangaIdea);
-      router.push(`/manga-flow/${projectId}`);
+      // Show the actual error message to the user
+      const errorMsg =
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred while creating your manga project.";
+      setErrorMessage(errorMsg);
     } finally {
       setIsGenerating(false);
-      closeDialog();
     }
   };
 
@@ -356,6 +387,17 @@ const HomePage = () => {
               </div>
 
               <form onSubmit={handleSubmit}>
+                {/* Error Message Display */}
+                {errorMessage && (
+                  <div className="bg-red-900/30 border border-red-700 rounded-lg p-3 mb-4">
+                    <div className="flex items-center gap-2 text-red-200 text-sm">
+                      <X className="h-4 w-4" />
+                      <span className="font-semibold">Error:</span>
+                    </div>
+                    <p className="text-red-200 text-sm mt-1">{errorMessage}</p>
+                  </div>
+                )}
+
                 <div className="mb-6">
                   <Label htmlFor="manga-idea" className="text-gray-300 mb-2">
                     Describe your manga idea
@@ -372,7 +414,17 @@ const HomePage = () => {
                   />
                 </div>
 
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-3">
+                  {errorMessage && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setErrorMessage("")}
+                      className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                    >
+                      Clear Error
+                    </Button>
+                  )}
                   <Button
                     type="submit"
                     size="lg"
@@ -402,6 +454,11 @@ const HomePage = () => {
                           ></path>
                         </svg>
                         Generating...
+                      </>
+                    ) : errorMessage ? (
+                      <>
+                        <Send className="h-5 w-5" />
+                        Try Again
                       </>
                     ) : (
                       <>

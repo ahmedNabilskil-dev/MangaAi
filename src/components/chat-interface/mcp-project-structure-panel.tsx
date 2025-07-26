@@ -1,5 +1,5 @@
 /**
- * MCP-Enhanced Project Structure Panel
+ * MCP-Enhanced Project Structure Panel - Fixed Version
  * Uses MCP resources to display project data
  */
 
@@ -19,7 +19,7 @@ import {
   Wifi,
   WifiOff,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface McpProjectStructurePanelProps {
   projectId: string;
@@ -52,14 +52,38 @@ export function McpProjectStructurePanel({
     chapters: true,
   });
 
+  // Use refs to track loading state and prevent duplicate requests
+  const isLoadingRef = useRef(false);
+  const loadedProjectIdRef = useRef<string | null>(null);
+
   // Load project data from MCP resources
   const loadProjectData = useCallback(async () => {
-    if (!mcpState.isConnected) return;
+    // Prevent duplicate requests
+    if (isLoadingRef.current) {
+      console.log("⏸️ Already loading project data, skipping...");
+      return;
+    }
 
+    // Skip if we already loaded this project ID
+    if (loadedProjectIdRef.current === projectId && projectData) {
+      console.log("✅ Project data already loaded for", projectId);
+      return;
+    }
+
+    if (!mcpState.isConnected) {
+      console.log("❌ MCP not connected, cannot load project data");
+      return;
+    }
+
+    console.log("🔄 Loading project data for:", projectId);
+    isLoadingRef.current = true;
     setIsLoadingProject(true);
+
     try {
       // Read project resource from MCP server
       const projectUri = `manga://project/${projectId}`;
+      console.log("📖 Reading project resource:", projectUri);
+
       const projectResource = await mcpActions.readResource(projectUri);
 
       if (projectResource && projectResource.contents) {
@@ -67,23 +91,66 @@ export function McpProjectStructurePanel({
         const projectText = projectResource.contents[0]?.text;
         if (projectText) {
           const project = JSON.parse(projectText);
+          console.log("✅ Project data loaded:", project);
           setProjectData(project);
+          loadedProjectIdRef.current = projectId;
+        } else {
+          console.warn("⚠️ No project text content found");
+          setProjectData(null);
         }
+      } else {
+        console.warn("⚠️ No project resource contents found");
+        setProjectData(null);
       }
     } catch (error) {
-      console.error("Failed to load project data from MCP:", error);
-      // Fallback: could load from local service here
+      console.error("❌ Failed to load project data from MCP:", error);
+      setProjectData(null);
+      // Don't set loadedProjectIdRef on error so we can retry
     } finally {
+      isLoadingRef.current = false;
       setIsLoadingProject(false);
     }
-  }, [projectId, mcpState.isConnected, mcpActions]);
+  }, [projectId, mcpState.isConnected, mcpActions.readResource]); // Remove projectData from deps
 
-  // Load project data when MCP connection is available
+  // Manual refresh function that bypasses caching
+  const refreshProjectData = useCallback(async () => {
+    console.log("🔄 Manual refresh requested");
+    loadedProjectIdRef.current = null; // Reset cache
+    setProjectData(null);
+    await loadProjectData();
+  }, [loadProjectData]);
+
+  // Load project data when MCP connection is available or project ID changes
   useEffect(() => {
-    if (mcpState.isConnected) {
-      loadProjectData();
+    console.log("🎯 Effect triggered:", {
+      isConnected: mcpState.isConnected,
+      projectId,
+      currentlyLoaded: loadedProjectIdRef.current,
+    });
+
+    if (mcpState.isConnected && projectId) {
+      // Only load if we haven't loaded this project yet
+      if (loadedProjectIdRef.current !== projectId) {
+        loadProjectData();
+      }
+    } else if (!mcpState.isConnected) {
+      // Reset state when disconnected
+      setProjectData(null);
+      loadedProjectIdRef.current = null;
     }
-  }, [mcpState.isConnected, loadProjectData]);
+  }, [mcpState.isConnected, projectId]); // Remove loadProjectData from deps
+
+  // Reset loaded project when projectId changes
+  useEffect(() => {
+    if (
+      loadedProjectIdRef.current &&
+      loadedProjectIdRef.current !== projectId
+    ) {
+      console.log("📍 Project ID changed, resetting cache");
+      loadedProjectIdRef.current = null;
+      setProjectData(null);
+    }
+  }, [projectId]);
 
   const toggleSection = useCallback((section: "characters" | "chapters") => {
     setExpandedSections((prev) => ({
@@ -131,7 +198,7 @@ export function McpProjectStructurePanel({
     );
   }
 
-  if (isLoadingProject) {
+  if (isLoadingProject && !projectData) {
     return (
       <div className="h-full bg-gradient-to-br from-gray-900 to-gray-800 p-4">
         <div className="flex flex-col items-center justify-center h-full">
@@ -156,16 +223,24 @@ export function McpProjectStructurePanel({
               <div className="flex items-center gap-2 mt-1">
                 <Wifi className="w-3 h-3 text-green-400" />
                 <span className="text-xs text-green-400">MCP Connected</span>
+                {loadedProjectIdRef.current && (
+                  <span className="text-xs text-gray-400">
+                    (ID: {loadedProjectIdRef.current})
+                  </span>
+                )}
               </div>
             </div>
           </div>
           <Button
-            onClick={loadProjectData}
+            onClick={refreshProjectData}
             size="sm"
             variant="ghost"
             className="text-gray-400 hover:text-white"
+            disabled={isLoadingProject}
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw
+              className={cn("w-4 h-4", isLoadingProject && "animate-spin")}
+            />
           </Button>
         </div>
       </div>
@@ -330,6 +405,15 @@ export function McpProjectStructurePanel({
               <p className="text-gray-400 text-sm">
                 Unable to load project data from MCP server.
               </p>
+              <Button
+                onClick={refreshProjectData}
+                size="sm"
+                className="mt-2"
+                variant="outline"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Try Again
+              </Button>
             </div>
           </div>
         )}

@@ -1,4 +1,4 @@
-import { getProjectWithRelations } from "../../services/db";
+import { getProjectWithRelations } from "../../services/data-service";
 
 /**
  * MCP Manga Creation Prompts

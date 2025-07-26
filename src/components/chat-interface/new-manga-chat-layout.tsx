@@ -716,35 +716,31 @@ Please generate diverse and atmospheric location templates that enhance the mang
               ))}
             </div>
 
-            {/* Side Panel Content */}
+            {/* Side Panel Content - Only render the active tab's component to avoid infinite requests */}
             <div className="flex-1 min-h-0 overflow-hidden">
-              {sidePanelTabs.map((tab) => {
-                if (tab.id === sidePanel.activeTab) {
-                  const commonProps = {
-                    key: tab.id,
-                    projectId,
-                    onComponentSelect: handleComponentSelect,
-                    selectedEntity,
-                    onEntitySelect: handleEntitySelect,
-                    onAssetSelect: handleAssetSelect,
-                  };
-
-                  // Handle templates panel specifically
-                  if (tab.id === "templates") {
-                    return (
-                      <EnhancedTemplateLibraryPanel
-                        {...commonProps}
-                        onTemplateCreate={handleTemplateCreate}
-                      />
-                    );
-                  }
-
-                  // Handle other panels
-                  const Component = tab.component;
-                  return <Component {...commonProps} />;
+              {(() => {
+                const activeTab = sidePanelTabs.find(
+                  (tab) => tab.id === sidePanel.activeTab
+                );
+                if (!activeTab) return null;
+                const commonProps = {
+                  projectId,
+                  onComponentSelect: handleComponentSelect,
+                  selectedEntity,
+                  onEntitySelect: handleEntitySelect,
+                  onAssetSelect: handleAssetSelect,
+                };
+                if (activeTab.id === "templates") {
+                  return (
+                    <EnhancedTemplateLibraryPanel
+                      {...commonProps}
+                      onTemplateCreate={handleTemplateCreate}
+                    />
+                  );
                 }
-                return null;
-              })}
+                const Component = activeTab.component;
+                return <Component {...commonProps} />;
+              })()}
             </div>
           </motion.div>
         )}

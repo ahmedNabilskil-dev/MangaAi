@@ -1,18 +1,23 @@
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import cors from "cors";
 import express from "express";
+import { randomUUID } from "node:crypto";
 import { initializeDataService } from "../services/data-service.js";
 import { BaseMangaAiMcpServer } from "./base-server.js";
 
 export class MangaAiHttpMcpServer extends BaseMangaAiMcpServer {
   private app: express.Application;
   private port: number;
+  private transports: { [sessionId: string]: StreamableHTTPServerTransport } =
+    {};
 
   constructor(port: number = 3001) {
     super();
     this.port = port;
     this.app = express();
     this.setupExpressMiddleware();
-    this.setupExpressRoutes();
+    this.setupHttpTransport();
   }
 
   private async initializeServices() {
@@ -21,138 +26,106 @@ export class MangaAiHttpMcpServer extends BaseMangaAiMcpServer {
   }
 
   private setupExpressMiddleware() {
-    this.app.use(cors());
+    // Configure CORS to expose the custom session header
+    this.app.use(
+      cors({
+        origin: "http://localhost:9002", // Adjust this to your client origin
+        exposedHeaders: ["mcp-session-id"],
+        credentials: true,
+      })
+    );
     this.app.use(express.json({ limit: "50mb" }));
     this.app.use(express.urlencoded({ extended: true, limit: "50mb" }));
   }
 
-  private setupExpressRoutes() {
+  private setupHttpTransport() {
     // Health check endpoint
     this.app.get("/health", (req: express.Request, res: express.Response) => {
       res.json({ status: "ok", server: "manga-ai-mcp-http-server" });
     });
 
-    // MCP endpoints
-    this.app.post(
-      "/mcp/tools/list",
-      async (req: express.Request, res: express.Response) => {
-        try {
-          const response = await this.server.request(
-            { method: "tools/list" },
-            null as any
-          );
-          res.json(response);
-        } catch (error) {
-          res.status(500).json({
-            error: error instanceof Error ? error.message : String(error),
-          });
-        }
-      }
-    );
+    // Handle POST requests for client-to-server communication
+    this.app.post("/mcp", async (req, res) => {
+      // Check for existing session ID
+      const sessionId = req.headers["mcp-session-id"] as string | undefined;
+      let transport: StreamableHTTPServerTransport;
 
-    this.app.post(
-      "/mcp/tools/call",
-      async (req: express.Request, res: express.Response) => {
-        try {
-          const { name, arguments: args } = req.body;
-          const response = await this.server.request(
-            { method: "tools/call", params: { name, arguments: args || {} } },
-            null as any
-          );
-          res.json(response);
-        } catch (error) {
-          res.status(500).json({
-            error: error instanceof Error ? error.message : String(error),
-          });
-        }
-      }
-    );
+      if (sessionId && this.transports[sessionId]) {
+        // Reuse existing transport
+        transport = this.transports[sessionId];
+        console.log(`🔄 Reusing session: ${sessionId}`);
+      } else if (!sessionId && isInitializeRequest(req.body)) {
+        // New initialization request
+        const newSessionId = randomUUID();
+        console.log(`🆕 Creating new session: ${newSessionId}`);
 
-    this.app.post(
-      "/mcp/resources/list",
-      async (req: express.Request, res: express.Response) => {
-        try {
-          const response = await this.server.request(
-            { method: "resources/list" },
-            null as any
-          );
-          res.json(response);
-        } catch (error) {
-          res.status(500).json({
-            error: error instanceof Error ? error.message : String(error),
-          });
-        }
-      }
-    );
-
-    this.app.post(
-      "/mcp/resources/read",
-      async (req: express.Request, res: express.Response) => {
-        try {
-          const { uri } = req.body;
-          const response = await this.server.request(
-            { method: "resources/read", params: { uri } },
-            null as any
-          );
-          res.json(response);
-        } catch (error) {
-          res.status(500).json({
-            error: error instanceof Error ? error.message : String(error),
-          });
-        }
-      }
-    );
-
-    this.app.post(
-      "/mcp/prompts/list",
-      async (req: express.Request, res: express.Response) => {
-        try {
-          const response = await this.server.request(
-            { method: "prompts/list" },
-            null as any
-          );
-          res.json(response);
-        } catch (error) {
-          res.status(500).json({
-            error: error instanceof Error ? error.message : String(error),
-          });
-        }
-      }
-    );
-
-    this.app.post(
-      "/mcp/prompts/get",
-      async (req: express.Request, res: express.Response) => {
-        try {
-          const { name, arguments: args } = req.body;
-          const response = await this.server.request(
-            { method: "prompts/get", params: { name, arguments: args || {} } },
-            null as any
-          );
-          res.json(response);
-        } catch (error) {
-          res.status(500).json({
-            error: error instanceof Error ? error.message : String(error),
-          });
-        }
-      }
-    );
-
-    // Error handler
-    this.app.use(
-      (
-        error: Error,
-        req: express.Request,
-        res: express.Response,
-        next: express.NextFunction
-      ) => {
-        console.error("Express error:", error);
-        res.status(500).json({
-          error: "Internal server error",
-          message: error.message,
+        transport = new StreamableHTTPServerTransport({
+          sessionIdGenerator: () => newSessionId,
+          onsessioninitialized: (sessionId) => {
+            // Store the transport by session ID
+            this.transports[sessionId] = transport;
+            console.log(`✅ Session initialized: ${sessionId}`);
+          },
+          // DNS rebinding protection is disabled by default for backwards compatibility
+          // enableDnsRebindingProtection: true,
+          // allowedHosts: ['127.0.0.1'],
         });
+
+        // Clean up transport when closed
+        transport.onclose = () => {
+          if (transport.sessionId) {
+            console.log(`🧹 Cleaning up session: ${transport.sessionId}`);
+            delete this.transports[transport.sessionId];
+          }
+        };
+
+        // Connect to the MCP server
+        await this.server.connect(transport);
+
+        // Set the session ID in the response header
+        res.setHeader("mcp-session-id", newSessionId);
+      } else {
+        // Invalid request
+        console.log(
+          `❌ Invalid request - sessionId: ${sessionId}, isInitialize: ${isInitializeRequest(
+            req.body
+          )}`
+        );
+        res.status(400).json({
+          jsonrpc: "2.0",
+          error: {
+            code: -32000,
+            message: "Bad Request: No valid session ID provided",
+          },
+          id: null,
+        });
+        return;
       }
-    );
+
+      // Handle the request
+      await transport.handleRequest(req, res, req.body);
+    });
+
+    // Reusable handler for GET and DELETE requests
+    const handleSessionRequest = async (
+      req: express.Request,
+      res: express.Response
+    ) => {
+      const sessionId = req.headers["mcp-session-id"] as string | undefined;
+      if (!sessionId || !this.transports[sessionId]) {
+        res.status(400).send("Invalid or missing session ID");
+        return;
+      }
+
+      const transport = this.transports[sessionId];
+      await transport.handleRequest(req, res);
+    };
+
+    // Handle GET requests for server-to-client notifications via SSE
+    this.app.get("/mcp", handleSessionRequest);
+
+    // Handle DELETE requests for session termination
+    this.app.delete("/mcp", handleSessionRequest);
   }
 
   async run() {
@@ -164,7 +137,7 @@ export class MangaAiHttpMcpServer extends BaseMangaAiMcpServer {
       console.error(`Manga AI MCP HTTP Server running on port ${this.port}`);
       console.error(`Health check: http://localhost:${this.port}/health`);
       console.error(
-        `MCP endpoints available at: http://localhost:${this.port}/mcp/*`
+        `MCP endpoint available at: http://localhost:${this.port}/mcp`
       );
     });
 
