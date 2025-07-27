@@ -4,7 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -362,7 +361,7 @@ export function GeneratedAssetsPanel({
 
       {/* Scrollable Content Area */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        <ScrollArea className="h-full w-full">
+        <div className="flex-1 overflow-y-auto space-y-4">
           <div className="p-4 pb-6">
             {isLoading ? (
               <div className="text-center py-8">
@@ -475,7 +474,7 @@ export function GeneratedAssetsPanel({
               </div>
             )}
           </div>
-        </ScrollArea>
+        </div>
       </div>
     </div>
   );

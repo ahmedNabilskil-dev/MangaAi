@@ -60,7 +60,7 @@ class McpClientService {
   private sessionId: string | null = null;
 
   // Configuration
-  private readonly serverUrl = "http://localhost:3001/mcp";
+  private readonly serverUrl = "http://localhost:3010/mcp";
   private readonly clientInfo = {
     name: "manga-ai-client",
     version: "1.0.0",
@@ -200,7 +200,7 @@ class McpClientService {
 
       // First, try a health check
       try {
-        const healthResponse = await fetch(`http://localhost:3001/health`);
+        const healthResponse = await fetch(`http://localhost:3010/health`);
         if (!healthResponse.ok) {
           console.warn("❌ Health check failed");
           return false;

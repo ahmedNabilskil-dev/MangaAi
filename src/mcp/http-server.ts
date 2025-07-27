@@ -150,7 +150,7 @@ export class MangaAiHttpMcpServer extends BaseMangaAiMcpServer {
 
 // Start the server if this file is run directly
 if (require.main === module) {
-  const port = process.env.PORT ? parseInt(process.env.PORT) : 3001;
+  const port = process.env.PORT ? parseInt(process.env.PORT) : 3010;
   const server = new MangaAiHttpMcpServer(port);
   server.run().catch(console.error);
 }

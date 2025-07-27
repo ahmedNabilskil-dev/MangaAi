@@ -3,7 +3,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   BookOpen,
@@ -176,7 +175,7 @@ export default function AssetDetailPanel({
 
             {/* Content */}
             <div className="flex-1 min-h-0 overflow-hidden">
-              <ScrollArea className="h-full w-full">
+              <div className="flex-1 overflow-y-auto space-y-4">
                 <div className="p-6 space-y-6 pb-8">
                   {/* Image Preview */}
                   <Card className="border-gray-700/50 bg-gray-800/30">
@@ -339,7 +338,7 @@ export default function AssetDetailPanel({
                     </CardContent>
                   </Card>
                 </div>
-              </ScrollArea>
+              </div>
             </div>
           </motion.div>
         </>
