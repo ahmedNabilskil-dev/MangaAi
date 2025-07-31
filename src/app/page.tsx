@@ -4,6 +4,7 @@ import SidebarItem from "@/components/side-item/SideItem";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useMcpClient } from "@/hooks/use-mcp-client";
 import { mcpClient } from "@/services/mcp-client";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -32,6 +33,7 @@ const HomePage = () => {
   const [errorMessage, setErrorMessage] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const router = useRouter();
+  const { state } = useMcpClient();
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -70,59 +72,115 @@ const HomePage = () => {
       const isConnected = await mcpClient.checkConnection();
 
       if (isConnected) {
+        // Dynamically import ChatAdapterFactory to avoid circular deps
+        const { ChatAdapterFactory } = await import("@/ai/adapters/factory");
+        const apiKey = localStorage.getItem("api-key") || "";
+        const geminiAdapter = ChatAdapterFactory.getAdapter("gemini", apiKey);
+        if (!geminiAdapter) throw new Error("Gemini adapter not found");
+
         // Use MCP story-generation prompt to create the project concept
-        const promptTemplate = await mcpClient.getPromptTemplate(
-          "story-generation",
-          {
-            user_input: mangaIdea,
-            target_audience: "young-adult", // Could be made configurable
-            preferred_genre: "", // Could be made configurable
-          }
+        const prompt = `Create a manga project based on the following idea: "${mangaIdea}"`;
+
+        // Find the MCP tool for project creation
+        const mcpToolsRaw = state.tools.filter(
+          (tool) => tool.name === "createProject"
         );
+        if (mcpToolsRaw.length === 0)
+          throw new Error("MCP createProject tool not found");
 
-        // Use the createProject tool to actually create the project
-        const projectResult = await mcpClient.callTool("createProject", {
-          title:
-            mangaIdea.substring(0, 50) + (mangaIdea.length > 50 ? "..." : ""),
-          description: mangaIdea,
-          genre: "sci-fi",
-          targetAudience: "young-adult",
-          worldDetails: {
-            summary: "A unique world based on: " + mangaIdea,
-            history: "To be developed",
-            society: "To be developed",
-            uniqueSystems: "To be developed",
+        // Map MCP tools to Tool objects for Gemini adapter
+        const mcpTools = mcpToolsRaw.map((tool) => ({
+          name: tool.name,
+          description: tool.description,
+          parameters: tool.inputSchema,
+        }));
+
+        // Send the prompt using the Gemini adapter and MCP tools
+        const messages = [{ role: "user" as const, content: prompt }];
+        const params = {
+          model: "gemini-2.0-flash",
+          systemPrompt: `You are an elite manga creator and narrative worldbuilder with expertise in both Eastern and Western storytelling traditions. Your task is to develop a structured, professional-grade blueprint for a compelling, original manga project that will be stored in our database.
+  
+  This is Phase 1 of our manga production pipeline. You are building this project from scratch based on the user's ideas, genre preferences, or inspiration.
+  
+  ## OUTPUT REQUIREMENTS
+  Your output MUST strictly align with our MangaProject entity structure for direct database integration. Include ALL required fields with detailed, creative content.
+  
+  ## PROJECT COMPONENTS
+  
+  🧩 Core Concept & Metadata
+  - title: A distinctive, memorable title that encapsulates the core concept and appeals to the target audience.
+  - description: A concise yet comprehensive overview of the entire manga concept (150-200 words).
+  - concept: The bold, original premise that defines what makes this story special and distinguishes it from similar works.
+  - genre: The primary genre classification with potential subgenres (e.g., psychological shonen, dark fantasy seinen).
+  - targetAudience: MUST be one of ["children", "teen", "young-adult", "adult"].
+  - artStyle: Suggest a specific visual aesthetic that enhances the narrative (reference existing artists/styles if helpful).
+  - tags: An array of precise keywords for searchability (8-12 tags).
+  
+  🌍 Worldbuilding (worldDetails object)
+  - summary: A rich overview of the world's unique elements and what makes it captivating (150 words).
+  - history: Key historical events, eras, and turning points that shaped the world and affect the present story.
+  - society: In-depth details on cultures, social structures, belief systems, political dynamics, or power hierarchies.
+  - uniqueSystems: Comprehensive explanation of special systems (magic, technology, supernatural abilities, laws) that define life in this world and their narrative implications.
+  
+  🎭 Themes, Motifs & Symbols
+  - themes: Array of sophisticated central themes with depth and nuance (e.g., the corruption of power, sacrifice vs. selfishness).
+  - motifs: Array of recurring visual/narrative patterns that reinforce themes (e.g., broken mirrors, cherry blossoms).
+  - symbols: Array of key symbols with layered meanings relevant to character development or world concepts.
+  
+  🧩 Plot Framework (plotStructure object)
+  - incitingIncident: The catalyst event that disrupts the status quo and launches the protagonist's journey.
+  - plotTwist: A major revelation or shift that fundamentally alters the protagonist's path or understanding.
+  - climax: The peak dramatic moment of the first major arc with high emotional stakes.
+  - resolution: The current resolution (even if temporary) that sets up future developments.
+  
+  
+  ## CREATION STANDARDS
+  1. Originality: Develop genuinely fresh concepts while understanding genre traditions
+  2. Emotional Depth: Create a world and story that can sustain complex emotional narratives
+  3. Visual Potential: Consider how concepts translate to visual storytelling
+  4. Internal Consistency: Maintain logical coherence in all worldbuilding elements
+  5. Narrative Hooks: Build in compelling mysteries and questions that drive reader engagement
+  6. Cultural Sensitivity: Develop respectful, nuanced cultural elements
+  7. Commercial Viability: Balance artistic vision with market awareness
+  
+  Approach this as a professional manga intellectual property with franchise potential — emotionally resonant, narratively sophisticated, and visually distinctive.
+  `,
+          context: {
+            outputSchema: {
+              type: "object",
+              properties: {
+                projectId: {
+                  type: "string",
+                  description: "The ID of the created manga project.",
+                },
+              },
+              required: ["projectId"],
+            },
           },
-          concept: mangaIdea,
-          plotStructure: {
-            incitingIncident: "To be developed",
-            plotTwist: "To be developed",
-            climax: "To be developed",
-            resolution: "To be developed",
-          },
-          themes: [],
-          motifs: [],
-          symbols: [],
-          messages: [],
-          viewCount: 0,
-          likeCount: 0,
-          published: false,
-        });
+        };
+        const responseMessages = await geminiAdapter.send(
+          messages,
+          mcpTools,
+          params,
+          true
+        );
+        // Get the assistant's response and projectId
+        const assistantMsg = responseMessages.find(
+          (m) => m.role === "assistant"
+        );
+        const parsedContent = JSON.parse(assistantMsg?.content || "{}");
+        let projectId = "";
 
-        if (projectResult && projectResult.content) {
-          // Parse the project result to get the project ID
-          const projectData = JSON.parse(projectResult.content[0].text);
-          const projectId = projectData.createdProject.id;
+        projectId = (parsedContent as any).projectId;
 
-          if (projectId) {
-            // Navigate to the created project
-            router.push(`/manga-flow/${projectId}`);
-            closeDialog(); // Only close dialog on success
-          } else {
-            throw new Error("Project creation failed - no project ID returned");
-          }
+        if (projectId) {
+          router.push(`/manga-flow/${projectId}`);
         } else {
-          throw new Error("Project creation failed - no result returned");
+          alert(
+            "Project created, but no projectId returned.\nResponse: " +
+              (assistantMsg?.content || "")
+          );
         }
       } else {
         throw new Error(

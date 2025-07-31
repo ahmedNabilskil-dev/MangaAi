@@ -4,8 +4,10 @@ import Speech, {
   ROUNDED_RECT_BUBBLE_SHAPE,
   SPEECH_TYPE,
 } from "@/components/bubble/speech";
-import { updatePanelDialogue } from "@/services/data-service";
-import { getProjectWithRelations } from "@/services/db";
+import {
+  getProjectWithRelations,
+  updatePanelDialogue,
+} from "@/services/data-service";
 import { Chapter, MangaProject } from "@/types/entities";
 import {
   BookOpen,

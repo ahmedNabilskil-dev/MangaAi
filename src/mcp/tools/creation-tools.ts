@@ -21,9 +21,10 @@ export async function createProjectHandler(args: any) {
       ],
     };
   } catch (error) {
+    console.log("Error creating project:", JSON.stringify(error));
     throw new Error(
       `Failed to create project: ${
-        error instanceof Error ? error.message : String(error)
+        error instanceof Error ? JSON.stringify(error.message) : String(error)
       }`
     );
   }

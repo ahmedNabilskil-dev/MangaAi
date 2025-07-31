@@ -36,7 +36,6 @@ interface McpPromptSelectorProps {
   isOpen: boolean;
   onClose: () => void;
   onPromptExecute: (promptName: string, args?: any) => void;
-  selectedEntity?: { id: string; type: string } | null;
   projectId: string;
 }
 
@@ -65,7 +64,6 @@ export function McpPromptSelector({
   isOpen,
   onClose,
   onPromptExecute,
-  selectedEntity,
   projectId,
 }: McpPromptSelectorProps) {
   const { state: mcpState, actions: mcpActions } = useMcpClient();
@@ -118,12 +116,6 @@ export function McpPromptSelector({
         projectId: projectId,
       };
 
-      // Add selectedEntity if available
-      if (selectedEntity) {
-        initialArgs.selectedEntityId = selectedEntity.id;
-        initialArgs.selectedEntityType = selectedEntity.type;
-      }
-
       // Add any required arguments from the prompt definition
       prompt.arguments?.forEach((arg: any) => {
         if (!initialArgs[arg.name]) {
@@ -133,7 +125,7 @@ export function McpPromptSelector({
 
       setPromptArgs(initialArgs);
     },
-    [projectId, selectedEntity]
+    [projectId]
   );
 
   const handleExecutePrompt = async () => {
@@ -324,9 +316,26 @@ export function McpPromptSelector({
                         {arg.description}
                       </p>
                     )}
-                    {arg.name.toLowerCase().includes("description") ||
-                    arg.name.toLowerCase().includes("input") ||
-                    arg.name.toLowerCase().includes("content") ? (
+                    {Array.isArray(arg.enum) && arg.enum.length > 0 ? (
+                      <div className="mt-2">
+                        <select
+                          value={promptArgs[arg.name] || ""}
+                          onChange={(e) =>
+                            handleArgChange(arg.name, e.target.value)
+                          }
+                          className="block w-full rounded-md border border-gray-600 bg-gray-800 px-3 py-2 text-white focus:border-blue-500 focus:ring focus:ring-blue-500/50"
+                        >
+                          <option value="">Select {arg.name}...</option>
+                          {arg.enum.map((option: string) => (
+                            <option key={option} value={option}>
+                              {option.charAt(0).toUpperCase() + option.slice(1)}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : arg.name.toLowerCase().includes("description") ||
+                      arg.name.toLowerCase().includes("input") ||
+                      arg.name.toLowerCase().includes("content") ? (
                       <Textarea
                         value={promptArgs[arg.name] || ""}
                         onChange={(e) =>

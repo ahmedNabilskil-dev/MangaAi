@@ -74,20 +74,21 @@ export function EnhancedProjectStructurePanel({
   const [projectData, setProjectData] = useState<MangaProject | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const loadProject = async () => {
-      setIsLoading(true);
-      try {
-        const data = await getProjectWithRelations(projectId);
-        setProjectData(data);
-      } catch (error) {
-        console.error("Failed to load project:", error);
-        setProjectData(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // Refetch logic
+  const loadProject = async () => {
+    setIsLoading(true);
+    try {
+      const data = await getProjectWithRelations(projectId);
+      setProjectData(data);
+    } catch (error) {
+      console.error("Failed to load project:", error);
+      setProjectData(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     loadProject();
   }, [projectId]);
 
@@ -149,12 +150,32 @@ export function EnhancedProjectStructurePanel({
   if (!projectData) {
     return (
       <div className="h-full bg-gray-900 text-white border-l border-gray-700">
-        <div className="p-4">
-          <div className="animate-pulse space-y-4">
+        <div className="p-4 flex justify-between items-center">
+          <div className="animate-pulse space-y-4 flex-1">
             <div className="h-4 bg-gray-700 rounded w-3/4" />
             <div className="h-4 bg-gray-700 rounded w-1/2" />
             <div className="h-4 bg-gray-700 rounded w-5/6" />
           </div>
+          <button
+            onClick={loadProject}
+            className="ml-4 p-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
+            title="Refresh"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v6h6M20 20v-6h-6M4 20a9 9 0 0114-7.36M20 4a9 9 0 00-14 7.36"
+              />
+            </svg>
+          </button>
         </div>
       </div>
     );
@@ -171,35 +192,58 @@ export function EnhancedProjectStructurePanel({
         <div className="p-4 space-y-4">
           {/* Project Header */}
           <div className="bg-gradient-to-r from-gray-800/50 to-gray-700/30 rounded-xl p-4 border border-gray-600/30 backdrop-blur-sm">
-            <button
-              onClick={() => toggleExpanded("project")}
-              className="flex items-center gap-3 w-full text-left hover:bg-gray-700/30 rounded-lg p-3 transition-all duration-200 group"
-            >
-              <div className="relative">
-                {expandedItems.has("project") ? (
-                  <ChevronDown className="w-4 h-4 text-pink-400 transition-transform duration-200" />
-                ) : (
-                  <ChevronRight className="w-4 h-4 text-pink-400 transition-transform duration-200" />
-                )}
-              </div>
-              <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-purple-600 rounded-lg flex items-center justify-center shadow-lg group-hover:shadow-pink-500/25 transition-all duration-200">
-                <Layers className="w-5 h-5 text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-white text-base group-hover:text-pink-300 transition-colors">
-                  {projectData.title || "Untitled Project"}
-                </h3>
-                <div className="flex items-center gap-1 mt-1">
-                  <span className="text-xs text-pink-300/60">
-                    {projectData.characters?.length || 0} characters
-                  </span>
-                  <span className="text-xs text-pink-300/40">•</span>
-                  <span className="text-xs text-green-300/60">
-                    {projectData.chapters?.length || 0} chapters
-                  </span>
+            <div className="flex items-center gap-3 w-full">
+              <button
+                onClick={() => toggleExpanded("project")}
+                className="flex items-center gap-3 flex-1 text-left hover:bg-gray-700/30 rounded-lg p-3 transition-all duration-200 group"
+              >
+                <div className="relative">
+                  {expandedItems.has("project") ? (
+                    <ChevronDown className="w-4 h-4 text-pink-400 transition-transform duration-200" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-pink-400 transition-transform duration-200" />
+                  )}
                 </div>
-              </div>
-            </button>
+                <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-purple-600 rounded-lg flex items-center justify-center shadow-lg group-hover:shadow-pink-500/25 transition-all duration-200">
+                  <Layers className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-white text-base group-hover:text-pink-300 transition-colors">
+                    {projectData.title || "Untitled Project"}
+                  </h3>
+                  <div className="flex items-center gap-1 mt-1">
+                    <span className="text-xs text-pink-300/60">
+                      {projectData.characters?.length || 0} characters
+                    </span>
+                    <span className="text-xs text-pink-300/40">•</span>
+                    <span className="text-xs text-green-300/60">
+                      {projectData.chapters?.length || 0} chapters
+                    </span>
+                  </div>
+                </div>
+              </button>
+              {/* Refresh Button */}
+              <button
+                onClick={loadProject}
+                className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
+                title="Refresh"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v6h6M20 20v-6h-6M4 20a9 9 0 0114-7.36M20 4a9 9 0 00-14 7.36"
+                  />
+                </svg>
+              </button>
+            </div>
 
             {expandedItems.has("project") && (
               <motion.div

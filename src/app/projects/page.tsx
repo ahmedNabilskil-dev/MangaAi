@@ -11,11 +11,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  cleanOrphanedData,
-  deleteProject,
-  getAllProjects,
-} from "@/services/data-service";
+import { useMcpClient } from "@/hooks/use-mcp-client";
+import { cleanOrphanedData, deleteProject } from "@/services/data-service";
 import { mcpClient } from "@/services/mcp-client";
 import { MangaProject } from "@/types/entities";
 import { MangaStatus } from "@/types/enums";
@@ -56,7 +53,7 @@ const ProjectsPage = () => {
     genre: "",
     status: "",
   });
-
+  const { actions } = useMcpClient();
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -66,8 +63,8 @@ const ProjectsPage = () => {
 
   const fetchProjects = async () => {
     setIsLoading(true);
-    const data = await getAllProjects();
-    setProjects(data);
+    const { contents } = await actions.readResource("manga://projects");
+    setProjects(JSON.parse(contents[0].text));
     setIsLoading(false);
   };
 
@@ -129,6 +126,11 @@ const ProjectsPage = () => {
       const isConnected = await mcpClient.checkConnection();
 
       if (isConnected) {
+        // Dynamically import ChatAdapterFactory to avoid circular deps
+        const { ChatAdapterFactory } = await import("@/ai/adapters/factory");
+        const geminiAdapter = ChatAdapterFactory.getAdapter("gemini", apiKey);
+        if (!geminiAdapter) throw new Error("Gemini adapter not found");
+
         // Use MCP story-generation prompt to create the project concept
         const promptTemplate = await mcpClient.getPromptTemplate(
           "story-generation",
@@ -139,16 +141,110 @@ const ProjectsPage = () => {
           }
         );
 
-        // Use the create-project tool to actually create the project
-        const projectResult = await mcpClient.callTool("create-project", {
-          promptResponse: promptTemplate,
-        });
+        // Get MCP create-project tool definition
+        const mcpToolsRaw = await mcpClient.getProjectCreationTools();
+        const mcpTools = mcpToolsRaw.map((tool) => ({
+          name: tool.name,
+          description: tool.description,
+          parameters: tool.inputSchema,
+          execute: async (args: any) => {
+            const { mcpClient } = await import("@/services/mcp-client");
+            return await mcpClient.callTool(tool.name, args);
+          },
+        }));
 
-        if (projectResult && projectResult.projectId) {
-          // Navigate to the created project
-          router.push(`/manga-flow/${projectResult.projectId}`);
+        // Send the prompt using the Gemini adapter and MCP tools
+        const messages = [{ role: "user" as const, content: promptTemplate }];
+        const params = {
+          model: "gemini-2.0-flash",
+          systemPrompt: `You are an elite manga creator and narrative worldbuilder with expertise in both Eastern and Western storytelling traditions. Your task is to develop a structured, professional-grade blueprint for a compelling, original manga project that will be stored in our database.
+  
+  This is Phase 1 of our manga production pipeline. You are building this project from scratch based on the user's ideas, genre preferences, or inspiration.
+  
+  ## OUTPUT REQUIREMENTS
+  Your output MUST strictly align with our MangaProject entity structure for direct database integration. Include ALL required fields with detailed, creative content.
+  
+  ## PROJECT COMPONENTS
+  
+  🧩 Core Concept & Metadata
+  - title: A distinctive, memorable title that encapsulates the core concept and appeals to the target audience.
+  - description: A concise yet comprehensive overview of the entire manga concept (150-200 words).
+  - concept: The bold, original premise that defines what makes this story special and distinguishes it from similar works.
+  - genre: The primary genre classification with potential subgenres (e.g., psychological shonen, dark fantasy seinen).
+  - targetAudience: MUST be one of ["children", "teen", "young-adult", "adult"].
+  - artStyle: Suggest a specific visual aesthetic that enhances the narrative (reference existing artists/styles if helpful).
+  - tags: An array of precise keywords for searchability (8-12 tags).
+  
+  🌍 Worldbuilding (worldDetails object)
+  - summary: A rich overview of the world's unique elements and what makes it captivating (150 words).
+  - history: Key historical events, eras, and turning points that shaped the world and affect the present story.
+  - society: In-depth details on cultures, social structures, belief systems, political dynamics, or power hierarchies.
+  - uniqueSystems: Comprehensive explanation of special systems (magic, technology, supernatural abilities, laws) that define life in this world and their narrative implications.
+  
+  🎭 Themes, Motifs & Symbols
+  - themes: Array of sophisticated central themes with depth and nuance (e.g., the corruption of power, sacrifice vs. selfishness).
+  - motifs: Array of recurring visual/narrative patterns that reinforce themes (e.g., broken mirrors, cherry blossoms).
+  - symbols: Array of key symbols with layered meanings relevant to character development or world concepts.
+  
+  🧩 Plot Framework (plotStructure object)
+  - incitingIncident: The catalyst event that disrupts the status quo and launches the protagonist's journey.
+  - plotTwist: A major revelation or shift that fundamentally alters the protagonist's path or understanding.
+  - climax: The peak dramatic moment of the first major arc with high emotional stakes.
+  - resolution: The current resolution (even if temporary) that sets up future developments.
+  
+  
+  ## CREATION STANDARDS
+  1. Originality: Develop genuinely fresh concepts while understanding genre traditions
+  2. Emotional Depth: Create a world and story that can sustain complex emotional narratives
+  3. Visual Potential: Consider how concepts translate to visual storytelling
+  4. Internal Consistency: Maintain logical coherence in all worldbuilding elements
+  5. Narrative Hooks: Build in compelling mysteries and questions that drive reader engagement
+  6. Cultural Sensitivity: Develop respectful, nuanced cultural elements
+  7. Commercial Viability: Balance artistic vision with market awareness
+  
+  Approach this as a professional manga intellectual property with franchise potential — emotionally resonant, narratively sophisticated, and visually distinctive.
+  `,
+          context: {
+            outputSchema: {
+              type: "object",
+              properties: {
+                projectId: {
+                  type: "string",
+                  description: "The ID of the created manga project.",
+                },
+              },
+              required: ["projectId"],
+            },
+          },
+        };
+        const responseMessages = await geminiAdapter.send(
+          messages,
+          mcpTools,
+          params,
+          true
+        );
+        // Get the assistant's response text (should include projectId)
+        const assistantMsg = responseMessages.find(
+          (m) => m.role === "assistant"
+        );
+        let projectId = "";
+        if (
+          assistantMsg &&
+          typeof assistantMsg.content === "object" &&
+          assistantMsg.content?.response?.result?.projectId
+        ) {
+          projectId = assistantMsg.content.response.result.projectId;
+        } else if (assistantMsg && typeof assistantMsg.content === "string") {
+          // Try to extract projectId from text if possible
+          const match = assistantMsg.content.match(
+            /projectId\s*[:=]\s*['"]?(\w+)['"]?/i
+          );
+          if (match) projectId = match[1];
+        }
+        if (projectId) {
+          router.push(`/manga-flow/${projectId}`);
         } else {
-          throw new Error("Project creation failed");
+          throw new Error("Project creation failed: No projectId returned");
         }
       } else {
         // Fallback: Create a simple project reference and navigate
@@ -487,7 +583,7 @@ const ProjectsPage = () => {
             >
               {filteredProjects.length > 0 ? (
                 filteredProjects.map((project, index) => (
-                  <motion.div key={project.id}>
+                  <motion.div key={index}>
                     <Card className="bg-gray-900/80 backdrop-blur-md border-gray-700 overflow-hidden hover:shadow-lg hover:shadow-pink-500/20 transition-all h-full flex flex-col">
                       <div className="relative h-48 overflow-hidden">
                         <Image

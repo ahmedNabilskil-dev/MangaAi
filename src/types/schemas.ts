@@ -373,8 +373,8 @@ export const characterSchema = z
       .string()
       .min(1, "Character name is required")
       .describe("Full name of the character"),
-    age: z.number().int().optional().describe("Age in years"),
-    gender: z.string().optional().describe("Gender identity"),
+    age: z.number().int().describe("Age in years"),
+    gender: z.string().describe("Gender identity"),
 
     // Physical Attributes
     bodyAttributes: z
@@ -383,7 +383,6 @@ export const characterSchema = z
         bodyType: z.string().describe("General physique description"),
         proportions: z.string().describe("Notable proportional features"),
       })
-      .optional()
       .describe("Physical body characteristics"),
 
     facialAttributes: z
@@ -396,7 +395,6 @@ export const characterSchema = z
         mouthType: z.string().describe("Mouth/lip shape"),
         jawline: z.string().describe("Jaw structure"),
       })
-      .optional()
       .describe("Facial features"),
 
     hairAttributes: z
@@ -409,20 +407,17 @@ export const characterSchema = z
           .string()
           .describe("Notable hair characteristics"),
       })
-      .optional()
       .describe("Hair characteristics"),
 
     distinctiveFeatures: z
       .array(z.string())
-      .optional()
       .describe("Unique identifying physical traits"),
 
     physicalMannerisms: z
       .array(z.string())
-      .optional()
       .describe("Characteristic body movements"),
 
-    posture: z.string().optional().describe("Typical stance or bearing"),
+    posture: z.string().describe("Typical stance or bearing"),
 
     // Art Direction
     styleGuide: z
@@ -432,7 +427,6 @@ export const characterSchema = z
         shadingStyle: z.string().describe("Shading technique"),
         colorStyle: z.string().describe("Coloring approach"),
       })
-      .optional()
       .describe("Artistic guidelines"),
 
     // Outfit Management
@@ -460,19 +454,18 @@ export const characterSchema = z
     // Narrative Attributes
     role: z
       .enum(["protagonist", "antagonist", "supporting", "minor"])
-      .optional()
       .describe("Narrative importance level"),
-    briefDescription: z.string().optional().describe("Short character summary"),
-    personality: z.string().optional().describe("Psychological profile"),
-    abilities: z.string().optional().describe("Special skills or powers"),
-    backstory: z.string().optional().describe("Historical background"),
+    briefDescription: z.string().describe("Short character summary"),
+    personality: z.string().describe("Psychological profile"),
+    abilities: z.string().describe("Special skills or powers"),
+    backstory: z.string().describe("Historical background"),
 
     // Visual References
     imgUrl: z.string().url().optional().describe("Primary reference image URL"),
 
     // Development
-    traits: z.array(z.string()).optional().describe("Personality traits"),
-    arcs: z.array(z.string()).optional().describe("Character development arcs"),
+    traits: z.array(z.string()).describe("Personality traits"),
+    arcs: z.array(z.string()).describe("Character development arcs"),
 
     // Metadata
     isAiGenerated: z
@@ -499,23 +492,33 @@ export const chapterSchema = z
     id: z.string().describe("Unique identifier for the chapter"),
     chapterNumber: z
       .number()
-      .int()
-      .min(1)
-      .describe("Numerical position within the manga sequence"),
+      .describe("Sequential chapter number in your manga series"),
     title: z
       .string()
-      .min(1, "Chapter title is required")
-      .describe("Official title of the chapter"),
-    narrative: z.string().describe("Complete literary prose narrative"),
+      .describe(
+        "Compelling chapter title that captures essence and hooks readers"
+      ),
+    narrative: z
+      .string()
+      .describe(
+        "Complete 600-800 word chapter narrative with visual storytelling structure"
+      ),
     purpose: z
       .string()
       .optional()
-      .describe("Narrative function this chapter serves"),
-    tone: z.string().optional().describe("Dominant mood or atmosphere"),
+      .describe(
+        "Specific narrative function this chapter serves in overall story arc"
+      ),
+    tone: z
+      .string()
+      .optional()
+      .describe(
+        "Emotional atmosphere and mood (tense, lighthearted, mysterious, dramatic, etc.)"
+      ),
     keyCharacters: z
       .array(z.string())
       .optional()
-      .describe("IDs of characters prominently featured"),
+      .describe("Names of characters with important roles in this chapter"),
     coverImageUrl: z
       .string()
       .url()
@@ -565,7 +568,10 @@ export const sceneSchema = z
 
     // Scene Context
     sceneContext: z.object({
-      locationId: z.string().describe("ID of the location template being used"),
+      locationId: z
+        .string()
+        .optional()
+        .describe("ID of the location template being used"),
       locationVariationId: z
         .string()
         .optional()
@@ -623,10 +629,6 @@ export const sceneSchema = z
         })
         .optional()
         .describe("Environmental condition overrides"),
-      sceneNotes: z
-        .string()
-        .optional()
-        .describe("Additional scene-specific notes"),
     }),
 
     // Relationships

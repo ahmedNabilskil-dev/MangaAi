@@ -223,6 +223,14 @@ export async function listProjectsResourceHandler() {
       genre: project.genre,
       status: project.status,
       description: project.description,
+      coverImageUrl: project.coverImageUrl,
+      artStyle: project.artStyle,
+      createdAt: project.createdAt,
+      updatedAt: project.updatedAt,
+      likeCount: project.likeCount,
+      targetAudience: project.targetAudience,
+      concept: project.concept,
+      published: project.published,
     }));
 
     return {

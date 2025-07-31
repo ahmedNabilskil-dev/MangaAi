@@ -97,10 +97,7 @@ class McpClientService {
 
       // Create new transport with session handling
       this.transport = new StreamableHTTPClientTransport(
-        new URL(this.serverUrl),
-        {
-          // headers: this.sessionId ? { "mcp-session-id": this.sessionId } : {},
-        }
+        new URL(this.serverUrl)
       );
 
       // Create new client

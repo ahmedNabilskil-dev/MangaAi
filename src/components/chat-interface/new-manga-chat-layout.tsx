@@ -5,17 +5,17 @@ import { Button } from "@/components/ui/button";
 import { useMcpClient } from "@/hooks/use-mcp-client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { getProject } from "@/services/data-service";
-import { geminiService } from "@/services/gemini-service";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Bot,
+  Copy,
   Eye,
   FileText,
   Image,
   Layers,
   Send,
   Settings,
+  Trash2,
   Upload,
   User,
   Wand2,
@@ -24,9 +24,9 @@ import {
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkBreaks from "remark-breaks";
 import AssetDetailPanel from "./asset-detail-panel";
 import { GeneratedAssetsPanel } from "./generated-assets-panel";
-import { McpProjectStructurePanel } from "./mcp-project-structure-panel";
 import { McpPromptSelector } from "./mcp-prompt-selector";
 import { McpStatusIndicator } from "./mcp-status-indicator";
 import {
@@ -88,15 +88,73 @@ interface ChatMessage {
 // ============================================================================
 
 export default function NewMangaChatLayout() {
+  // State for delete confirmation dialog
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    messageId: string | null;
+  }>({ open: false, messageId: null });
+  // Maximum number of messages allowed
+  const MAX_MESSAGES = 100;
+  // ...existing code...
+
+  // Message actions
   const params = useParams();
   const projectId = params.id as string;
   const { toast } = useToast();
+
+  const handleCopyMessage = useCallback(
+    (content: string) => {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(content);
+        toast({
+          title: "Copied",
+          description: "Message copied to clipboard.",
+        });
+      }
+    },
+    [toast]
+  );
+
+  // Show dialog before deleting
+  const handleDeleteMessage = useCallback((id: string) => {
+    setDeleteDialog({ open: true, messageId: id });
+  }, []);
+
+  // Confirm delete
+  const confirmDeleteMessage = useCallback(() => {
+    if (deleteDialog.messageId) {
+      setMessages((prev) =>
+        prev.filter((msg) => msg.id !== deleteDialog.messageId)
+      );
+      toast({
+        title: "Deleted",
+        description: "Message deleted.",
+      });
+    }
+    setDeleteDialog({ open: false, messageId: null });
+  }, [deleteDialog, toast]);
+
+  // Cancel delete
+  const cancelDeleteMessage = useCallback(() => {
+    setDeleteDialog({ open: false, messageId: null });
+  }, []);
 
   // MCP Client Integration
   const { state: mcpState, actions: mcpActions } = useMcpClient("chat");
 
   // State
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+
+  // Helper to add a message and enforce max limit
+  const addMessage = useCallback((newMsg: ChatMessage) => {
+    setMessages((prev) => {
+      const msgs = [...prev, newMsg];
+      if (msgs.length > MAX_MESSAGES) {
+        return msgs.slice(msgs.length - MAX_MESSAGES);
+      }
+      return msgs;
+    });
+  }, []);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [selectedEntity, setSelectedEntity] = useState<{
@@ -177,9 +235,7 @@ export default function NewMangaChatLayout() {
       id: "structure",
       name: "Structure",
       icon: FileText,
-      component: mcpState.isConnected
-        ? McpProjectStructurePanel
-        : EnhancedProjectStructurePanel,
+      component: EnhancedProjectStructurePanel,
     },
     {
       id: "templates",
@@ -250,120 +306,10 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
     }
   }, [messages, projectId]);
 
-  // Handle template creation
-  const handleTemplateCreate = useCallback(
-    async (type: "outfits" | "locations") => {
-      try {
-        setIsLoading(true);
-
-        // Add a system message indicating template generation
-        const systemMessage: ChatMessage = {
-          id: Date.now().toString(),
-          role: "assistant",
-          content: `🎨 **Creating ${
-            type === "outfits" ? "Outfit" : "Location"
-          } Templates**\n\nI'm generating new ${type} templates based on your project context. This may take a moment...`,
-          timestamp: new Date().toISOString(),
-          type: "text",
-        };
-
-        setMessages((prev) => [...prev, systemMessage]);
-
-        // Load current project data
-        const currentProjectData = await getProject(projectId);
-
-        if (type === "outfits") {
-          const prompt = `Create new outfit templates for the manga project based on the existing characters and story context.
-          
-Project Context: ${JSON.stringify(currentProjectData, null, 2)}
-Existing Characters: ${JSON.stringify(
-            currentProjectData?.characters || [],
-            null,
-            2
-          )}
-Existing Outfit Templates: ${JSON.stringify(
-            currentProjectData?.outfitTemplates || [],
-            null,
-            2
-          )}
-Existing Location Templates: ${JSON.stringify(
-            currentProjectData?.locationTemplates || [],
-            null,
-            2
-          )}
-
-Please generate creative and diverse outfit templates that fit the manga's style and characters.`;
-
-          const result = await geminiService.sendMessage(
-            prompt,
-            "You are a helpful AI assistant for manga creation. Generate outfit templates in a structured format."
-          );
-
-          // Add success message
-          const successMessage: ChatMessage = {
-            id: (Date.now() + 1).toString(),
-            role: "assistant",
-            content: `✅ **Outfit Templates Created Successfully!**\n\nI've generated new outfit templates for your project. You can find them in the Templates panel. These templates are designed to work with your existing characters and story context.`,
-            timestamp: new Date().toISOString(),
-            type: "text",
-          };
-          setMessages((prev) => [...prev, successMessage]);
-        } else if (type === "locations") {
-          const prompt = `Create new location templates for the manga project based on the existing story context and settings.
-          
-Project Context: ${JSON.stringify(currentProjectData, null, 2)}
-Existing Location Templates: ${JSON.stringify(
-            currentProjectData?.locationTemplates || [],
-            null,
-            2
-          )}
-
-Please generate diverse and atmospheric location templates that enhance the manga's world-building.`;
-
-          const result = await geminiService.sendMessage(
-            prompt,
-            "You are a helpful AI assistant for manga creation. Generate location templates in a structured format."
-          );
-
-          // Add success message
-          const successMessage: ChatMessage = {
-            id: (Date.now() + 1).toString(),
-            role: "assistant",
-            content: `✅ **Location Templates Created Successfully!**\n\nI've generated new location templates for your project. You can find them in the Templates panel. These locations complement your story's settings and atmosphere.`,
-            timestamp: new Date().toISOString(),
-            type: "text",
-          };
-          setMessages((prev) => [...prev, successMessage]);
-        }
-      } catch (error) {
-        console.error("Template creation error:", error);
-        toast({
-          title: "Template Creation Failed",
-          description: `Failed to create ${type} templates. Please try again.`,
-          variant: "destructive",
-        });
-
-        // Add error message
-        const errorMessage: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content: `❌ **Template Creation Failed**\n\nI encountered an error while creating ${type} templates. Please try again or let me know if you need assistance.`,
-          timestamp: new Date().toISOString(),
-          type: "text",
-        };
-        setMessages((prev) => [...prev, errorMessage]);
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [projectId, toast, setIsLoading, setMessages]
-  );
-
   // Handle form submission
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
-
       const textToSend = input.trim();
       if (!textToSend || isLoading) return;
 
@@ -375,186 +321,76 @@ Please generate diverse and atmospheric location templates that enhance the mang
         timestamp: new Date().toISOString(),
         type: "text",
       };
-
-      setMessages((prev) => [...prev, userMessage]);
+      addMessage(userMessage);
       setInput("");
       setIsLoading(true);
 
       try {
         let response;
+        // Only send selected tools/resources to Gemini
+        // Prepare Gemini messages (conversation history)
+        const geminiMessages = [
+          ...messages.map((m) => ({
+            role: m.role as "user" | "assistant" | "function",
+            content: m.content,
+          })),
+          { role: "user" as const, content: textToSend },
+        ];
 
-        // Prepare context with MCP resources and tools
-        let contextMessage = textToSend;
+        // Prepare selected MCP tools for Gemini
+        let mcpTools: any[] = [];
+        if (selectedMcpTools.length > 0) {
+          mcpTools = selectedMcpTools.map((tool) => ({
+            name: tool.name,
+            description: tool.description,
+            parameters: tool.inputSchema,
+          }));
+        }
 
-        // Add MCP resources context
+        // Optionally add selected MCP resources context to the user message
+        let resourceContext = "";
         if (selectedMcpResources.length > 0) {
-          const resourcesContext = selectedMcpResources
+          resourceContext = selectedMcpResources
             .map((resource) => {
               const content = mcpResourceContents[resource.uri];
-              return `**Resource: ${resource.name}**\nURI: ${
-                resource.uri
-              }\nDescription: ${
+              return `Resource: ${resource.name}\nDescription: ${
                 resource.description || "N/A"
               }\nContent: ${JSON.stringify(content, null, 2)}`;
             })
             .join("\n\n");
-
-          contextMessage = `${textToSend}\n\n--- MCP RESOURCES CONTEXT ---\n${resourcesContext}`;
+        }
+        // If resources selected, append context to last user message
+        if (resourceContext) {
+          geminiMessages[
+            geminiMessages.length - 1
+          ].content += `\n\n--- MCP RESOURCES CONTEXT ---\n${resourceContext}`;
         }
 
-        // Add MCP tools context
-        if (selectedMcpTools.length > 0) {
-          const toolsContext = selectedMcpTools
-            .map((tool) => {
-              return `**Tool: ${tool.name}**\nDescription: ${
-                tool.description
-              }\nParameters: ${JSON.stringify(
-                tool.inputSchema?.properties || {},
-                null,
-                2
-              )}`;
-            })
-            .join("\n\n");
+        // Use Gemini adapter
+        const { ChatAdapterFactory } = await import("@/ai/adapters/factory");
+        const apiKey = localStorage.getItem("api-key") || "";
+        const geminiAdapter = ChatAdapterFactory.getAdapter("gemini", apiKey);
+        if (!geminiAdapter) throw new Error("Gemini adapter not found");
 
-          contextMessage = `${contextMessage}\n\n--- AVAILABLE MCP TOOLS ---\n${toolsContext}\n\nNote: You can use these tools by calling them with appropriate parameters.`;
-        }
-
-        // Try to use MCP client if available and connected
-        if (mcpState.isConnected && mcpState.prompts.length > 0) {
-          // Check if this looks like a request that should use MCP prompts
-          const isContentRequest = /create|generate|add|make|new/i.test(
-            textToSend
-          );
-          const isCharacterRequest =
-            /character|person|protagonist|hero|villain/i.test(textToSend);
-          const isChapterRequest = /chapter|story|plot|narrative/i.test(
-            textToSend
-          );
-          const isSceneRequest = /scene|setting|location/i.test(textToSend);
-          const isPanelRequest = /panel|frame|image|visual/i.test(textToSend);
-
-          if (isContentRequest) {
-            // Determine which MCP prompt to use based on context
-            let promptName = "";
-            if (isCharacterRequest) {
-              promptName = "character-generation";
-            } else if (isChapterRequest) {
-              promptName = "chapter-generation";
-            } else if (isSceneRequest) {
-              promptName = "scene-generation";
-            } else if (isPanelRequest) {
-              promptName = "panel-generation";
-            } else {
-              promptName = "story-generation"; // Default
-            }
-
-            // Get MCP prompt template and use it with Gemini
-            try {
-              const promptTemplate = await mcpActions.getPromptTemplate(
-                promptName,
-                {
-                  userInput: textToSend,
-                  projectId: projectId,
-                  selectedEntity: selectedEntity,
-                }
-              );
-
-              // Use Gemini service directly with the prompt template
-              const geminiResponse = await geminiService.sendMessage(
-                promptTemplate,
-                "You are a helpful AI assistant for manga creation."
-              );
-
-              response = {
-                message: geminiResponse.text,
-                type: geminiResponse.error
-                  ? ("error" as const)
-                  : ("success" as const),
-              };
-            } catch (mcpError) {
-              console.warn(
-                "MCP prompt failed, falling back to Gemini direct:",
-                mcpError
-              );
-              // Fall back to Gemini direct
-              const geminiResponse = await geminiService.sendMessage(
-                textToSend,
-                "You are a helpful AI assistant for manga creation. Help users create characters, chapters, scenes, and panels for their manga projects."
-              );
-
-              response = {
-                message: geminiResponse.text,
-                type: geminiResponse.error
-                  ? ("error" as const)
-                  : ("success" as const),
-              };
-            }
-          } else {
-            // Use Gemini directly for non-content requests with conversation history
-            try {
-              const geminiMessages = geminiService.convertToGeminiMessages(
-                messages.map((m) => ({ role: m.role, content: m.content }))
-              );
-
-              geminiMessages.push({
-                role: "user",
-                parts: [{ text: textToSend }],
-              });
-
-              const geminiResponse = await geminiService.sendConversation(
-                geminiMessages,
-                "You are a helpful AI assistant for manga creation. Help users create characters, chapters, scenes, and panels for their manga projects."
-              );
-
-              response = {
-                message: geminiResponse.text,
-                type: geminiResponse.error
-                  ? ("error" as const)
-                  : ("success" as const),
-              };
-            } catch (error) {
-              console.warn("Gemini direct call failed:", error);
-              // Final fallback - simple error message
-              response = {
-                message:
-                  "I encountered an issue processing your request. Please try again or rephrase your message.",
-                type: "error" as const,
-              };
-            }
-          }
-        } else {
-          // MCP not available, use Gemini directly or fall back to regular flow
-          try {
-            const geminiMessages = geminiService.convertToGeminiMessages(
-              messages.map((m) => ({ role: m.role, content: m.content }))
-            );
-
-            geminiMessages.push({
-              role: "user",
-              parts: [{ text: textToSend }],
-            });
-
-            const geminiResponse = await geminiService.sendConversation(
-              geminiMessages,
-              "You are a helpful AI assistant for manga creation. Help users create characters, chapters, scenes, and panels for their manga projects."
-            );
-
-            response = {
-              message: geminiResponse.text,
-              type: geminiResponse.error
-                ? ("error" as const)
-                : ("success" as const),
-            };
-          } catch (error) {
-            console.warn("Gemini failed:", error);
-            // Final error response
-            response = {
-              message:
-                "I encountered an issue processing your request. Please try again or rephrase your message.",
-              type: "error" as const,
-            };
-          }
-        }
+        const params = {
+          model: "gemini-2.0-flash",
+          systemPrompt:
+            "You are a helpful AI assistant for manga creation. Help users create characters, chapters, scenes, and panels for their manga projects.",
+        };
+        // Only send selected tools, no fallback to all tools
+        const geminiResponses = await geminiAdapter.send(
+          geminiMessages,
+          mcpTools,
+          params,
+          mcpTools.length > 0 // enable tool calling only if tools selected
+        );
+        const assistantMsg = geminiResponses.find(
+          (m) => m.role === "assistant"
+        );
+        response = {
+          message: assistantMsg?.content || "I processed your request.",
+          type: "success" as const,
+        };
 
         // Add AI response
         const aiMessage: ChatMessage = {
@@ -564,16 +400,10 @@ Please generate diverse and atmospheric location templates that enhance the mang
           timestamp: new Date().toISOString(),
           type: "text",
         };
+        addMessage(aiMessage);
 
-        setMessages((prev) => [...prev, aiMessage]);
-
-        if (response.type === "error") {
-          toast({
-            title: "Error",
-            description: response.message,
-            variant: "destructive",
-          });
-        }
+        // If you want to handle errors, update response assignment logic above to set type: "error" when needed.
+        // Currently, response.type is always "success", so this check is unnecessary and removed.
       } catch (error: any) {
         console.error("Chat error:", error);
         toast({
@@ -591,12 +421,8 @@ Please generate diverse and atmospheric location templates that enhance the mang
       messages,
       projectId,
       toast,
-      mcpState.isConnected,
-      mcpState.prompts,
-      mcpActions,
-      selectedEntity,
-      selectedMcpResources, // ADD THIS
-      selectedMcpTools, // ADD THIS
+      selectedMcpResources,
+      selectedMcpTools,
       mcpResourceContents,
     ]
   );
@@ -636,7 +462,7 @@ Please generate diverse and atmospheric location templates that enhance the mang
         type: "text",
       };
 
-      setMessages((prev) => [...prev, selectionMessage]);
+      addMessage(selectionMessage);
     },
     []
   );
@@ -645,12 +471,12 @@ Please generate diverse and atmospheric location templates that enhance the mang
   const handleMcpPromptExecute = useCallback(
     async (promptName: string, promptArgs?: any) => {
       try {
+        await mcpActions.callTool("setCurrentProject", { projectId });
         // Get the prompt template from MCP server
-        const promptTemplate = await mcpActions.getPromptTemplate(promptName, {
-          projectId: projectId,
-          selectedEntity: selectedEntity,
-          ...promptArgs,
-        });
+        const promptTemplate = await mcpActions.getPromptTemplate(
+          promptName,
+          promptArgs
+        );
 
         // Populate the input field with the prompt template
         setInput(promptTemplate);
@@ -677,7 +503,7 @@ Please generate diverse and atmospheric location templates that enhance the mang
         });
       }
     },
-    [mcpActions, projectId, selectedEntity, toast]
+    [mcpActions, projectId, toast]
   );
 
   // Handle Enter key (with Shift+Enter for new line)
@@ -695,23 +521,6 @@ Please generate diverse and atmospheric location templates that enhance the mang
     (resources: McpResource[], resourceContents: Record<string, any>) => {
       setSelectedMcpResources(resources);
       setMcpResourceContents(resourceContents);
-
-      const resourceMessage: ChatMessage = {
-        id: Date.now().toString(),
-        role: "assistant",
-        content: `📚 **MCP Resources Added**\n\nI now have access to ${
-          resources.length
-        } resource${resources.length !== 1 ? "s" : ""}:\n\n${resources
-          .map((r) => `• **${r.name}** - ${r.description || r.uri}`)
-          .join(
-            "\n"
-          )}\n\nI can now reference and use information from these resources in our conversation. What would you like to do with them?`,
-        timestamp: new Date().toISOString(),
-        type: "text",
-      };
-
-      setMessages((prev) => [...prev, resourceMessage]);
-
       toast({
         title: "Resources Added",
         description: `${resources.length} MCP resource${
@@ -725,28 +534,6 @@ Please generate diverse and atmospheric location templates that enhance the mang
   const handleMcpToolsSelect = useCallback(
     (tools: McpTool[]) => {
       setSelectedMcpTools(tools);
-
-      const toolsMessage: ChatMessage = {
-        id: Date.now().toString(),
-        role: "assistant",
-        content: `🔧 **MCP Tools Enabled**\n\nI now have access to ${
-          tools.length
-        } tool${tools.length !== 1 ? "s" : ""}:\n\n${tools
-          .map(
-            (t) =>
-              `• **${t.name
-                .replace(/-/g, " ")
-                .replace(/\b\w/g, (l) => l.toUpperCase())}** - ${t.description}`
-          )
-          .join(
-            "\n"
-          )}\n\nI can now use these tools to perform actions and operations. Just ask me what you'd like me to do!`,
-        timestamp: new Date().toISOString(),
-        type: "text",
-      };
-
-      setMessages((prev) => [...prev, toolsMessage]);
-
       toast({
         title: "Tools Enabled",
         description: `${tools.length} MCP tool${
@@ -756,6 +543,13 @@ Please generate diverse and atmospheric location templates that enhance the mang
     },
     [toast]
   );
+
+  useEffect(() => {
+    const setProject = async () => {
+      await mcpActions.callTool("setCurrentProject", { projectId });
+    };
+    setProject();
+  }, [mcpActions, projectId]);
 
   return (
     <div className="h-screen w-screen flex bg-white dark:bg-gray-900 overflow-hidden">
@@ -827,7 +621,7 @@ Please generate diverse and atmospheric location templates that enhance the mang
                   return (
                     <EnhancedTemplateLibraryPanel
                       {...commonProps}
-                      onTemplateCreate={handleTemplateCreate}
+                      onTemplateCreate={() => {}}
                     />
                   );
                 }
@@ -975,7 +769,7 @@ Please generate diverse and atmospheric location templates that enhance the mang
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
               className={cn(
-                "flex gap-4",
+                "flex gap-4 group",
                 message.role === "user" ? "justify-end" : "justify-start"
               )}
             >
@@ -987,15 +781,63 @@ Please generate diverse and atmospheric location templates that enhance the mang
 
               <div
                 className={cn(
-                  "max-w-2xl rounded-2xl px-4 py-3",
+                  "max-w-2xl rounded-2xl px-4 py-3 relative",
                   message.role === "user"
                     ? "bg-blue-600 text-white"
                     : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 )}
               >
-                <div className="prose prose-sm max-w-none dark:prose-invert">
-                  <ReactMarkdown>{message.content}</ReactMarkdown>
+                <div className="break-words  text-sm max-w-none dark:text-gray-100">
+                  <ReactMarkdown remarkPlugins={[remarkBreaks]}>
+                    {message.content}
+                  </ReactMarkdown>
                 </div>
+                {/* Message Actions */}
+                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => handleCopyMessage(message.content)}
+                    className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+                    title="Copy message"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteMessage(message.id)}
+                    className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900"
+                    title="Delete message"
+                  >
+                    <Trash2 className="w-4 h-4 text-red-500" />
+                  </button>
+                </div>
+                {/* Delete Confirmation Dialog */}
+                {deleteDialog.open && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                    <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-6 w-full max-w-xs flex flex-col items-center">
+                      <Trash2 className="w-8 h-8 text-red-500 mb-2" />
+                      <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-gray-100">
+                        Delete Message?
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 text-center">
+                        Are you sure you want to delete this message? This
+                        action cannot be undone.
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={confirmDeleteMessage}
+                          className="px-4 py-2 rounded-lg bg-red-500 text-white font-semibold hover:bg-red-600 transition-colors"
+                        >
+                          Delete
+                        </button>
+                        <button
+                          onClick={cancelDeleteMessage}
+                          className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {message.role === "user" && (
@@ -1250,7 +1092,6 @@ Please generate diverse and atmospheric location templates that enhance the mang
         isOpen={mcpPromptDialog}
         onClose={() => setMcpPromptDialog(false)}
         onPromptExecute={handleMcpPromptExecute}
-        selectedEntity={selectedEntity}
         projectId={projectId}
       />
       <McpResourcesSelector
