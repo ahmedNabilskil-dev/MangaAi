@@ -2,31 +2,23 @@
  * Hook for managing MCP client integration - SDK version
  */
 
-import {
-  mcpClient,
-  McpPrompt,
-  McpResource,
-  McpTool,
-} from "@/services/mcp-client";
+import { mcpClient, McpPrompt, McpTool } from "@/services/mcp-client";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 // Re-export the types for convenience
-export type { McpPrompt, McpResource, McpTool };
+export type { McpPrompt, McpTool };
 
-export interface McpState {
+interface McpState {
   isConnected: boolean;
-  isLoading: boolean;
+  isConnecting: boolean;
   tools: McpTool[];
-  resources: McpResource[];
   prompts: McpPrompt[];
   error: string | null;
 }
 
 export interface McpActions {
-  checkConnection: () => Promise<void>;
   refreshData: () => Promise<void>;
   callTool: (name: string, args: any) => Promise<any>;
-  readResource: (uri: string) => Promise<any>;
   getPrompt: (name: string, args?: any) => Promise<string>;
   getPromptTemplate: (name: string, args?: any) => Promise<string>;
   disconnect: () => Promise<void>;
@@ -36,9 +28,8 @@ export interface McpActions {
 export function useMcpClient(context: "chat" | "project-creation" = "chat") {
   const [state, setState] = useState<McpState>({
     isConnected: false,
-    isLoading: true,
+    isConnecting: false,
     tools: [],
-    resources: [],
     prompts: [],
     error: null,
   });
@@ -87,44 +78,36 @@ export function useMcpClient(context: "chat" | "project-creation" = "chat") {
       console.log(`🔄 Refreshing data for context: ${context}`);
 
       // Use Promise.allSettled for better error handling with SDK
-      const [toolsResult, resourcesResult, promptsResult] =
-        await Promise.allSettled([
-          context === "chat"
-            ? mcpClient.getChatTools()
-            : mcpClient.getProjectCreationTools(),
-          mcpClient.getResources(),
-          context === "chat"
-            ? mcpClient.getChatPrompts()
-            : mcpClient.getProjectCreationPrompts(),
-        ]);
+      const [toolsResult, promptsResult] = await Promise.allSettled([
+        context === "chat"
+          ? mcpClient.getChatTools()
+          : mcpClient.getProjectCreationTools(),
+        context === "chat"
+          ? mcpClient.getChatPrompts()
+          : mcpClient.getProjectCreationPrompts(),
+      ]);
 
       if (!mounted.current) return;
 
       // Extract results or empty arrays if failed
       const tools = toolsResult.status === "fulfilled" ? toolsResult.value : [];
-      const resources =
-        resourcesResult.status === "fulfilled" ? resourcesResult.value : [];
       const prompts =
         promptsResult.status === "fulfilled" ? promptsResult.value : [];
 
       // Log individual results
       console.log("✅ Tools received:", tools.length);
-      console.log("✅ Resources received:", resources.length);
       console.log("✅ Prompts received:", prompts.length);
 
       // Log any failures
       if (toolsResult.status === "rejected") {
         console.error("❌ Tools fetch failed:", toolsResult.reason);
       }
-      if (resourcesResult.status === "rejected") {
-        console.error("❌ Resources fetch failed:", resourcesResult.reason);
-      }
       if (promptsResult.status === "rejected") {
         console.error("❌ Prompts fetch failed:", promptsResult.reason);
       }
 
       // Collect errors
-      const errors = [toolsResult, resourcesResult, promptsResult]
+      const errors = [toolsResult, promptsResult]
         .filter((result) => result.status === "rejected")
         .map(
           (result) =>
@@ -134,9 +117,8 @@ export function useMcpClient(context: "chat" | "project-creation" = "chat") {
       setState((prev) => ({
         ...prev,
         tools,
-        resources,
         prompts,
-        isLoading: false,
+        isConnecting: false,
         error: errors.length > 0 ? errors.join("; ") : null,
       }));
 
@@ -167,22 +149,6 @@ export function useMcpClient(context: "chat" | "project-creation" = "chat") {
       setState((prev) => ({
         ...prev,
         error: error instanceof Error ? error.message : "Tool call failed",
-      }));
-      throw error;
-    }
-  }, []);
-
-  const readResource = useCallback(async (uri: string) => {
-    try {
-      console.log(`📖 Reading resource: ${uri}`);
-      const result = await mcpClient.readResource(uri);
-      console.log(`✅ Resource read:`, result);
-      return result;
-    } catch (error) {
-      console.error(`❌ Resource read failed for ${uri}:`, error);
-      setState((prev) => ({
-        ...prev,
-        error: error instanceof Error ? error.message : "Resource read failed",
       }));
       throw error;
     }
@@ -300,10 +266,8 @@ export function useMcpClient(context: "chat" | "project-creation" = "chat") {
   }, [context, state.isConnected]); // Remove refreshData from deps
 
   const actions: McpActions = {
-    checkConnection,
     refreshData,
     callTool,
-    readResource,
     getPrompt,
     getPromptTemplate,
     disconnect,

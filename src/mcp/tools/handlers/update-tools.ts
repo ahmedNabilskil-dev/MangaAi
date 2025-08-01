@@ -13,7 +13,7 @@ import {
   updatePanel as updatePanelService,
   updateProject as updateProjectService,
   updateScene as updateSceneService,
-} from "../../services/data-service.js";
+} from "../../../services/data-service.js";
 
 export async function updateProjectHandler(args: any) {
   try {

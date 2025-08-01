@@ -28,7 +28,7 @@ export function McpStatusIndicator({
   const { state: mcpState, actions: mcpActions } = useMcpClient("chat");
 
   const getStatusInfo = () => {
-    if (mcpState.isLoading) {
+    if (mcpState.isConnecting) {
       return {
         icon: RefreshCw,
         color: "text-yellow-400",
@@ -57,7 +57,7 @@ export function McpStatusIndicator({
         bgColor: "bg-green-900/30",
         borderColor: "border-green-400/30",
         label: "Connected",
-        description: `MCP server connected with ${mcpState.tools.length} tools, ${mcpState.resources.length} resources, ${mcpState.prompts.length} prompts`,
+        description: `MCP server connected with ${mcpState.tools.length} tools, ${mcpState.prompts.length} prompts`,
       };
     }
 
@@ -93,7 +93,7 @@ export function McpStatusIndicator({
             >
               <Icon
                 className={cn("w-4 h-4", statusInfo.color, {
-                  "animate-spin": mcpState.isLoading,
+                  "animate-spin": mcpState.isConnecting,
                 })}
               />
               <span className={cn("text-sm font-medium", statusInfo.color)}>
@@ -137,7 +137,7 @@ export function McpStatusIndicator({
           >
             <Icon
               className={cn("w-5 h-5", statusInfo.color, {
-                "animate-spin": mcpState.isLoading,
+                "animate-spin": mcpState.isConnecting,
               })}
             />
           </div>
@@ -159,15 +159,15 @@ export function McpStatusIndicator({
 
         <div className="flex items-center gap-2">
           <Button
-            onClick={() => mcpActions.checkConnection()}
+            onClick={() => mcpActions.refreshData()}
             size="sm"
             variant="ghost"
             className="text-gray-400 hover:text-white"
-            disabled={mcpState.isLoading}
+            disabled={mcpState.isConnecting}
           >
             <RefreshCw
               className={cn("w-4 h-4", {
-                "animate-spin": mcpState.isLoading,
+                "animate-spin": mcpState.isConnecting,
               })}
             />
           </Button>
@@ -186,12 +186,6 @@ export function McpStatusIndicator({
               {mcpState.tools.length}
             </div>
             <div className="text-xs text-gray-400">Tools</div>
-          </div>
-          <div className="text-center">
-            <div className="text-lg font-bold text-white">
-              {mcpState.resources.length}
-            </div>
-            <div className="text-xs text-gray-400">Resources</div>
           </div>
           <div className="text-center">
             <div className="text-lg font-bold text-white">

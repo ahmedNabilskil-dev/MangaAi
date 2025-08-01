@@ -34,10 +34,14 @@ import {
   EnhancedTemplateLibraryPanel,
 } from "./styled-side-panels";
 
-import { McpResource, McpTool } from "@/hooks/use-mcp-client";
-import { Database, Wrench } from "lucide-react"; // Add these if not already imported
+import { McpTool } from "@/hooks/use-mcp-client";
+import {
+  executeImageGeneration,
+  imageGenerationTool,
+} from "@/lib/image-generation-tool";
+import { MANGA_AI_SYSTEM_PROMPT } from "@/lib/manga-system-prompt";
+import { Wrench } from "lucide-react"; // Add these if not already imported
 import ManualPanelGenerator from "./manual-panel-genration";
-import { McpResourcesSelector } from "./mcp-resources-selector";
 import { McpToolsSelector } from "./mcp-tools-selector";
 
 // ============================================================================
@@ -81,6 +85,14 @@ interface ChatMessage {
     componentId?: string;
     action?: "created" | "updated" | "deleted";
   };
+  imageUrl?: string; // For image messages
+  imageData?: string; // For base64 image data
+  attachments?: {
+    type: "image" | "file";
+    url: string;
+    name: string;
+    size?: number;
+  }[];
 }
 
 // ============================================================================
@@ -176,19 +188,22 @@ export default function NewMangaChatLayout() {
   const [manualPanelDialog, setManualPanelDialog] = useState(false);
   const [mcpPromptDialog, setMcpPromptDialog] = useState(false);
 
-  const [mcpResourcesDialog, setMcpResourcesDialog] = useState(false);
   const [mcpToolsDialog, setMcpToolsDialog] = useState(false);
-  const [selectedMcpResources, setSelectedMcpResources] = useState<
-    McpResource[]
-  >([]);
   const [selectedMcpTools, setSelectedMcpTools] = useState<McpTool[]>([]);
-  const [mcpResourceContents, setMcpResourceContents] = useState<
-    Record<string, any>
-  >({});
+  const [imageUpload, setImageUpload] = useState<{
+    file: File | null;
+    preview: string | null;
+    isUploading: boolean;
+  }>({
+    file: null,
+    preview: null,
+    isUploading: false,
+  });
 
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Handlers
   const handleAssetSelect = useCallback((asset: Asset) => {
@@ -311,30 +326,66 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
     async (e: React.FormEvent) => {
       e.preventDefault();
       const textToSend = input.trim();
-      if (!textToSend || isLoading) return;
+      if ((!textToSend && !imageUpload.file) || isLoading) return;
 
-      // Add user message
+      // Add user message with optional image
       const userMessage: ChatMessage = {
         id: Date.now().toString(),
         role: "user",
-        content: textToSend,
+        content: textToSend || "Image uploaded",
         timestamp: new Date().toISOString(),
-        type: "text",
+        type: imageUpload.file ? "image" : "text",
+        imageData: imageUpload.preview || undefined,
       };
       addMessage(userMessage);
       setInput("");
+
+      // Clear image upload after sending
+      if (imageUpload.file) {
+        handleImageRemove();
+      }
+
       setIsLoading(true);
 
       try {
         let response;
-        // Only send selected tools/resources to Gemini
+        // Only send selected tools to Gemini
         // Prepare Gemini messages (conversation history)
         const geminiMessages = [
-          ...messages.map((m) => ({
-            role: m.role as "user" | "assistant" | "function",
-            content: m.content,
-          })),
-          { role: "user" as const, content: textToSend },
+          ...messages.map((m) => {
+            if (m.type === "image" && m.imageData) {
+              return {
+                role: m.role as "user" | "assistant" | "function",
+                content: [
+                  { text: m.content },
+                  {
+                    inlineData: {
+                      mimeType: "image/jpeg",
+                      data: m.imageData.split(",")[1], // Remove data:image/jpeg;base64, prefix
+                    },
+                  },
+                ],
+              };
+            }
+            return {
+              role: m.role as "user" | "assistant" | "function",
+              content: m.content,
+            };
+          }),
+          userMessage.type === "image" && userMessage.imageData
+            ? {
+                role: "user" as const,
+                content: [
+                  { text: textToSend || "Please analyze this image" },
+                  {
+                    inlineData: {
+                      mimeType: "image/jpeg",
+                      data: userMessage.imageData.split(",")[1],
+                    },
+                  },
+                ],
+              }
+            : { role: "user" as const, content: textToSend },
         ];
 
         // Prepare selected MCP tools for Gemini
@@ -347,24 +398,15 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
           }));
         }
 
-        // Optionally add selected MCP resources context to the user message
-        let resourceContext = "";
-        if (selectedMcpResources.length > 0) {
-          resourceContext = selectedMcpResources
-            .map((resource) => {
-              const content = mcpResourceContents[resource.uri];
-              return `Resource: ${resource.name}\nDescription: ${
-                resource.description || "N/A"
-              }\nContent: ${JSON.stringify(content, null, 2)}`;
-            })
-            .join("\n\n");
-        }
-        // If resources selected, append context to last user message
-        if (resourceContext) {
-          geminiMessages[
-            geminiMessages.length - 1
-          ].content += `\n\n--- MCP RESOURCES CONTEXT ---\n${resourceContext}`;
-        }
+        // Always add image generation tool
+        const allTools = [
+          ...mcpTools,
+          {
+            name: imageGenerationTool.name,
+            description: imageGenerationTool.description,
+            parameters: imageGenerationTool.parameters,
+          },
+        ];
 
         // Use Gemini adapter
         const { ChatAdapterFactory } = await import("@/ai/adapters/factory");
@@ -374,31 +416,78 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
 
         const params = {
           model: "gemini-2.0-flash",
-          systemPrompt:
-            "You are a helpful AI assistant for manga creation. Help users create characters, chapters, scenes, and panels for their manga projects.",
+          systemPrompt: MANGA_AI_SYSTEM_PROMPT,
         };
-        // Only send selected tools, no fallback to all tools
+        // Send tools to Gemini (MCP tools + image generation tool)
         const geminiResponses = await geminiAdapter.send(
           geminiMessages,
-          mcpTools,
+          allTools,
           params,
-          mcpTools.length > 0 // enable tool calling only if tools selected
+          true // always enable tool calling since we have image generation
         );
-        const assistantMsg = geminiResponses.find(
-          (m) => m.role === "assistant"
-        );
+
+        // Process responses and handle tool calls
+        let finalMessage = "";
+        let generatedImageUrl: string | undefined;
+
+        for (const response of geminiResponses) {
+          if (response.role === "assistant") {
+            finalMessage += response.content || "";
+          } else if (
+            response.role === "function" &&
+            response.contentKey === "functionCall"
+          ) {
+            const functionCall = response.content as {
+              name: string;
+              args: Record<string, any>;
+            };
+
+            if (functionCall.name === "generate_image") {
+              try {
+                const args = functionCall.args as {
+                  prompt: string;
+                  type: string;
+                  style?: string;
+                  entityId?: string;
+                  entityName?: string;
+                };
+                const result = await executeImageGeneration(
+                  args,
+                  geminiAdapter,
+                  mcpActions // Pass MCP actions for entity updating
+                );
+                if (result.success && result.imageUrl) {
+                  generatedImageUrl = result.imageUrl;
+                  let statusMessage = `🎨 Generated ${args.type} image: ${args.prompt}`;
+                  if (result.entityUpdated) {
+                    statusMessage += ` ✅ Entity updated with image URL`;
+                  }
+                  finalMessage += `\n\n${statusMessage}`;
+                } else {
+                  finalMessage += `\n\n❌ Image generation failed: ${result.error}`;
+                }
+              } catch (error: any) {
+                console.error("Image generation error:", error);
+                finalMessage += `\n\n❌ Image generation error: ${error.message}`;
+              }
+            }
+            // Handle other MCP tool calls here if needed
+          }
+        }
+
         response = {
-          message: assistantMsg?.content || "I processed your request.",
+          message: finalMessage || "I processed your request.",
           type: "success" as const,
         };
 
-        // Add AI response
+        // Add AI response with optional generated image
         const aiMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
           role: "assistant",
           content: response.message || "I processed your request.",
           timestamp: new Date().toISOString(),
-          type: "text",
+          type: generatedImageUrl ? "image" : "text",
+          imageUrl: generatedImageUrl,
         };
         addMessage(aiMessage);
 
@@ -415,16 +504,7 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
         setIsLoading(false);
       }
     },
-    [
-      input,
-      isLoading,
-      messages,
-      projectId,
-      toast,
-      selectedMcpResources,
-      selectedMcpTools,
-      mcpResourceContents,
-    ]
+    [input, isLoading, messages, projectId, toast, selectedMcpTools]
   );
 
   // Handle entity selection (for editing)
@@ -471,7 +551,6 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
   const handleMcpPromptExecute = useCallback(
     async (promptName: string, promptArgs?: any) => {
       try {
-        await mcpActions.callTool("setCurrentProject", { projectId });
         // Get the prompt template from MCP server
         const promptTemplate = await mcpActions.getPromptTemplate(
           promptName,
@@ -517,20 +596,6 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
     [handleSubmit]
   );
 
-  const handleMcpResourcesSelect = useCallback(
-    (resources: McpResource[], resourceContents: Record<string, any>) => {
-      setSelectedMcpResources(resources);
-      setMcpResourceContents(resourceContents);
-      toast({
-        title: "Resources Added",
-        description: `${resources.length} MCP resource${
-          resources.length !== 1 ? "s" : ""
-        } added to chat context`,
-      });
-    },
-    [toast]
-  );
-
   const handleMcpToolsSelect = useCallback(
     (tools: McpTool[]) => {
       setSelectedMcpTools(tools);
@@ -544,12 +609,60 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
     [toast]
   );
 
-  useEffect(() => {
-    const setProject = async () => {
-      await mcpActions.callTool("setCurrentProject", { projectId });
-    };
-    setProject();
-  }, [mcpActions, projectId]);
+  // Image upload handlers
+  const handleImageUpload = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      // Check file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Please select an image smaller than 10MB.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check file type
+      if (!file.type.startsWith("image/")) {
+        toast({
+          title: "Invalid file type",
+          description: "Please select an image file.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setImageUpload({
+          file,
+          preview: result,
+          isUploading: false,
+        });
+      };
+      reader.readAsDataURL(file);
+    },
+    [toast]
+  );
+
+  const handleImageUploadClick = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleImageRemove = useCallback(() => {
+    setImageUpload({
+      file: null,
+      preview: null,
+      isUploading: false,
+    });
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }, []);
 
   return (
     <div className="h-screen w-screen flex bg-white dark:bg-gray-900 overflow-hidden">
@@ -684,29 +797,6 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
               </div>
             </Button>
 
-            {/* MCP Resources Button */}
-            {mcpState.isConnected && mcpState.resources.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setMcpResourcesDialog(true)}
-                className="border border-blue-300 hover:border-blue-400 bg-blue-50 hover:bg-blue-100 text-blue-700 hover:text-blue-800 transition-all duration-200 shadow-sm hover:shadow-md"
-              >
-                <div className="flex items-center gap-2">
-                  <Database className="w-4 h-4" />
-                  <span className="font-medium">MCP Resources</span>
-                  {selectedMcpResources.length > 0 && (
-                    <Badge
-                      variant="secondary"
-                      className="bg-blue-600 text-white text-xs"
-                    >
-                      {selectedMcpResources.length}
-                    </Badge>
-                  )}
-                </div>
-              </Button>
-            )}
-
             {/* MCP Tools Button */}
             {mcpState.isConnected && mcpState.tools.length > 0 && (
               <Button
@@ -729,14 +819,6 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
                 </div>
               </Button>
             )}
-
-            <Button
-              variant="outline"
-              size="sm"
-              className="border border-gray-300 hover:border-gray-400 bg-white hover:bg-gray-50 transition-colors"
-            >
-              <Upload className="w-4 h-4" />
-            </Button>
           </div>
         </div>
 
@@ -787,10 +869,34 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
                     : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 )}
               >
-                <div className="break-words  text-sm max-w-none dark:text-gray-100">
+                <div className="break-words text-sm max-w-none dark:text-gray-100">
                   <ReactMarkdown remarkPlugins={[remarkBreaks]}>
                     {message.content}
                   </ReactMarkdown>
+
+                  {/* Display image if present */}
+                  {message.imageData && (
+                    <div className="mt-3">
+                      <img
+                        src={message.imageData}
+                        alt="Shared image"
+                        className="max-w-full h-auto rounded-lg border border-gray-200 dark:border-gray-600"
+                        style={{ maxHeight: "300px" }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Display image URL if present */}
+                  {message.imageUrl && (
+                    <div className="mt-3">
+                      <img
+                        src={message.imageUrl}
+                        alt="Generated image"
+                        className="max-w-full h-auto rounded-lg border border-gray-200 dark:border-gray-600"
+                        style={{ maxHeight: "300px" }}
+                      />
+                    </div>
+                  )}
                 </div>
                 {/* Message Actions */}
                 <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -875,24 +981,13 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
           <div className="px-6 py-3 border-t border-gray-100 dark:border-gray-800">
             <div className="flex flex-wrap gap-2">
               {/* MCP Context Display - ADD THIS */}
-              {(selectedMcpResources.length > 0 ||
-                selectedMcpTools.length > 0) && (
+              {selectedMcpTools.length > 0 && (
                 <div className="w-full mb-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700/50">
                   <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400">
                     <Settings className="w-3 h-3" />
                     <span className="font-medium">Active MCP Context:</span>
                   </div>
                   <div className="flex flex-wrap gap-1 mt-1">
-                    {selectedMcpResources.length > 0 && (
-                      <Badge
-                        variant="outline"
-                        className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-600"
-                      >
-                        <Database className="w-3 h-3 mr-1" />
-                        {selectedMcpResources.length} Resource
-                        {selectedMcpResources.length !== 1 ? "s" : ""}
-                      </Badge>
-                    )}
                     {selectedMcpTools.length > 0 && (
                       <Badge
                         variant="outline"
@@ -1036,6 +1131,24 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
 
         {/* Input Area */}
         <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+          {/* Image Upload Preview */}
+          {imageUpload.preview && (
+            <div className="mb-4 relative inline-block">
+              <img
+                src={imageUpload.preview}
+                alt="Upload preview"
+                className="max-w-xs max-h-32 rounded-lg border border-gray-200 dark:border-gray-600"
+              />
+              <button
+                onClick={handleImageRemove}
+                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                title="Remove image"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="flex gap-3">
             <div className="flex-1 relative">
               <textarea
@@ -1043,7 +1156,11 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
                 value={input}
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
-                placeholder="Type your message... (Shift+Enter for new line)"
+                placeholder={
+                  imageUpload.preview
+                    ? "Add a message about this image..."
+                    : "Type your message... (Shift+Enter for new line)"
+                }
                 className="w-full px-4 py-3 pr-12 border border-gray-300 dark:border-gray-600 rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 rows={1}
                 disabled={isLoading}
@@ -1060,15 +1177,36 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
                 </button>
               )}
             </div>
+
+            {/* Image Upload Button */}
+            <button
+              type="button"
+              onClick={handleImageUploadClick}
+              className="p-3 text-gray-500 hover:text-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-2xl transition-colors"
+              title="Upload image"
+              disabled={isLoading}
+            >
+              <Upload className="w-5 h-5" />
+            </button>
+
             <button
               type="submit"
-              disabled={!input.trim() || isLoading}
+              disabled={(!input.trim() && !imageUpload.file) || isLoading}
               className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-2xl transition-colors flex items-center gap-2"
             >
               <Send className="w-4 h-4" />
               Send
             </button>
           </form>
+
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleImageUpload}
+            className="hidden"
+          />
         </div>
       </div>
 
@@ -1092,12 +1230,6 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
         isOpen={mcpPromptDialog}
         onClose={() => setMcpPromptDialog(false)}
         onPromptExecute={handleMcpPromptExecute}
-        projectId={projectId}
-      />
-      <McpResourcesSelector
-        isOpen={mcpResourcesDialog}
-        onClose={() => setMcpResourcesDialog(false)}
-        onResourcesSelect={handleMcpResourcesSelect}
         projectId={projectId}
       />
 

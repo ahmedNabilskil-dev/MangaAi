@@ -3,6 +3,9 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useMcpClient } from "@/hooks/use-mcp-client";
+import { useToast } from "@/hooks/use-toast";
+import { ImageStorage } from "@/lib/localStorage";
 import {
   Chapter,
   Character,
@@ -30,18 +33,18 @@ import {
   MapPin,
   MessageSquare,
   Palette,
-  Share,
   Sparkles,
   Star,
   Tag,
   Trash2,
   TrendingUp,
+  Upload,
   User,
   Users,
   X,
   Zap,
 } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -219,7 +222,13 @@ const formatDate = (date?: Date | string) => {
 // DETAIL CONTENT COMPONENTS
 // ============================================================================
 
-function CharacterDetails({ character }: { character: Character }) {
+function CharacterDetails({
+  character,
+  onImageUpload,
+}: {
+  character: Character;
+  onImageUpload?: () => void;
+}) {
   return (
     <div className="space-y-6">
       {/* Character Avatar & Quick Stats */}
@@ -227,16 +236,28 @@ function CharacterDetails({ character }: { character: Character }) {
         <div className="relative z-10">
           <div className="flex items-center gap-4 mb-4">
             {character.imgUrl ? (
-              <div className="w-16 h-16 rounded-full overflow-hidden ring-4 ring-white/50 shadow-lg">
+              <div
+                className="w-16 h-16 rounded-full overflow-hidden ring-4 ring-white/50 shadow-lg group cursor-pointer"
+                onClick={onImageUpload}
+              >
                 <img
                   src={character.imgUrl}
                   alt={character.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                 />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200">
+                  <Upload className="w-4 h-4 text-white" />
+                </div>
               </div>
             ) : (
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center ring-4 ring-white/50 shadow-lg">
-                <User className="w-8 h-8 text-white" />
+              <div
+                className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center ring-4 ring-white/50 shadow-lg cursor-pointer group hover:shadow-xl transition-all duration-200"
+                onClick={onImageUpload}
+              >
+                <div className="group-hover:scale-90 transition-transform duration-200">
+                  <User className="w-6 h-6 text-white group-hover:opacity-50" />
+                  <Upload className="w-4 h-4 text-white absolute opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                </div>
               </div>
             )}
             <div>
@@ -517,9 +538,11 @@ function CharacterDetails({ character }: { character: Character }) {
 function TemplateDetails({
   template,
   type,
+  onImageUpload,
 }: {
   template: OutfitTemplate | LocationTemplate;
   type: string;
+  onImageUpload?: () => void;
 }) {
   const getTypeIcon = () => {
     switch (type) {
@@ -604,13 +627,31 @@ function TemplateDetails({
           </div>
 
           {/* Template Preview Image */}
-          {template.imageUrl && (
-            <div className="rounded-xl overflow-hidden border-2 border-white/50 shadow-lg">
+          {template.imageUrl ? (
+            <div
+              className="rounded-xl overflow-hidden border-2 border-white/50 shadow-lg cursor-pointer group hover:shadow-xl transition-all duration-200"
+              onClick={onImageUpload}
+            >
               <img
                 src={template.imageUrl}
                 alt={template.name}
-                className="w-full h-32 object-cover"
+                className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-200"
               />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200">
+                <Upload className="w-6 h-6 text-white" />
+              </div>
+            </div>
+          ) : (
+            <div
+              className="rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 h-32 bg-gray-50 dark:bg-gray-800/50 flex items-center justify-center cursor-pointer group hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-200"
+              onClick={onImageUpload}
+            >
+              <div className="text-center">
+                <Upload className="w-8 h-8 text-gray-400 group-hover:text-blue-500 mx-auto mb-2 transition-colors duration-200" />
+                <p className="text-sm text-gray-500 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200">
+                  Click to upload {type} image
+                </p>
+              </div>
             </div>
           )}
         </div>
@@ -864,7 +905,13 @@ function TemplateDetails({
   );
 }
 
-function ProjectDetails({ project }: { project: MangaProject }) {
+function ProjectDetails({
+  project,
+  onImageUpload,
+}: {
+  project: MangaProject;
+  onImageUpload?: () => void;
+}) {
   return (
     <div className="space-y-6">
       {/* Project Header with Stats */}
@@ -872,16 +919,28 @@ function ProjectDetails({ project }: { project: MangaProject }) {
         <div className="relative z-10">
           <div className="flex items-center gap-4 mb-4">
             {project.coverImageUrl ? (
-              <div className="w-16 h-16 rounded-xl overflow-hidden ring-4 ring-white/50 shadow-lg">
+              <div
+                className="w-16 h-16 rounded-xl overflow-hidden ring-4 ring-white/50 shadow-lg cursor-pointer group hover:shadow-xl transition-all duration-200"
+                onClick={onImageUpload}
+              >
                 <img
                   src={project.coverImageUrl}
                   alt={project.title}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                 />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200">
+                  <Upload className="w-4 h-4 text-white" />
+                </div>
               </div>
             ) : (
-              <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center shadow-lg">
-                <FileText className="w-8 h-8 text-white" />
+              <div
+                className="w-16 h-16 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center shadow-lg cursor-pointer group hover:shadow-xl transition-all duration-200"
+                onClick={onImageUpload}
+              >
+                <div className="group-hover:scale-90 transition-transform duration-200">
+                  <FileText className="w-6 h-6 text-white group-hover:opacity-50" />
+                  <Upload className="w-4 h-4 text-white absolute opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                </div>
               </div>
             )}
             <div className="flex-1">
@@ -1452,23 +1511,43 @@ function SceneDetails({
 function PanelDetails({
   panel,
   projectData,
+  onImageUpload,
 }: {
   panel: Panel;
   projectData?: MangaProject | null;
+  onImageUpload?: () => void;
 }) {
   return (
     <div className="space-y-4">
       {/* Panel Header */}
       <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-cyan-600 to-blue-700 p-4">
         {/* Panel Image */}
-        {panel.imageUrl && (
-          <div className="relative h-32 overflow-hidden rounded-lg mb-3">
+        {panel.imageUrl ? (
+          <div
+            className="relative h-32 overflow-hidden rounded-lg mb-3 cursor-pointer group hover:shadow-xl transition-all duration-200"
+            onClick={onImageUpload}
+          >
             <img
               src={panel.imageUrl}
               alt={`Panel ${panel.order}`}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200">
+              <Upload className="w-6 h-6 text-white" />
+            </div>
+          </div>
+        ) : (
+          <div
+            className="relative h-32 border-2 border-dashed border-white/30 rounded-lg mb-3 bg-white/10 flex items-center justify-center cursor-pointer group hover:border-white/60 hover:bg-white/20 transition-all duration-200"
+            onClick={onImageUpload}
+          >
+            <div className="text-center">
+              <Upload className="w-8 h-8 text-white/60 group-hover:text-white mx-auto mb-2 transition-colors duration-200" />
+              <p className="text-sm text-white/60 group-hover:text-white transition-colors duration-200">
+                Click to upload panel image
+              </p>
+            </div>
           </div>
         )}
 
@@ -2028,6 +2107,155 @@ export default function EntityDetailPanel({
   onDuplicate,
 }: EntityDetailPanelProps) {
   const [showActions, setShowActions] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const { toast } = useToast();
+  const { actions: mcpActions } = useMcpClient("chat");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Handle image upload with preview
+  const handleImageUpload = useCallback(
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file || !entity || !entityType) return;
+
+      // Check file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Please select an image smaller than 10MB.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check file type
+      if (!file.type.startsWith("image/")) {
+        toast({
+          title: "Invalid file type",
+          description: "Please select an image file.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Show preview first
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setPreviewImage(result);
+        setShowPreview(true);
+      };
+      reader.readAsDataURL(file);
+
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    },
+    [entity, entityType, toast]
+  );
+
+  // Confirm and upload image
+  const confirmUpload = useCallback(async () => {
+    if (!previewImage || !entity || !entityType) return;
+
+    setIsUploadingImage(true);
+    setShowPreview(false);
+
+    try {
+      // Upload to ImgBB using ImageStorage
+      const imageUrl = await ImageStorage.uploadImage(
+        previewImage,
+        `${entityType}-${entity.id}-${Date.now()}`
+      );
+
+      // Update entity with new image URL
+      await updateEntityImage(entity, entityType, imageUrl);
+
+      toast({
+        title: "Image uploaded successfully",
+        description: `${entityType} image has been updated.`,
+      });
+
+      setPreviewImage(null);
+    } catch (error: any) {
+      console.error("Image upload error:", error);
+      toast({
+        title: "Upload failed",
+        description: error.message || "Failed to upload image.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingImage(false);
+    }
+  }, [previewImage, entity, entityType, toast, mcpActions]);
+
+  // Cancel upload
+  const cancelUpload = useCallback(() => {
+    setPreviewImage(null);
+    setShowPreview(false);
+  }, []);
+
+  // Update entity image URL using MCP actions
+  const updateEntityImage = useCallback(
+    async (entity: DetailableEntity, entityType: string, imageUrl: string) => {
+      try {
+        switch (entityType) {
+          case "character":
+            await mcpActions.callTool("updateCharacter", {
+              characterId: entity.id,
+              updates: { imgUrl: imageUrl },
+            });
+            break;
+          case "project":
+            await mcpActions.callTool("updateProject", {
+              projectId: entity.id,
+              updates: { coverImageUrl: imageUrl },
+            });
+            break;
+          case "chapter":
+            await mcpActions.callTool("updateChapter", {
+              chapterId: entity.id,
+              updates: { imageUrl },
+            });
+            break;
+          case "panel":
+            await mcpActions.callTool("updatePanel", {
+              panelId: entity.id,
+              updates: { imageUrl },
+            });
+            break;
+          case "outfit":
+            await mcpActions.callTool("updateOutfitTemplate", {
+              templateId: entity.id,
+              updates: { imageUrl },
+            });
+            break;
+          case "location":
+            await mcpActions.callTool("updateLocationTemplate", {
+              templateId: entity.id,
+              updates: { imageUrl },
+            });
+            break;
+          default:
+            throw new Error(`Image upload not supported for ${entityType}`);
+        }
+      } catch (error: any) {
+        console.error("Failed to update entity image:", error);
+        throw new Error(
+          `Failed to update ${entityType} image: ${error.message}`
+        );
+      }
+    },
+    [mcpActions]
+  );
+
+  // Trigger file input
+  const triggerImageUpload = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
 
   if (!entity || !entityType) return null;
 
@@ -2111,7 +2339,42 @@ export default function EntityDetailPanel({
                 </div>
 
                 {/* Enhanced Action Buttons */}
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
+                  {/* Image Upload Button */}
+                  <motion.div
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={triggerImageUpload}
+                      disabled={isUploadingImage}
+                      className="flex items-center gap-2 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:shadow-md transition-all"
+                    >
+                      {isUploadingImage ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-blue-600 dark:border-blue-400 border-t-transparent rounded-full animate-spin" />
+                          Uploading...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-4 h-4" />
+                          Upload Image
+                        </>
+                      )}
+                    </Button>
+                  </motion.div>
+
+                  {/* Hidden file input */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+
                   {onEdit && (
                     <motion.div
                       whileHover={{ scale: 1.02 }}
@@ -2130,35 +2393,6 @@ export default function EntityDetailPanel({
                       </Button>
                     </motion.div>
                   )}
-                  {onDuplicate && (
-                    <motion.div
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => onDuplicate(entity)}
-                        className="flex items-center gap-2 bg-white/70 dark:bg-gray-800/70 border-gray-300 dark:border-gray-600 hover:shadow-md transition-all"
-                      >
-                        <Copy className="w-4 h-4" />
-                        Duplicate
-                      </Button>
-                    </motion.div>
-                  )}
-                  <motion.div
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="flex items-center gap-2 bg-white/70 dark:bg-gray-800/70 border-gray-300 dark:border-gray-600 hover:shadow-md transition-all"
-                    >
-                      <Share className="w-4 h-4" />
-                      Share
-                    </Button>
-                  </motion.div>
                 </div>
               </div>
             </div>
@@ -2166,10 +2400,16 @@ export default function EntityDetailPanel({
             {/* Enhanced Content with Custom Scrollbar */}
             <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
               {entityType === "character" && (
-                <CharacterDetails character={entity as Character} />
+                <CharacterDetails
+                  character={entity as Character}
+                  onImageUpload={triggerImageUpload}
+                />
               )}
               {entityType === "project" && (
-                <ProjectDetails project={entity as MangaProject} />
+                <ProjectDetails
+                  project={entity as MangaProject}
+                  onImageUpload={triggerImageUpload}
+                />
               )}
               {entityType === "scene" && (
                 <SceneDetails
@@ -2181,12 +2421,14 @@ export default function EntityDetailPanel({
                 <PanelDetails
                   panel={entity as Panel}
                   projectData={projectData}
+                  onImageUpload={triggerImageUpload}
                 />
               )}
               {(entityType === "outfit" || entityType === "location") && (
                 <TemplateDetails
                   template={entity as OutfitTemplate | LocationTemplate}
                   type={entityType}
+                  onImageUpload={triggerImageUpload}
                 />
               )}
               {entityType === "chapter" && (
@@ -2311,6 +2553,79 @@ export default function EntityDetailPanel({
                   </p>
                 </motion.div>
               </div>
+            )}
+
+            {/* Image Preview Modal */}
+            {showPreview && previewImage && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4"
+                onClick={cancelUpload}
+              >
+                <motion.div
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-auto shadow-2xl"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                      Preview Image Upload
+                    </h3>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={cancelUpload}
+                      className="p-2"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+
+                  {/* Image Preview */}
+                  <div className="mb-6">
+                    <div className="relative rounded-xl overflow-hidden border-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                      <img
+                        src={previewImage}
+                        alt="Preview"
+                        className="w-full h-auto max-h-96 object-contain"
+                      />
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 text-center">
+                      This image will be uploaded for {entityType}:{" "}
+                      {getEntityName(entity, entityType)}
+                    </p>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-3 justify-end">
+                    <Button
+                      variant="outline"
+                      onClick={cancelUpload}
+                      disabled={isUploadingImage}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={confirmUpload}
+                      disabled={isUploadingImage}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      {isUploadingImage ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Uploading...
+                        </div>
+                      ) : (
+                        <>Upload Image</>
+                      )}
+                    </Button>
+                  </div>
+                </motion.div>
+              </motion.div>
             )}
           </motion.div>
         </>

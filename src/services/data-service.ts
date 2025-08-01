@@ -529,3 +529,15 @@ export async function initializeDataService(): Promise<void> {
     throw error;
   }
 }
+
+// Export a convenient dataService object with template methods
+export const dataService = {
+  createOutfitTemplate,
+  createLocationTemplate,
+  updateOutfitTemplate,
+  updateLocationTemplate,
+  deleteOutfitTemplate,
+  deleteLocationTemplate,
+  getOutfitTemplate,
+  getLocationTemplate,
+};

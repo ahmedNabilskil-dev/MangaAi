@@ -13,7 +13,7 @@ import {
   getPanelForContext,
   getProject as getProjectForContext,
   getSceneForContext,
-} from "../../services/data-service.js";
+} from "../../../services/data-service.js";
 
 export async function deleteProjectHandler(args: any) {
   try {

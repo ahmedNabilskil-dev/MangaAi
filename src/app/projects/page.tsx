@@ -63,8 +63,10 @@ const ProjectsPage = () => {
 
   const fetchProjects = async () => {
     setIsLoading(true);
-    const { contents } = await actions.readResource("manga://projects");
-    setProjects(JSON.parse(contents[0].text));
+    // TODO: Implement readResource in MCP client
+    // const { contents } = await actions.readResource("manga://projects");
+    // setProjects(JSON.parse(contents[0].text));
+    setProjects([]); // Temporary fallback
     setIsLoading(false);
   };
 

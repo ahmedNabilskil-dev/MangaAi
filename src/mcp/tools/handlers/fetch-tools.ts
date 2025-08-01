@@ -1,5 +1,4 @@
 import {
-  getAllProjects,
   getChapterForContext,
   getChapters,
   getCharacter as getCharacterForContext,
@@ -15,7 +14,7 @@ import {
   listCharacters,
   listLocationTemplates,
   listOutfitTemplates,
-} from "../../services/data-service.js";
+} from "../../../services/data-service.js";
 
 export async function getProjectHandler(args: any) {
   try {
@@ -167,46 +166,6 @@ export async function getPanelDialogueHandler(args: any) {
   } catch (error) {
     throw new Error(
       `Failed to get panel dialogue: ${
-        error instanceof Error ? error.message : String(error)
-      }`
-    );
-  }
-}
-
-export async function listProjectsHandler(args: any) {
-  try {
-    const { limit, offset } = args;
-    const allProjects = await getAllProjects();
-
-    // Apply pagination
-    let result = allProjects;
-    if (offset) {
-      result = result.slice(offset);
-    }
-    if (limit) {
-      result = result.slice(0, limit);
-    }
-
-    // Return only basic project information
-    const projectSummaries = result.map((project) => ({
-      id: project.id,
-      title: project.title,
-      status: project.status,
-      genre: project.genre,
-      coverImageUrl: project.coverImageUrl,
-    }));
-
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(projectSummaries, null, 2),
-        },
-      ],
-    };
-  } catch (error) {
-    throw new Error(
-      `Failed to list projects: ${
         error instanceof Error ? error.message : String(error)
       }`
     );

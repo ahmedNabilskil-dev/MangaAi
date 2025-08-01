@@ -7,7 +7,7 @@ import {
   createPanel as createPanelService,
   createProject as createProjectService,
   createScene as createSceneService,
-} from "../../services/data-service.js";
+} from "../../../services/data-service.js";
 
 export async function createProjectHandler(args: any) {
   try {

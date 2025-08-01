@@ -9,22 +9,13 @@ import {
   CallToolResultSchema,
   GetPromptResultSchema,
   ListPromptsResultSchema,
-  ListResourcesResultSchema,
   ListToolsResultSchema,
-  ReadResourceResultSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 
 export interface McpTool {
   name: string;
   description: string;
   inputSchema: any;
-}
-
-export interface McpResource {
-  uri: string;
-  name: string;
-  description: string;
-  mimeType: string;
 }
 
 export interface McpPrompt {
@@ -339,45 +330,6 @@ class McpClientService {
       console.log(`✅ Tool ${name} completed`);
       return result;
     }, `callTool(${name})`);
-  }
-
-  /**
-   * Get available resources from MCP server
-   */
-  async getResources(): Promise<McpResource[]> {
-    return this.executeWithRetry(async () => {
-      console.log("📄 Fetching resources...");
-      const client = await this.ensureConnected();
-
-      const response = await client.listResources();
-      const result = ListResourcesResultSchema.parse(response);
-
-      const resources: McpResource[] = result.resources.map((resource) => ({
-        uri: resource.uri,
-        name: resource.name,
-        description: resource.description || "",
-        mimeType: resource.mimeType || "application/json",
-      }));
-
-      console.log(`✅ Retrieved ${resources.length} resources`);
-      return resources;
-    }, "getResources");
-  }
-
-  /**
-   * Read a resource from the MCP server
-   */
-  async readResource(uri: string): Promise<any> {
-    return this.executeWithRetry(async () => {
-      console.log(`📖 Reading resource: ${uri}`);
-      const client = await this.ensureConnected();
-
-      const response = await client.readResource({ uri });
-      const result = ReadResourceResultSchema.parse(response);
-
-      console.log(`✅ Resource read successfully`);
-      return result;
-    }, `readResource(${uri})`);
   }
 
   /**

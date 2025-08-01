@@ -3,6 +3,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { getProjectWithRelations } from "@/services/data-service";
 import { Chapter, Character, MangaProject, Scene } from "@/types/entities";
@@ -11,17 +12,24 @@ import {
   BookOpen,
   ChevronDown,
   ChevronRight,
+  Copy,
+  Edit,
   Eye,
   FileText,
   Layers,
   Layout,
   MapPin,
   Palette,
+  Plus,
+  RefreshCcw,
   Settings,
+  Trash2,
   Users,
+  Wand2,
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import EntityDetailPanel, { DetailableEntity } from "./entity-detail-panel";
+import { LocationTemplateForm, OutfitTemplateForm } from "./template-forms";
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -228,20 +236,7 @@ export function EnhancedProjectStructurePanel({
                 className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
                 title="Refresh"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 4v6h6M20 20v-6h-6M4 20a9 9 0 0114-7.36M20 4a9 9 0 00-14 7.36"
-                  />
-                </svg>
+                <RefreshCcw className="w-4 h-4" />
               </button>
             </div>
 
@@ -792,6 +787,8 @@ export function EnhancedTemplateLibraryPanel({
   });
   const [projectData, setProjectData] = useState<MangaProject | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     const loadProject = async () => {
@@ -810,6 +807,18 @@ export function EnhancedTemplateLibraryPanel({
     loadProject();
   }, [projectId]);
 
+  const reloadProject = async () => {
+    setIsLoading(true);
+    try {
+      const data = await getProjectWithRelations(projectId);
+      setProjectData(data);
+    } catch (error) {
+      console.error("Failed to reload project:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const showEntityDetails = (
     entity: DetailableEntity,
     entityType: DetailPanelState["entityType"]
@@ -827,6 +836,39 @@ export function EnhancedTemplateLibraryPanel({
       entity: null,
       entityType: null,
     });
+  };
+
+  const handleTemplateAction = async (
+    action: "edit" | "duplicate" | "delete" | "apply",
+    template: any
+  ) => {
+    switch (action) {
+      case "edit":
+        showEntityDetails(
+          template,
+          activeTab as DetailPanelState["entityType"]
+        );
+        break;
+      case "duplicate":
+        toast({
+          title: "Feature Coming Soon",
+          description: "Template duplication will be available soon!",
+        });
+        break;
+      case "delete":
+        toast({
+          title: "Feature Coming Soon",
+          description: "Template deletion will be available soon!",
+        });
+        break;
+      case "apply":
+        toast({
+          title: "Template Selected",
+          description: `${template.name} template is ready to be applied to characters or scenes!`,
+        });
+        onEntitySelect?.({ id: template.id, type: activeTab });
+        break;
+    }
   };
 
   const getTemplates = () => {
@@ -939,8 +981,9 @@ export function EnhancedTemplateLibraryPanel({
               <Button
                 size="sm"
                 className={tabConfig[activeTab].buttonClasses}
-                onClick={() => onTemplateCreate?.(activeTab)}
+                onClick={() => setShowCreateForm(true)}
               >
+                <Plus className="w-4 h-4 mr-2" />
                 Create Template
               </Button>
             </div>
@@ -1018,9 +1061,7 @@ export function EnhancedTemplateLibraryPanel({
                         />
                       </button>
                       <button
-                        onClick={() =>
-                          onEntitySelect?.({ id: template.id, type: activeTab })
-                        }
+                        onClick={() => handleTemplateAction("apply", template)}
                         className={cn(
                           "p-1.5 rounded-lg transition-colors",
                           selectedEntity?.id === template.id &&
@@ -1028,9 +1069,32 @@ export function EnhancedTemplateLibraryPanel({
                             ? `bg-${tabConfig[activeTab].color}-500/40 text-${tabConfig[activeTab].color}-300`
                             : "hover:bg-gray-700 text-gray-400"
                         )}
-                        title="Select Template"
+                        title="Apply to Character/Scene"
                       >
-                        <Settings className="w-4 h-4" />
+                        <Wand2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleTemplateAction("edit", template)}
+                        className="p-1.5 hover:bg-gray-700 rounded-lg transition-colors text-blue-400"
+                        title="Edit Template"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() =>
+                          handleTemplateAction("duplicate", template)
+                        }
+                        className="p-1.5 hover:bg-gray-700 rounded-lg transition-colors text-green-400"
+                        title="Duplicate Template"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleTemplateAction("delete", template)}
+                        className="p-1.5 hover:bg-gray-700 rounded-lg transition-colors text-red-400"
+                        title="Delete Template"
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
@@ -1040,6 +1104,37 @@ export function EnhancedTemplateLibraryPanel({
           )}
         </div>
       </div>
+
+      {/* Template Creation Forms Dialog */}
+      {activeTab === "outfits" ? (
+        <OutfitTemplateForm
+          isOpen={showCreateForm}
+          onClose={() => setShowCreateForm(false)}
+          projectId={projectData?.id || ""}
+          onSuccess={(template) => {
+            toast({
+              title: "Success",
+              description: "Outfit template created successfully!",
+            });
+            setShowCreateForm(false);
+            // Refresh the data if needed
+          }}
+        />
+      ) : (
+        <LocationTemplateForm
+          isOpen={showCreateForm}
+          onClose={() => setShowCreateForm(false)}
+          projectId={projectData?.id || ""}
+          onSuccess={(template) => {
+            toast({
+              title: "Success",
+              description: "Location template created successfully!",
+            });
+            setShowCreateForm(false);
+            // Refresh the data if needed
+          }}
+        />
+      )}
 
       {/* Entity Detail Panel for Templates */}
       <EntityDetailPanel
