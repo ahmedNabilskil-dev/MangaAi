@@ -1,4 +1,4 @@
-import { ImageStorage } from "./localStorage";
+import { ImageStorage } from "./image-storage";
 
 export interface ImageGenerationTool {
   name: "generate_image";

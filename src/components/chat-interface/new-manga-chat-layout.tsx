@@ -364,42 +364,10 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
           throw new Error("Please sign in to use AI features");
         }
 
-        // Estimate credit cost for the request
-        const estimatedTokens = (textToSend || "").length * 8; // Rough estimate
-        let creditCost = calculateTextGenerationCost(estimatedTokens);
-
-        // Add cost for image generation if likely to be triggered
-        if (
-          textToSend.toLowerCase().includes("generate") ||
-          textToSend.toLowerCase().includes("create")
-        ) {
-          creditCost += calculateImageGenerationCost();
-        }
-
-        // Check if user can afford the operation
-        if (!canAfford(creditCost)) {
+        // Basic credit check: Ensure user has at least some credits for AI operations
+        if (!user?.credits || user.credits <= 0) {
           throw new Error(
-            `Insufficient credits. You need at least ${creditCost} credits for this operation.`
-          );
-        }
-
-        // Consume credits upfront
-        const creditResult = await consumeCredits(
-          creditCost,
-          "text_generation",
-          `Chat interaction: ${textToSend.substring(0, 50)}...`,
-          {
-            project_id: projectId,
-            message_type: imageUpload.file
-              ? "image_analysis"
-              : "text_generation",
-            estimated_tokens: estimatedTokens,
-          }
-        );
-
-        if (!creditResult.success) {
-          throw new Error(
-            creditResult.error || "Failed to process credit transaction"
+            "Insufficient credits. You need credits to use AI features. Please purchase more credits."
           );
         }
 
@@ -484,10 +452,20 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
         // Process responses and handle tool calls
         let finalMessage = "";
         let generatedImageUrl: string | undefined;
+        let totalTokensUsed = 0;
+        let imagesGenerated = 0;
+        let imageGenerationDetails: Array<{
+          width: number;
+          height: number;
+          quality: string;
+        }> = [];
 
         for (const response of geminiResponses) {
           if (response.role === "assistant") {
-            finalMessage += response.content || "";
+            const responseContent = response.content || "";
+            finalMessage += responseContent;
+            // Estimate tokens in response (rough: 4 characters per token)
+            totalTokensUsed += Math.ceil(responseContent.length / 4);
           } else if (
             response.role === "function" &&
             response.contentKey === "functionCall"
@@ -513,6 +491,13 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
                 );
                 if (result.success && result.imageUrl) {
                   generatedImageUrl = result.imageUrl;
+                  imagesGenerated++;
+                  // Default image dimensions if not specified
+                  imageGenerationDetails.push({
+                    width: 1024,
+                    height: 1024,
+                    quality: "standard",
+                  });
                   let statusMessage = `🎨 Generated ${args.type} image: ${args.prompt}`;
                   if (result.entityUpdated) {
                     statusMessage += ` ✅ Entity updated with image URL`;
@@ -534,6 +519,81 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
           message: finalMessage || "I processed your request.",
           type: "success" as const,
         };
+
+        // NOW CONSUME CREDITS BASED ON ACTUAL OUTPUT
+        let totalCreditsUsed = 0;
+        const creditTransactions: Array<{
+          operation: "textGeneration" | "imageGeneration";
+          params: any;
+          cost: number;
+          description: string;
+        }> = [];
+
+        // 1. Deduct credits for text generation (actual tokens used)
+        if (totalTokensUsed > 0) {
+          const textCreditCost = await fetch("/api/deduct-credits", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: user.id,
+              operation: "textGeneration",
+              tokens: totalTokensUsed,
+              description: `AI text generation: ${totalTokensUsed} tokens`,
+            }),
+          });
+
+          if (textCreditCost.ok) {
+            const textResult = await textCreditCost.json();
+            totalCreditsUsed += textResult.creditsDeducted;
+            creditTransactions.push({
+              operation: "textGeneration",
+              params: { tokens: totalTokensUsed },
+              cost: textResult.creditsDeducted,
+              description: `Text generation (${totalTokensUsed} tokens)`,
+            });
+          }
+        }
+
+        // 2. Deduct credits for image generation (actual images created)
+        if (imagesGenerated > 0) {
+          for (const imageDetail of imageGenerationDetails) {
+            const imageCreditCost = await fetch("/api/deduct-credits", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                userId: user.id,
+                operation: "imageGeneration",
+                width: imageDetail.width,
+                height: imageDetail.height,
+                quality: imageDetail.quality,
+                description: `AI image generation (${imageDetail.width}x${imageDetail.height}, ${imageDetail.quality})`,
+              }),
+            });
+
+            if (imageCreditCost.ok) {
+              const imageResult = await imageCreditCost.json();
+              totalCreditsUsed += imageResult.creditsDeducted;
+              creditTransactions.push({
+                operation: "imageGeneration",
+                params: imageDetail,
+                cost: imageResult.creditsDeducted,
+                description: `Image generation (${imageDetail.width}x${imageDetail.height}, ${imageDetail.quality})`,
+              });
+            }
+          }
+        }
+
+        // Add credit usage summary to the response if credits were consumed
+        if (totalCreditsUsed > 0) {
+          const creditSummary = creditTransactions
+            .map((t) => `• ${t.description}: ${t.cost} credits`)
+            .join("\n");
+
+          response.message += `\n\n💰 **Credits Used**: ${totalCreditsUsed} total\n${creditSummary}`;
+
+          // The credits have already been deducted via the API calls above
+          // The UI will automatically reflect the updated credit balance on next refresh
+        }
 
         // Add AI response with optional generated image
         const aiMessage: ChatMessage = {

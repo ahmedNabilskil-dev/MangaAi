@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useMcpClient } from "@/hooks/use-mcp-client";
 import { useToast } from "@/hooks/use-toast";
-import { ImageStorage } from "@/lib/localStorage";
+import { ImageStorage } from "@/lib/image-storage";
 import {
   Chapter,
   Character,
