@@ -2,40 +2,28 @@ import type {
   Chapter,
   Character,
   LocationTemplate,
-  LocationVariation,
   MangaProject,
   OutfitTemplate,
-  OutfitVariation,
   Panel,
   PanelDialogue,
   Scene,
 } from "@/types/entities";
 import type { DeepPartial } from "@/types/utils";
-import type { IDataService } from "./data-service.interface";
-
-let activeDataService: IDataService;
-
-// Function to get the appropriate data service
-export async function getDataService(): Promise<IDataService> {
-  if (!activeDataService) {
-    await initializeDataService();
-  }
-  return activeDataService;
-}
+import { apiDataService } from "./api-data.service";
 
 // --- Project ---
 export async function getAllProjects(): Promise<MangaProject[]> {
-  return (await getDataService()).getAllProjects();
+  return apiDataService.getAllProjects();
 }
 
 export async function getProject(id: string): Promise<MangaProject | null> {
-  return (await getDataService()).getProject(id);
+  return apiDataService.getProject(id);
 }
 
 export async function createProject(
   projectData: Partial<MangaProject>
 ): Promise<MangaProject> {
-  return (await getDataService()).createProject(projectData);
+  return apiDataService.createProject(projectData);
 }
 
 export async function updateProject(
@@ -47,55 +35,24 @@ export async function updateProject(
     >
   >
 ): Promise<void> {
-  return (await getDataService()).updateProject(id, projectData);
+  return apiDataService.updateProject(id, projectData);
 }
 
 export async function deleteProject(id: string): Promise<void> {
-  const chapters = await (await getDataService()).listChapters(id);
-  for (const chapter of chapters) {
-    await deleteChapter(chapter.id); // will cascade
-  }
-  await (await getDataService()).deleteProject(id);
+  return apiDataService.deleteProject(id);
 }
 
 export async function getProjectWithRelations(
   id: string
 ): Promise<MangaProject | null> {
-  const project = await (await getDataService()).getProject(id);
-  if (!project) return null;
-
-  // Load chapters with their scenes and panels
-  const chapters = await (await getDataService()).listChapters(id);
-  for (const chapter of chapters) {
-    const scenes = await (await getDataService()).listScenes(chapter.id);
-    for (const scene of scenes) {
-      const panels = await (await getDataService()).listPanels(scene.id);
-      for (const panel of panels) {
-        const dialogues = await (
-          await getDataService()
-        ).listPanelDialogues(panel.id);
-        panel.dialogues = dialogues;
-      }
-      scene.panels = panels;
-    }
-    chapter.scenes = scenes;
-  }
-
-  // Load characters
-  const characters = await (await getDataService()).listCharacters(id);
-
-  return {
-    ...project,
-    chapters,
-    characters,
-  };
+  return apiDataService.getProjectWithRelations(id);
 }
 
 // --- Chapter ---
 export async function createChapter(
   chapterData: Omit<Chapter, "id" | "createdAt" | "updatedAt" | "scenes">
 ): Promise<Chapter> {
-  return (await getDataService()).createChapter(chapterData);
+  return apiDataService.createChapter(chapterData);
 }
 
 export async function updateChapter(
@@ -104,28 +61,28 @@ export async function updateChapter(
     Omit<Chapter, "id" | "createdAt" | "updatedAt" | "scenes">
   >
 ): Promise<void> {
-  return (await getDataService()).updateChapter(id, chapterData);
+  return apiDataService.updateChapter(id, chapterData);
 }
 
 export async function deleteChapter(id: string): Promise<void> {
-  const scenes = await (await getDataService()).listScenes(id);
-  for (const scene of scenes) {
-    await deleteScene(scene.id); // will cascade
-  }
-  await (await getDataService()).deleteChapter(id);
+  return apiDataService.deleteChapter(id);
 }
 
 export async function getChapterForContext(
   id: string
 ): Promise<Chapter | null> {
-  return (await getDataService()).getChapterForContext(id);
+  return apiDataService.getChapterForContext(id);
+}
+
+export async function listChapters(projectId: string): Promise<Chapter[]> {
+  return apiDataService.listChapters(projectId);
 }
 
 // --- Scene ---
 export async function createScene(
   sceneData: Omit<Scene, "id" | "createdAt" | "updatedAt" | "panels">
 ): Promise<Scene> {
-  return (await getDataService()).createScene(sceneData);
+  return apiDataService.createScene(sceneData);
 }
 
 export async function updateScene(
@@ -134,19 +91,19 @@ export async function updateScene(
     Omit<Scene, "id" | "createdAt" | "updatedAt" | "panels">
   >
 ): Promise<void> {
-  return (await getDataService()).updateScene(id, sceneData);
+  return apiDataService.updateScene(id, sceneData);
 }
 
 export async function deleteScene(id: string): Promise<void> {
-  const panels = await (await getDataService()).listPanels(id);
-  for (const panel of panels) {
-    await deletePanel(panel.id); // will cascade
-  }
-  await (await getDataService()).deleteScene(id);
+  return apiDataService.deleteScene(id);
 }
 
 export async function getSceneForContext(id: string): Promise<Scene | null> {
-  return (await getDataService()).getSceneForContext(id);
+  return apiDataService.getSceneForContext(id);
+}
+
+export async function listScenes(chapterId: string): Promise<Scene[]> {
+  return apiDataService.listScenes(chapterId);
 }
 
 // --- Panel ---
@@ -156,7 +113,7 @@ export async function createPanel(
     "id" | "createdAt" | "updatedAt" | "dialogues" | "characters"
   >
 ): Promise<Panel> {
-  return (await getDataService()).createPanel(panelData);
+  return apiDataService.createPanel(panelData);
 }
 
 export async function updatePanel(
@@ -165,36 +122,33 @@ export async function updatePanel(
     Omit<Panel, "id" | "createdAt" | "updatedAt" | "dialogues" | "characters">
   >
 ): Promise<void> {
-  return (await getDataService()).updatePanel(id, panelData);
+  return apiDataService.updatePanel(id, panelData);
 }
 
 export async function deletePanel(id: string): Promise<void> {
-  const dialogues = await (await getDataService()).listPanelDialogues(id);
-  for (const dialogue of dialogues) {
-    await deletePanelDialogue(dialogue.id);
-  }
-  await (await getDataService()).deletePanel(id);
+  return apiDataService.deletePanel(id);
 }
 
 export async function assignCharacterToPanel(
   panelId: string,
   characterId: string
 ): Promise<void> {
-  return (await getDataService()).assignCharacterToPanel(panelId, characterId);
+  return apiDataService.assignCharacterToPanel(panelId, characterId);
 }
 
 export async function removeCharacterFromPanel(
   panelId: string,
   characterId: string
 ): Promise<void> {
-  return (await getDataService()).removeCharacterFromPanel(
-    panelId,
-    characterId
-  );
+  return apiDataService.removeCharacterFromPanel(panelId, characterId);
 }
 
 export async function getPanelForContext(id: string): Promise<Panel | null> {
-  return (await getDataService()).getPanelForContext(id);
+  return apiDataService.getPanelForContext(id);
+}
+
+export async function listPanels(sceneId: string): Promise<Panel[]> {
+  return apiDataService.listPanels(sceneId);
 }
 
 // --- Dialogue ---
@@ -204,7 +158,7 @@ export async function createPanelDialogue(
     "id" | "createdAt" | "updatedAt" | "speaker"
   >
 ): Promise<PanelDialogue> {
-  return (await getDataService()).createPanelDialogue(dialogueData);
+  return apiDataService.createPanelDialogue(dialogueData);
 }
 
 export async function updatePanelDialogue(
@@ -213,141 +167,93 @@ export async function updatePanelDialogue(
     Omit<PanelDialogue, "id" | "createdAt" | "updatedAt" | "speaker">
   >
 ): Promise<void> {
-  return (await getDataService()).updatePanelDialogue(id, dialogueData);
+  return apiDataService.updatePanelDialogue(id, dialogueData);
 }
 
 export async function deletePanelDialogue(id: string): Promise<void> {
-  return (await getDataService()).deletePanelDialogue(id);
+  return apiDataService.deletePanelDialogue(id);
 }
 
 export async function getPanelDialogueForContext(
   id: string
 ): Promise<PanelDialogue | null> {
-  return (await getDataService()).getPanelDialogueForContext(id);
+  return apiDataService.getPanelDialogueForContext(id);
+}
+
+export async function listPanelDialogues(
+  panelId: string
+): Promise<PanelDialogue[]> {
+  return apiDataService.listPanelDialogues(panelId);
 }
 
 // --- Character ---
-export async function listCharacters(projectId: string): Promise<Character[]> {
-  return (await getDataService()).listCharacters(projectId);
-}
-
 export async function getCharacter(id: string): Promise<Character | null> {
-  return (await getDataService()).getCharacter(id);
+  return apiDataService.getCharacter(id);
 }
 
 export async function createCharacter(
   characterData: Omit<Character, "id" | "createdAt" | "updatedAt">
 ): Promise<Character> {
-  return (await getDataService()).createCharacter(characterData);
+  return apiDataService.createCharacter(characterData);
 }
 
 export async function updateCharacter(
   id: string,
   characterData: DeepPartial<Omit<Character, "id" | "createdAt" | "updatedAt">>
 ): Promise<void> {
-  return (await getDataService()).updateCharacter(id, characterData);
+  return apiDataService.updateCharacter(id, characterData);
 }
 
 export async function deleteCharacter(id: string): Promise<void> {
-  return (await getDataService()).deleteCharacter(id);
+  return apiDataService.deleteCharacter(id);
 }
 
 export async function getCharacterForContext(
   id: string
 ): Promise<Character | null> {
-  return (await getDataService()).getCharacterForContext(id);
+  return apiDataService.getCharacterForContext(id);
 }
 
-export async function getMangaProjects(): Promise<MangaProject[]> {
-  return await (await getDataService()).listMangaProjects();
+export async function listCharacters(projectId: string): Promise<Character[]> {
+  return apiDataService.listCharacters(projectId);
 }
 
-export async function getChapters(projectId: string): Promise<Chapter[]> {
-  return await (await getDataService()).listChapters(projectId);
+// --- List Methods ---
+export async function listMangaProjects(): Promise<MangaProject[]> {
+  return apiDataService.listMangaProjects();
 }
 
-export async function getScenes(chapterId: string): Promise<Scene[]> {
-  return await (await getDataService()).listScenes(chapterId);
+export async function getAllChapters(): Promise<Chapter[]> {
+  return apiDataService.getAllChapters();
 }
 
-export async function getPanels(sceneId: string): Promise<Panel[]> {
-  return await (await getDataService()).listPanels(sceneId);
+export async function getAllScenes(): Promise<Scene[]> {
+  return apiDataService.getAllScenes();
 }
 
-export async function getPanelDialogues(
-  panelId: string
-): Promise<PanelDialogue[]> {
-  return await (await getDataService()).listPanelDialogues(panelId);
+export async function getAllPanels(): Promise<Panel[]> {
+  return apiDataService.getAllPanels();
 }
 
-//////////////////////////////////////////////////////////////////
-
-export async function cleanOrphanedData(): Promise<void> {
-  // --- Clean Chapters with missing Projects ---
-  const projects = await getAllProjects();
-  const projectIds = new Set(projects.map((p) => p.id));
-  const allChaptersRaw = await (await getDataService()).getAllChapters(); // Add this method if not exists
-
-  for (const chapter of allChaptersRaw) {
-    if (!projectIds.has(chapter.mangaProjectId)) {
-      await deleteChapter(chapter.id);
-    }
-  }
-
-  // --- Clean Scenes with missing Chapters ---
-  const chapterIds = new Set(
-    (await (await getDataService()).getAllChapters()).map((c: any) => c.id)
-  );
-  const allScenes = await (await getDataService()).getAllScenes(); // Add this method if not exists
-
-  for (const scene of allScenes) {
-    if (!chapterIds.has(scene.chapterId)) {
-      await deleteScene(scene.id);
-    }
-  }
-
-  // --- Clean Panels with missing Scenes ---
-  const sceneIds = new Set(allScenes.map((s: any) => s.id));
-  const allPanels = await (await getDataService()).getAllPanels(); // Add this method if not exists
-
-  for (const panel of allPanels) {
-    if (!sceneIds.has(panel.sceneId)) {
-      await deletePanel(panel.id);
-    }
-  }
-
-  // --- Clean Dialogues with missing Panels ---
-  const panelIds = new Set(allPanels.map((p: any) => p.id));
-  const allDialogues = await (await getDataService()).getAllPanelDialogues(); // Add this method if not exists
-
-  for (const dialogue of allDialogues) {
-    if (!panelIds.has(dialogue.panelId)) {
-      await deletePanelDialogue(dialogue.id);
-    }
-  }
-
-  // --- Clean Characters not linked to any Project  ---
-  const characterList = await (await getDataService()).getAllCharacters(); // Add this if needed
-  for (const character of characterList) {
-    if (!projectIds.has(character.mangaProjectId)) {
-      await deleteCharacter(character.id);
-    }
-  }
+export async function getAllPanelDialogues(): Promise<PanelDialogue[]> {
+  return apiDataService.getAllPanelDialogues();
 }
 
-// --- Template Functions ---
+export async function getAllCharacters(): Promise<Character[]> {
+  return apiDataService.getAllCharacters();
+}
 
-// --- Outfit Templates ---
+// --- Template Methods ---
 export async function createOutfitTemplate(
   templateData: Omit<OutfitTemplate, "id" | "createdAt" | "updatedAt">
 ): Promise<OutfitTemplate> {
-  return (await getDataService()).createOutfitTemplate(templateData);
+  return apiDataService.createOutfitTemplate(templateData);
 }
 
 export async function getOutfitTemplate(
   id: string
 ): Promise<OutfitTemplate | null> {
-  return (await getDataService()).getOutfitTemplate(id);
+  return apiDataService.getOutfitTemplate(id);
 }
 
 export async function updateOutfitTemplate(
@@ -356,11 +262,11 @@ export async function updateOutfitTemplate(
     Omit<OutfitTemplate, "id" | "createdAt" | "updatedAt">
   >
 ): Promise<void> {
-  return (await getDataService()).updateOutfitTemplate(id, templateData);
+  return apiDataService.updateOutfitTemplate(id, templateData);
 }
 
 export async function deleteOutfitTemplate(id: string): Promise<void> {
-  return (await getDataService()).deleteOutfitTemplate(id);
+  return apiDataService.deleteOutfitTemplate(id);
 }
 
 export async function listOutfitTemplates(filters?: {
@@ -371,20 +277,19 @@ export async function listOutfitTemplates(filters?: {
   style?: string;
   activeOnly?: boolean;
 }): Promise<OutfitTemplate[]> {
-  return (await getDataService()).listOutfitTemplates(filters);
+  return apiDataService.listOutfitTemplates(filters);
 }
 
-// --- Location Templates ---
 export async function createLocationTemplate(
   templateData: Omit<LocationTemplate, "id" | "createdAt" | "updatedAt">
 ): Promise<LocationTemplate> {
-  return (await getDataService()).createLocationTemplate(templateData);
+  return apiDataService.createLocationTemplate(templateData);
 }
 
 export async function getLocationTemplate(
   id: string
 ): Promise<LocationTemplate | null> {
-  return (await getDataService()).getLocationTemplate(id);
+  return apiDataService.getLocationTemplate(id);
 }
 
 export async function updateLocationTemplate(
@@ -393,11 +298,11 @@ export async function updateLocationTemplate(
     Omit<LocationTemplate, "id" | "createdAt" | "updatedAt">
   >
 ): Promise<void> {
-  return (await getDataService()).updateLocationTemplate(id, templateData);
+  return apiDataService.updateLocationTemplate(id, templateData);
 }
 
 export async function deleteLocationTemplate(id: string): Promise<void> {
-  return (await getDataService()).deleteLocationTemplate(id);
+  return apiDataService.deleteLocationTemplate(id);
 }
 
 export async function listLocationTemplates(filters?: {
@@ -408,129 +313,31 @@ export async function listLocationTemplates(filters?: {
   style?: string;
   activeOnly?: boolean;
 }): Promise<LocationTemplate[]> {
-  return (await getDataService()).listLocationTemplates(filters);
+  return apiDataService.listLocationTemplates(filters);
 }
 
-// --- Outfit Variations ---
-export async function createOutfitVariation(
-  baseOutfitId: string,
-  variationData: Omit<
-    OutfitVariation,
-    "id" | "createdAt" | "updatedAt" | "usageCount" | "lastUsed"
-  >
-): Promise<OutfitVariation> {
-  // Create the variation
-  const variation: OutfitVariation = {
-    ...variationData,
-    id: crypto.randomUUID(),
-    usageCount: 0,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  };
-
-  // Get the base outfit template and add the variation to it
-  const baseOutfit = await (
-    await getDataService()
-  ).getOutfitTemplate(baseOutfitId);
-  if (!baseOutfit) {
-    throw new Error(`Base outfit template with ID ${baseOutfitId} not found`);
-  }
-
-  // Add variation to the base outfit
-  const updatedOutfit = {
-    ...baseOutfit,
-    variations: [...(baseOutfit.variations || []), variation],
-    updatedAt: new Date(),
-  };
-
-  await (
-    await getDataService()
-  ).updateOutfitTemplate(baseOutfitId, updatedOutfit);
-  return variation;
+// --- Utility Functions ---
+export async function cleanOrphanedData(): Promise<void> {
+  // This would clean up orphaned data - for now, just return
+  // Implementation could be added to call specific cleanup APIs
+  return Promise.resolve();
 }
 
-export async function getOutfitVariation(
-  outfitId: string,
-  variationId: string
-): Promise<OutfitVariation | null> {
-  const outfit = await (await getDataService()).getOutfitTemplate(outfitId);
-  if (!outfit || !outfit.variations) return null;
-
-  return (
-    outfit.variations.find((v: OutfitVariation) => v.id === variationId) || null
-  );
+export async function getChapters(projectId: string): Promise<Chapter[]> {
+  return apiDataService.listChapters(projectId);
 }
 
-// --- Location Variations ---
-export async function createLocationVariation(
-  baseLocationId: string,
-  variationData: Omit<
-    LocationVariation,
-    "id" | "createdAt" | "updatedAt" | "usageCount" | "lastUsed"
-  >
-): Promise<LocationVariation> {
-  // Create the variation
-  const variation: LocationVariation = {
-    ...variationData,
-    id: crypto.randomUUID(),
-    usageCount: 0,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  };
-
-  // Get the base location template and add the variation to it
-  const baseLocation = await (
-    await getDataService()
-  ).getLocationTemplate(baseLocationId);
-  if (!baseLocation) {
-    throw new Error(
-      `Base location template with ID ${baseLocationId} not found`
-    );
-  }
-
-  // Add variation to the base location
-  const updatedLocation = {
-    ...baseLocation,
-    variations: [...(baseLocation.variations || []), variation],
-    updatedAt: new Date(),
-  };
-
-  await (
-    await getDataService()
-  ).updateLocationTemplate(baseLocationId, updatedLocation);
-  return variation;
-}
-
-export async function getLocationVariation(
-  locationId: string,
-  variationId: string
-): Promise<LocationVariation | null> {
-  const location = await (
-    await getDataService()
-  ).getLocationTemplate(locationId);
-  if (!location || !location.variations) return null;
-
-  return (
-    location.variations.find((v: LocationVariation) => v.id === variationId) ||
-    null
-  );
+export async function getScenes(chapterId: string): Promise<Scene[]> {
+  return apiDataService.listScenes(chapterId);
 }
 
 // --- Initialization ---
 export async function initializeDataService(): Promise<void> {
-  // Always use Supabase for all environments
-  try {
-    const { supabaseDataService } = await import("./supabase.service");
-    activeDataService = supabaseDataService;
-    await supabaseDataService.initialize();
-    console.log("✅ Supabase data service initialized");
-  } catch (error) {
-    console.error("❌ Failed to initialize Supabase data service:", error);
-    throw error;
-  }
+  // API client doesn't need initialization
+  console.log("✅ API Data Service initialized (client-side)");
 }
 
-// Export a convenient dataService object with template methods
+// Legacy compatibility - maintain the dataService object export
 export const dataService = {
   createOutfitTemplate,
   createLocationTemplate,

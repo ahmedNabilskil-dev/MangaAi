@@ -4,6 +4,11 @@
 -- Enable necessary extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Drop existing triggers and functions to avoid conflicts
+DROP TRIGGER IF EXISTS update_users_updated_at ON public.users;
+DROP TRIGGER IF EXISTS update_payment_sessions_updated_at ON public.payment_sessions;
+DROP FUNCTION IF EXISTS update_updated_at_column() CASCADE;
+
 -- Create users table (extends Supabase auth.users)
 CREATE TABLE IF NOT EXISTS public.users (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
@@ -89,26 +94,33 @@ ALTER TABLE public.credit_transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payment_sessions ENABLE ROW LEVEL SECURITY;
 
 -- Users can only see and modify their own data
+DROP POLICY IF EXISTS "Users can view own profile" ON public.users;
 CREATE POLICY "Users can view own profile" ON public.users
   FOR SELECT USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can update own profile" ON public.users;
 CREATE POLICY "Users can update own profile" ON public.users
   FOR UPDATE USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.users;
 CREATE POLICY "Users can insert own profile" ON public.users
   FOR INSERT WITH CHECK (auth.uid() = id);
 
 -- Credit transactions policies
+DROP POLICY IF EXISTS "Users can view own credit transactions" ON public.credit_transactions;
 CREATE POLICY "Users can view own credit transactions" ON public.credit_transactions
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Service can insert credit transactions" ON public.credit_transactions;
 CREATE POLICY "Service can insert credit transactions" ON public.credit_transactions
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- Payment sessions policies
+DROP POLICY IF EXISTS "Users can view own payment sessions" ON public.payment_sessions;
 CREATE POLICY "Users can view own payment sessions" ON public.payment_sessions
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Service can manage payment sessions" ON public.payment_sessions;
 CREATE POLICY "Service can manage payment sessions" ON public.payment_sessions
   FOR ALL USING (auth.uid() = user_id);
 
@@ -220,6 +232,42 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Create a scheduled function to run daily credit reset (if using pg_cron extension)
 -- SELECT cron.schedule('daily-credit-reset', '0 0 * * *', 'SELECT public.check_daily_credit_reset();');
+
+-- Create chat_messages table for storing conversation history
+CREATE TABLE IF NOT EXISTS public.chat_messages (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+  role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+  content TEXT NOT NULL,
+  timestamp TIMESTAMPTZ DEFAULT NOW(),
+  message_type TEXT DEFAULT 'text' CHECK (message_type IN ('text', 'image')),
+  image_url TEXT,
+  image_data TEXT, -- Base64 encoded image data for user uploads
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Create indexes for chat_messages
+CREATE INDEX IF NOT EXISTS idx_chat_messages_project_id ON public.chat_messages(project_id);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_user_id ON public.chat_messages(user_id);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_timestamp ON public.chat_messages(timestamp);
+
+-- Enable RLS on chat_messages table
+ALTER TABLE public.chat_messages ENABLE ROW LEVEL SECURITY;
+
+-- Chat messages policies
+DROP POLICY IF EXISTS "Users can view own chat messages" ON public.chat_messages;
+CREATE POLICY "Users can view own chat messages" ON public.chat_messages
+  FOR SELECT USING (auth.uid() = user_id OR user_id IS NULL);
+
+DROP POLICY IF EXISTS "Users can insert own chat messages" ON public.chat_messages;
+CREATE POLICY "Users can insert own chat messages" ON public.chat_messages
+  FOR INSERT WITH CHECK (auth.uid() = user_id OR user_id IS NULL);
+
+DROP POLICY IF EXISTS "Service can manage chat messages" ON public.chat_messages;
+CREATE POLICY "Service can manage chat messages" ON public.chat_messages
+  FOR ALL USING (auth.uid() = user_id OR user_id IS NULL);
 
 -- Grant necessary permissions
 GRANT USAGE ON SCHEMA public TO anon, authenticated;

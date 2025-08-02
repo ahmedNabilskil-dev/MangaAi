@@ -8,8 +8,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
 import { useCredits } from "@/hooks/use-credits";
-import { useMcpClient } from "@/hooks/use-mcp-client";
-import { mcpClient } from "@/services/mcp-client";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   BookMarked,
@@ -37,7 +35,6 @@ const HomePage = () => {
   const [errorMessage, setErrorMessage] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const router = useRouter();
-  const { state } = useMcpClient();
   const { user } = useAuth();
   const { consumeCredits, canAfford, calculateTextGenerationCost } =
     useCredits();
@@ -57,20 +54,10 @@ const HomePage = () => {
     setErrorMessage("");
   };
 
-  const [isApiKeyDialogOpen, setIsApiKeyDialogOpen] = useState(false);
-
   // Updated handleSubmit function
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!mangaIdea.trim()) return;
-
-    // Check if API key exists in localStorage
-    const apiKey = localStorage.getItem("api-key");
-
-    if (!apiKey) {
-      setIsApiKeyDialogOpen(true);
-      return;
-    }
 
     // Check if user has enough credits for project creation
     const estimatedTokens = mangaIdea.length * 10; // Rough estimate
@@ -98,124 +85,34 @@ const HomePage = () => {
         throw new Error(creditResult.error || "Failed to consume credits");
       }
 
-      // Check if MCP server is available for project creation
-      const isConnected = await mcpClient.checkConnection();
+      // Create project using the backend API
+      const tempProjectId = `temp-${Date.now()}-${Math.random()
+        .toString(36)
+        .substr(2, 9)}`;
 
-      if (isConnected) {
-        // Dynamically import ChatAdapterFactory to avoid circular deps
-        const { ChatAdapterFactory } = await import("@/ai/adapters/factory");
-        const apiKey = localStorage.getItem("api-key") || "";
-        const geminiAdapter = ChatAdapterFactory.getAdapter("gemini", apiKey);
-        if (!geminiAdapter) throw new Error("Gemini adapter not found");
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          projectId: tempProjectId,
+          message: `Create a manga project based on this idea: ${mangaIdea}`,
+          userId: user?.id || "anonymous",
+          selectedMcpTools: ["imageGeneration"], // Use image generation tool
+        }),
+      });
 
-        // Use MCP story-generation prompt to create the project concept
-        const prompt = `Create a manga project based on the following idea: "${mangaIdea}"`;
+      if (!response.ok) {
+        throw new Error(`Failed to create project: ${response.statusText}`);
+      }
 
-        // Find the MCP tool for project creation
-        const mcpToolsRaw = state.tools.filter(
-          (tool) => tool.name === "createProject"
-        );
-        if (mcpToolsRaw.length === 0)
-          throw new Error("MCP createProject tool not found");
+      const result = await response.json();
 
-        // Map MCP tools to Tool objects for Gemini adapter
-        const mcpTools = mcpToolsRaw.map((tool) => ({
-          name: tool.name,
-          description: tool.description,
-          parameters: tool.inputSchema,
-        }));
-
-        // Send the prompt using the Gemini adapter and MCP tools
-        const messages = [{ role: "user" as const, content: prompt }];
-        const params = {
-          model: "gemini-2.0-flash",
-          systemPrompt: `You are an elite manga creator and narrative worldbuilder with expertise in both Eastern and Western storytelling traditions. Your task is to develop a structured, professional-grade blueprint for a compelling, original manga project that will be stored in our database.
-  
-  This is Phase 1 of our manga production pipeline. You are building this project from scratch based on the user's ideas, genre preferences, or inspiration.
-  
-  ## OUTPUT REQUIREMENTS
-  Your output MUST strictly align with our MangaProject entity structure for direct database integration. Include ALL required fields with detailed, creative content.
-  
-  ## PROJECT COMPONENTS
-  
-  🧩 Core Concept & Metadata
-  - title: A distinctive, memorable title that encapsulates the core concept and appeals to the target audience.
-  - description: A concise yet comprehensive overview of the entire manga concept (150-200 words).
-  - concept: The bold, original premise that defines what makes this story special and distinguishes it from similar works.
-  - genre: The primary genre classification with potential subgenres (e.g., psychological shonen, dark fantasy seinen).
-  - targetAudience: MUST be one of ["children", "teen", "young-adult", "adult"].
-  - artStyle: Suggest a specific visual aesthetic that enhances the narrative (reference existing artists/styles if helpful).
-  - tags: An array of precise keywords for searchability (8-12 tags).
-  
-  🌍 Worldbuilding (worldDetails object)
-  - summary: A rich overview of the world's unique elements and what makes it captivating (150 words).
-  - history: Key historical events, eras, and turning points that shaped the world and affect the present story.
-  - society: In-depth details on cultures, social structures, belief systems, political dynamics, or power hierarchies.
-  - uniqueSystems: Comprehensive explanation of special systems (magic, technology, supernatural abilities, laws) that define life in this world and their narrative implications.
-  
-  🎭 Themes, Motifs & Symbols
-  - themes: Array of sophisticated central themes with depth and nuance (e.g., the corruption of power, sacrifice vs. selfishness).
-  - motifs: Array of recurring visual/narrative patterns that reinforce themes (e.g., broken mirrors, cherry blossoms).
-  - symbols: Array of key symbols with layered meanings relevant to character development or world concepts.
-  
-  🧩 Plot Framework (plotStructure object)
-  - incitingIncident: The catalyst event that disrupts the status quo and launches the protagonist's journey.
-  - plotTwist: A major revelation or shift that fundamentally alters the protagonist's path or understanding.
-  - climax: The peak dramatic moment of the first major arc with high emotional stakes.
-  - resolution: The current resolution (even if temporary) that sets up future developments.
-  
-  
-  ## CREATION STANDARDS
-  1. Originality: Develop genuinely fresh concepts while understanding genre traditions
-  2. Emotional Depth: Create a world and story that can sustain complex emotional narratives
-  3. Visual Potential: Consider how concepts translate to visual storytelling
-  4. Internal Consistency: Maintain logical coherence in all worldbuilding elements
-  5. Narrative Hooks: Build in compelling mysteries and questions that drive reader engagement
-  6. Cultural Sensitivity: Develop respectful, nuanced cultural elements
-  7. Commercial Viability: Balance artistic vision with market awareness
-  
-  Approach this as a professional manga intellectual property with franchise potential — emotionally resonant, narratively sophisticated, and visually distinctive.
-  `,
-          context: {
-            outputSchema: {
-              type: "object",
-              properties: {
-                projectId: {
-                  type: "string",
-                  description: "The ID of the created manga project.",
-                },
-              },
-              required: ["projectId"],
-            },
-          },
-        };
-        const responseMessages = await geminiAdapter.send(
-          messages,
-          mcpTools,
-          params,
-          true
-        );
-        // Get the assistant's response and projectId
-        const assistantMsg = responseMessages.find(
-          (m) => m.role === "assistant"
-        );
-        const parsedContent = JSON.parse(assistantMsg?.content || "{}");
-        let projectId = "";
-
-        projectId = (parsedContent as any).projectId;
-
-        if (projectId) {
-          router.push(`/manga-flow/${projectId}`);
-        } else {
-          alert(
-            "Project created, but no projectId returned.\nResponse: " +
-              (assistantMsg?.content || "")
-          );
-        }
+      if (result.projectId) {
+        router.push(`/manga-flow/${result.projectId}`);
       } else {
-        throw new Error(
-          "MCP server is not available. Please check your connection and try again."
-        );
+        throw new Error("Project creation failed - no project ID returned");
       }
     } catch (error) {
       console.error("Failed to create manga project:", error);
@@ -229,11 +126,6 @@ const HomePage = () => {
     } finally {
       setIsGenerating(false);
     }
-  };
-
-  // Add this function to close the API key dialog
-  const closeApiKeyDialog = () => {
-    setIsApiKeyDialogOpen(false);
   };
 
   return (
@@ -321,13 +213,12 @@ const HomePage = () => {
               <div className="flex items-center gap-2 text-blue-100 text-sm">
                 <Key className="h-4 w-4" />
                 <span>
-                  This app uses your own API keys (Gemini, OpenAI, etc.) for AI
-                  generation.{" "}
+                  This app uses server-side API keys for secure AI generation.{" "}
                   <Link
-                    href="/settings"
+                    href="/documentation"
                     className="underline hover:text-blue-300"
                   >
-                    Configure in Settings
+                    View Setup Guide
                   </Link>
                 </span>
               </div>
@@ -470,22 +361,6 @@ const HomePage = () => {
                   </Button>
                 </div>
 
-                {/* API Key Reminder */}
-                <div className="bg-amber-900/30 border border-amber-700 rounded-lg p-3 mb-4">
-                  <div className="flex items-center gap-2 text-amber-200 text-sm">
-                    <Key className="h-4 w-4" />
-                    <span>
-                      Make sure you've configured your API key in{" "}
-                      <Link
-                        href="/settings"
-                        className="underline font-semibold"
-                      >
-                        Settings
-                      </Link>
-                    </span>
-                  </div>
-                </div>
-
                 <form onSubmit={handleSubmit}>
                   {/* Error Message Display */}
                   {errorMessage && (
@@ -571,71 +446,6 @@ const HomePage = () => {
                     </Button>
                   </div>
                 </form>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        <AnimatePresence>
-          {isApiKeyDialogOpen && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50"
-              onClick={(e) =>
-                e.target === e.currentTarget && closeApiKeyDialog()
-              }
-            >
-              <motion.div
-                initial={{ scale: 0.9, y: 20 }}
-                animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.9, y: 20 }}
-                className="bg-gray-800 rounded-xl max-w-md w-full p-6 shadow-2xl border border-gray-700"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                    <Key className="h-5 w-5 text-red-400" />
-                    API Key Required
-                  </h2>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={closeApiKeyDialog}
-                    className="text-gray-400 hover:text-white hover:bg-gray-700"
-                  >
-                    <X className="h-5 w-5" />
-                  </Button>
-                </div>
-
-                <div className="mb-6">
-                  <p className="text-gray-300 mb-4">
-                    You need to configure your API key before generating manga
-                    content.
-                  </p>
-                  <div className="bg-red-900/30 border border-red-700 rounded-lg p-3">
-                    <p className="text-red-200 text-sm">
-                      Please add your Gemini API key in the settings to
-                      continue.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex gap-3 justify-end">
-                  <Button
-                    variant="ghost"
-                    onClick={closeApiKeyDialog}
-                    className="text-gray-400 hover:text-white"
-                  >
-                    Cancel
-                  </Button>
-                  <Link href="/settings">
-                    <Button className="bg-blue-600 hover:bg-blue-700">
-                      <Settings className="h-4 w-4 mr-2" />
-                      Go to Settings
-                    </Button>
-                  </Link>
-                </div>
               </motion.div>
             </motion.div>
           )}

@@ -7,6 +7,7 @@ import { useCredits } from "@/hooks/use-credits";
 import { useMcpClient } from "@/hooks/use-mcp-client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { chatService } from "@/services/chat.service";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Bot,
@@ -37,12 +38,7 @@ import {
 } from "./styled-side-panels";
 
 import { McpTool } from "@/hooks/use-mcp-client";
-import {
-  executeImageGeneration,
-  imageGenerationTool,
-} from "@/lib/image-generation-tool";
-import { MANGA_AI_SYSTEM_PROMPT } from "@/lib/manga-system-prompt";
-import { Wrench } from "lucide-react"; // Add these if not already imported
+import { Wrench } from "lucide-react";
 import ManualPanelGenerator from "./manual-panel-genration";
 import { McpToolsSelector } from "./mcp-tools-selector";
 
@@ -282,14 +278,23 @@ export default function NewMangaChatLayout() {
 
   // Load saved messages
   useEffect(() => {
-    const savedMessages = localStorage.getItem(`chat-messages-${projectId}`);
-    if (savedMessages) {
+    const loadMessages = async () => {
       try {
-        setMessages(JSON.parse(savedMessages));
+        // Try to load messages from backend first
+        const response = await chatService.getMessages(projectId, {
+          limit: 100,
+        });
+        if (response.success && response.messages.length > 0) {
+          setMessages(response.messages);
+          return;
+        }
       } catch (error) {
-        console.error("Failed to parse saved messages:", error);
+        console.warn(
+          "Failed to load messages from backend, checking localStorage:",
+          error
+        );
       }
-    } else {
+
       // Add welcome message if no saved messages
       const welcomeMessage: ChatMessage = {
         id: "welcome",
@@ -319,18 +324,13 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
         type: "text",
       };
       setMessages([welcomeMessage]);
-    }
+    };
+
+    loadMessages();
   }, [projectId]);
 
-  // Save messages to localStorage
-  useEffect(() => {
-    if (messages.length > 0) {
-      localStorage.setItem(
-        `chat-messages-${projectId}`,
-        JSON.stringify(messages)
-      );
-    }
-  }, [messages, projectId]);
+  // Remove localStorage saving since we now use backend
+  // Messages are automatically saved via API calls
 
   // Handle form submission
   const handleSubmit = useCallback(
@@ -371,243 +371,38 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
           );
         }
 
-        let response;
-        // Only send selected tools to Gemini
-        // Prepare Gemini messages (conversation history)
-        const geminiMessages = [
-          ...messages.map((m) => {
-            if (m.type === "image" && m.imageData) {
-              return {
-                role: m.role as "user" | "assistant" | "function",
-                content: [
-                  { text: m.content },
-                  {
-                    inlineData: {
-                      mimeType: "image/jpeg",
-                      data: m.imageData.split(",")[1], // Remove data:image/jpeg;base64, prefix
-                    },
-                  },
-                ],
-              };
-            }
-            return {
-              role: m.role as "user" | "assistant" | "function",
-              content: m.content,
-            };
-          }),
-          userMessage.type === "image" && userMessage.imageData
-            ? {
-                role: "user" as const,
-                content: [
-                  { text: textToSend || "Please analyze this image" },
-                  {
-                    inlineData: {
-                      mimeType: "image/jpeg",
-                      data: userMessage.imageData.split(",")[1],
-                    },
-                  },
-                ],
-              }
-            : { role: "user" as const, content: textToSend },
-        ];
+        // Send message to backend using the new chat service
+        const response = await chatService.sendMessage({
+          projectId,
+          message: textToSend,
+          imageData: imageUpload.preview || undefined,
+          selectedMcpTools: selectedMcpTools.map((tool) => tool.name),
+          userId: user.id,
+        });
 
-        // Prepare selected MCP tools for Gemini
-        let mcpTools: any[] = [];
-        if (selectedMcpTools.length > 0) {
-          mcpTools = selectedMcpTools.map((tool) => ({
-            name: tool.name,
-            description: tool.description,
-            parameters: tool.inputSchema,
-          }));
+        if (!response.success) {
+          throw new Error(response.error || "Failed to process message");
         }
 
-        // Always add image generation tool
-        const allTools = [
-          ...mcpTools,
-          {
-            name: imageGenerationTool.name,
-            description: imageGenerationTool.description,
-            parameters: imageGenerationTool.parameters,
-          },
-        ];
-
-        // Use Gemini adapter
-        const { ChatAdapterFactory } = await import("@/ai/adapters/factory");
-        const apiKey = localStorage.getItem("api-key") || "";
-        const geminiAdapter = ChatAdapterFactory.getAdapter("gemini", apiKey);
-        if (!geminiAdapter) throw new Error("Gemini adapter not found");
-
-        const params = {
-          model: "gemini-2.0-flash",
-          systemPrompt: MANGA_AI_SYSTEM_PROMPT,
-        };
-        // Send tools to Gemini (MCP tools + image generation tool)
-        const geminiResponses = await geminiAdapter.send(
-          geminiMessages,
-          allTools,
-          params,
-          true // always enable tool calling since we have image generation
-        );
-
-        // Process responses and handle tool calls
-        let finalMessage = "";
-        let generatedImageUrl: string | undefined;
-        let totalTokensUsed = 0;
-        let imagesGenerated = 0;
-        let imageGenerationDetails: Array<{
-          width: number;
-          height: number;
-          quality: string;
-        }> = [];
-
-        for (const response of geminiResponses) {
-          if (response.role === "assistant") {
-            const responseContent = response.content || "";
-            finalMessage += responseContent;
-            // Estimate tokens in response (rough: 4 characters per token)
-            totalTokensUsed += Math.ceil(responseContent.length / 4);
-          } else if (
-            response.role === "function" &&
-            response.contentKey === "functionCall"
-          ) {
-            const functionCall = response.content as {
-              name: string;
-              args: Record<string, any>;
-            };
-
-            if (functionCall.name === "generate_image") {
-              try {
-                const args = functionCall.args as {
-                  prompt: string;
-                  type: string;
-                  style?: string;
-                  entityId?: string;
-                  entityName?: string;
-                };
-                const result = await executeImageGeneration(
-                  args,
-                  geminiAdapter,
-                  mcpActions // Pass MCP actions for entity updating
-                );
-                if (result.success && result.imageUrl) {
-                  generatedImageUrl = result.imageUrl;
-                  imagesGenerated++;
-                  // Default image dimensions if not specified
-                  imageGenerationDetails.push({
-                    width: 1024,
-                    height: 1024,
-                    quality: "standard",
-                  });
-                  let statusMessage = `🎨 Generated ${args.type} image: ${args.prompt}`;
-                  if (result.entityUpdated) {
-                    statusMessage += ` ✅ Entity updated with image URL`;
-                  }
-                  finalMessage += `\n\n${statusMessage}`;
-                } else {
-                  finalMessage += `\n\n❌ Image generation failed: ${result.error}`;
-                }
-              } catch (error: any) {
-                console.error("Image generation error:", error);
-                finalMessage += `\n\n❌ Image generation error: ${error.message}`;
-              }
-            }
-            // Handle other MCP tool calls here if needed
-          }
-        }
-
-        response = {
-          message: finalMessage || "I processed your request.",
-          type: "success" as const,
-        };
-
-        // NOW CONSUME CREDITS BASED ON ACTUAL OUTPUT
-        let totalCreditsUsed = 0;
-        const creditTransactions: Array<{
-          operation: "textGeneration" | "imageGeneration";
-          params: any;
-          cost: number;
-          description: string;
-        }> = [];
-
-        // 1. Deduct credits for text generation (actual tokens used)
-        if (totalTokensUsed > 0) {
-          const textCreditCost = await fetch("/api/deduct-credits", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              userId: user.id,
-              operation: "textGeneration",
-              tokens: totalTokensUsed,
-              description: `AI text generation: ${totalTokensUsed} tokens`,
-            }),
-          });
-
-          if (textCreditCost.ok) {
-            const textResult = await textCreditCost.json();
-            totalCreditsUsed += textResult.creditsDeducted;
-            creditTransactions.push({
-              operation: "textGeneration",
-              params: { tokens: totalTokensUsed },
-              cost: textResult.creditsDeducted,
-              description: `Text generation (${totalTokensUsed} tokens)`,
-            });
-          }
-        }
-
-        // 2. Deduct credits for image generation (actual images created)
-        if (imagesGenerated > 0) {
-          for (const imageDetail of imageGenerationDetails) {
-            const imageCreditCost = await fetch("/api/deduct-credits", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                userId: user.id,
-                operation: "imageGeneration",
-                width: imageDetail.width,
-                height: imageDetail.height,
-                quality: imageDetail.quality,
-                description: `AI image generation (${imageDetail.width}x${imageDetail.height}, ${imageDetail.quality})`,
-              }),
-            });
-
-            if (imageCreditCost.ok) {
-              const imageResult = await imageCreditCost.json();
-              totalCreditsUsed += imageResult.creditsDeducted;
-              creditTransactions.push({
-                operation: "imageGeneration",
-                params: imageDetail,
-                cost: imageResult.creditsDeducted,
-                description: `Image generation (${imageDetail.width}x${imageDetail.height}, ${imageDetail.quality})`,
-              });
-            }
-          }
-        }
-
-        // Add credit usage summary to the response if credits were consumed
-        if (totalCreditsUsed > 0) {
-          const creditSummary = creditTransactions
-            .map((t) => `• ${t.description}: ${t.cost} credits`)
-            .join("\n");
-
-          response.message += `\n\n💰 **Credits Used**: ${totalCreditsUsed} total\n${creditSummary}`;
-
-          // The credits have already been deducted via the API calls above
-          // The UI will automatically reflect the updated credit balance on next refresh
-        }
-
-        // Add AI response with optional generated image
+        // Add the AI response to the local state
         const aiMessage: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content: response.message || "I processed your request.",
-          timestamp: new Date().toISOString(),
-          type: generatedImageUrl ? "image" : "text",
-          imageUrl: generatedImageUrl,
+          id: response.message.id,
+          role: response.message.role,
+          content: response.message.content,
+          timestamp: response.message.timestamp,
+          type: response.message.type,
+          imageUrl: response.message.imageUrl,
         };
+
         addMessage(aiMessage);
 
-        // If you want to handle errors, update response assignment logic above to set type: "error" when needed.
-        // Currently, response.type is always "success", so this check is unnecessary and removed.
+        // Show credit usage if any
+        if (response.creditsUsed > 0) {
+          toast({
+            title: "Credits Used",
+            description: `${response.creditsUsed} credits used. ${response.remainingCredits} remaining.`,
+          });
+        }
       } catch (error: any) {
         console.error("Chat error:", error);
         toast({
@@ -619,7 +414,16 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
         setIsLoading(false);
       }
     },
-    [input, isLoading, messages, projectId, toast, selectedMcpTools]
+    [
+      input,
+      isLoading,
+      projectId,
+      toast,
+      selectedMcpTools,
+      imageUpload,
+      user,
+      addMessage,
+    ]
   );
 
   // Handle entity selection (for editing)

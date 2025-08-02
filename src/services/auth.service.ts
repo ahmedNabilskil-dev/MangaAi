@@ -82,6 +82,17 @@ export class AuthService {
     );
   }
 
+  // Helper method to get auth header
+  private async getAuthHeaders(): Promise<{ Authorization: string } | {}> {
+    const {
+      data: { session },
+    } = await this.supabase.auth.getSession();
+    if (session?.access_token) {
+      return { Authorization: `Bearer ${session.access_token}` };
+    }
+    return {};
+  }
+
   // Authentication Methods
   async signInWithGoogle(): Promise<{ data: any; error: any }> {
     const { data, error } = await this.supabase.auth.signInWithOAuth({
@@ -101,11 +112,25 @@ export class AuthService {
     email: string,
     password: string
   ): Promise<{ data: any; error: any }> {
-    const { data, error } = await this.supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    return { data, error };
+    try {
+      const response = await fetch("/api/auth/signin", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        return { data: null, error: { message: result.error } };
+      }
+
+      return { data: result.data, error: null };
+    } catch (error: any) {
+      return { data: null, error: { message: error.message } };
+    }
   }
 
   async signUpWithEmail(
@@ -113,187 +138,95 @@ export class AuthService {
     password: string,
     name?: string
   ): Promise<{ data: any; error: any }> {
-    const { data, error } = await this.supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          name: name || "",
+    try {
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      },
-    });
-    return { data, error };
+        body: JSON.stringify({ email, password, name }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        return { data: null, error: { message: result.error } };
+      }
+
+      return { data: result.data, error: null };
+    } catch (error: any) {
+      return { data: null, error: { message: error.message } };
+    }
   }
 
   async signOut(): Promise<{ error: any }> {
-    const { error } = await this.supabase.auth.signOut();
-    return { error };
+    try {
+      const response = await fetch("/api/auth/signout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(await this.getAuthHeaders()),
+        },
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        return { error: { message: result.error } };
+      }
+
+      return { error: null };
+    } catch (error: any) {
+      return { error: { message: error.message } };
+    }
   }
 
   async getCurrentUser(): Promise<User | null> {
-    const { data } = await this.supabase.auth.getUser();
-    if (!data.user) return null;
+    try {
+      const response = await fetch("/api/auth/user", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          ...(await this.getAuthHeaders()),
+        },
+      });
 
-    // Get user profile from our users table
-    const { data: profile, error } = await this.supabase
-      .from("users")
-      .select("*")
-      .eq("id", data.user.id)
-      .single();
-
-    if (error || !profile) {
-      // Try to create user profile via API
-      try {
-        const response = await fetch("/api/create-user-profile", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ userId: data.user.id }),
-        });
-
-        if (response.ok) {
-          // Retry getting the profile
-          const { data: newProfile, error: retryError } = await this.supabase
-            .from("users")
-            .select("*")
-            .eq("id", data.user.id)
-            .single();
-
-          if (!retryError && newProfile) {
-            return this.mapDbUserToEntity(newProfile);
-          }
-        }
-      } catch (createError) {
-        console.error("Failed to create user profile:", createError);
+      if (!response.ok) {
+        return null;
       }
 
-      // Fallback: create user profile directly
-      const newUser = await this.createUserProfile(data.user);
-      return newUser;
+      const result = await response.json();
+      return result.user || null;
+    } catch (error: any) {
+      console.error("Get current user error:", error);
+      return null;
     }
-
-    return this.mapDbUserToEntity(profile);
-  }
-
-  async createUserProfile(authUser: any): Promise<User> {
-    const now = new Date().toISOString();
-    const userProfile = {
-      id: authUser.id,
-      email: authUser.email,
-      name:
-        authUser.user_metadata?.name ||
-        authUser.user_metadata?.full_name ||
-        null,
-      avatar_url: authUser.user_metadata?.avatar_url || null,
-      provider: authUser.app_metadata?.provider || "email",
-      credits: 0,
-      daily_credits_used: 0,
-      last_daily_reset: now,
-    };
-
-    const { data, error } = await this.supabase
-      .from("users")
-      .insert(userProfile)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    // Grant initial daily credits
-    await this.grantDailyCredits(authUser.id);
-
-    return this.mapDbUserToEntity(data);
   }
 
   // Credit Management Methods
   async getUserCredits(
     userId: string
   ): Promise<{ credits: number; daily_credits_used: number }> {
-    const { data, error } = await this.supabase
-      .from("users")
-      .select("credits, daily_credits_used, last_daily_reset")
-      .eq("id", userId)
-      .single();
+    try {
+      const response = await fetch("/api/credits/balance", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          ...(await this.getAuthHeaders()),
+        },
+      });
 
-    if (error) throw error;
+      if (!response.ok) {
+        throw new Error("Failed to get credits");
+      }
 
-    // Check if daily credits should be reset
-    await this.checkAndResetDailyCredits(userId);
-
-    return {
-      credits: data.credits,
-      daily_credits_used: data.daily_credits_used,
-    };
-  }
-
-  async checkAndResetDailyCredits(userId: string): Promise<void> {
-    const { data, error } = await this.supabase
-      .from("users")
-      .select("last_daily_reset, daily_credits_used")
-      .eq("id", userId)
-      .single();
-
-    if (error || !data) return;
-
-    const lastReset = new Date(data.last_daily_reset);
-    const now = new Date();
-    const oneDay = 24 * 60 * 60 * 1000;
-
-    // Check if 24 hours have passed since last reset
-    if (now.getTime() - lastReset.getTime() >= oneDay) {
-      await this.resetDailyCredits(userId);
+      const result = await response.json();
+      return {
+        credits: result.credits,
+        daily_credits_used: result.daily_credits_used,
+      };
+    } catch (error: any) {
+      throw new Error(error.message);
     }
-  }
-
-  async resetDailyCredits(userId: string): Promise<void> {
-    const now = new Date().toISOString();
-
-    const { error } = await this.supabase
-      .from("users")
-      .update({
-        daily_credits_used: 0,
-        last_daily_reset: now,
-      })
-      .eq("id", userId);
-
-    if (error) throw error;
-
-    // Grant daily free credits
-    await this.grantDailyCredits(userId);
-  }
-
-  async grantDailyCredits(userId: string): Promise<void> {
-    const { data: user, error: userError } = await this.supabase
-      .from("users")
-      .select("credits")
-      .eq("id", userId)
-      .single();
-
-    if (userError || !user) return;
-
-    // For now, give everyone 10 daily free credits
-    const dailyFreeCredits = 10;
-
-    // Add daily credits
-    const newCredits = user.credits + dailyFreeCredits;
-
-    const { error: updateError } = await this.supabase
-      .from("users")
-      .update({ credits: newCredits })
-      .eq("id", userId);
-
-    if (updateError) throw updateError;
-
-    // Record transaction
-    await this.recordCreditTransaction({
-      user_id: userId,
-      type: "daily_bonus",
-      amount: dailyFreeCredits,
-      operation: "daily_renewal",
-      description: "Daily free credits",
-      metadata: { model_used: "free" },
-    });
   }
 
   async consumeCredits(
@@ -303,118 +236,63 @@ export class AuthService {
     description: string,
     metadata?: any
   ): Promise<{ success: boolean; remaining_credits: number; error?: string }> {
-    // Check if user has enough credits
-    const { credits, daily_credits_used } = await this.getUserCredits(userId);
+    try {
+      const response = await fetch("/api/credits/consume", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(await this.getAuthHeaders()),
+        },
+        body: JSON.stringify({
+          amount,
+          operation,
+          description,
+          metadata,
+        }),
+      });
 
-    if (credits < amount) {
+      const result = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          remaining_credits: 0,
+          error: result.error,
+        };
+      }
+
+      return result;
+    } catch (error: any) {
       return {
         success: false,
-        remaining_credits: credits,
-        error: "Insufficient credits",
-      };
-    }
-
-    // Deduct credits
-    const newCredits = credits - amount;
-    const newDailyUsed = daily_credits_used + amount;
-
-    const { error } = await this.supabase
-      .from("users")
-      .update({
-        credits: newCredits,
-        daily_credits_used: newDailyUsed,
-      })
-      .eq("id", userId);
-
-    if (error) {
-      return {
-        success: false,
-        remaining_credits: credits,
+        remaining_credits: 0,
         error: error.message,
       };
     }
-
-    // Record transaction
-    await this.recordCreditTransaction({
-      user_id: userId,
-      type: "generation",
-      amount: -amount,
-      operation,
-      description,
-      metadata,
-    });
-
-    return {
-      success: true,
-      remaining_credits: newCredits,
-    };
-  }
-
-  async addCredits(
-    userId: string,
-    amount: number,
-    type: "purchase" | "refund",
-    description: string,
-    metadata?: any
-  ): Promise<void> {
-    const { data: user, error: userError } = await this.supabase
-      .from("users")
-      .select("credits")
-      .eq("id", userId)
-      .single();
-
-    if (userError || !user) throw userError;
-
-    const newCredits = user.credits + amount;
-
-    const { error } = await this.supabase
-      .from("users")
-      .update({ credits: newCredits })
-      .eq("id", userId);
-
-    if (error) throw error;
-
-    // Record transaction
-    await this.recordCreditTransaction({
-      user_id: userId,
-      type,
-      amount,
-      operation: type === "purchase" ? "credit_purchase" : "manual_adjustment",
-      description,
-      metadata,
-    });
-  }
-
-  async recordCreditTransaction(
-    transaction: Omit<CreditTransaction, "id" | "created_at">
-  ): Promise<void> {
-    const { error } = await this.supabase.from("credit_transactions").insert({
-      user_id: transaction.user_id,
-      type: transaction.type,
-      amount: transaction.amount,
-      operation: transaction.operation,
-      cost_tokens: transaction.cost_tokens || null,
-      description: transaction.description,
-      metadata: transaction.metadata || {},
-    });
-
-    if (error) throw error;
   }
 
   async getCreditHistory(
     userId: string,
     limit: number = 50
   ): Promise<CreditTransaction[]> {
-    const { data, error } = await this.supabase
-      .from("credit_transactions")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(limit);
+    try {
+      const response = await fetch(`/api/credits/transactions?limit=${limit}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          ...(await this.getAuthHeaders()),
+        },
+      });
 
-    if (error) throw error;
+      if (!response.ok) {
+        throw new Error("Failed to get credit history");
+      }
 
-    return data.map(this.mapDbTransactionToEntity);
+      const result = await response.json();
+      return result.transactions.map(this.mapDbTransactionToEntity);
+    } catch (error: any) {
+      throw new Error(error.message);
+    }
   }
 
   // Payment Methods
@@ -423,45 +301,32 @@ export class AuthService {
     amount: number,
     creditsAmount: number
   ): Promise<PaymentSession> {
-    const sessionData = {
-      user_id: userId,
-      type: "credits",
-      status: "pending",
-      amount,
-      credits_amount: creditsAmount,
-      stripe_session_id: null,
-      metadata: {},
-    };
+    try {
+      const response = await fetch("/api/payments/create-session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(await this.getAuthHeaders()),
+        },
+        body: JSON.stringify({
+          amount,
+          creditsAmount,
+        }),
+      });
 
-    const { data, error } = await this.supabase
-      .from("payment_sessions")
-      .insert(sessionData)
-      .select()
-      .single();
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || "Failed to create payment session");
+      }
 
-    if (error) throw error;
-
-    return this.mapDbPaymentSessionToEntity(data);
+      const result = await response.json();
+      return this.mapDbPaymentSessionToEntity(result.session);
+    } catch (error: any) {
+      throw new Error(error.message);
+    }
   }
 
   // Helper Methods
-  private mapDbUserToEntity(
-    dbUser: Database["public"]["Tables"]["users"]["Row"]
-  ): User {
-    return {
-      id: dbUser.id,
-      email: dbUser.email,
-      name: dbUser.name || undefined,
-      avatar_url: dbUser.avatar_url || undefined,
-      provider: dbUser.provider as any,
-      credits: dbUser.credits,
-      daily_credits_used: dbUser.daily_credits_used,
-      last_daily_reset: dbUser.last_daily_reset,
-      created_at: dbUser.created_at,
-      updated_at: dbUser.updated_at,
-    };
-  }
-
   private mapDbTransactionToEntity(
     dbTransaction: Database["public"]["Tables"]["credit_transactions"]["Row"]
   ): CreditTransaction {

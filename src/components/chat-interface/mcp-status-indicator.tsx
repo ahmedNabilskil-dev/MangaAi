@@ -14,7 +14,7 @@ import {
 import { useMcpClient } from "@/hooks/use-mcp-client";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { AlertCircle, CheckCircle, RefreshCw, WifiOff } from "lucide-react";
+import { CheckCircle, RefreshCw, WifiOff } from "lucide-react";
 
 interface McpStatusIndicatorProps {
   className?: string;
@@ -28,46 +28,35 @@ export function McpStatusIndicator({
   const { state: mcpState, actions: mcpActions } = useMcpClient("chat");
 
   const getStatusInfo = () => {
-    if (mcpState.isConnecting) {
+    if (mcpState.isLoading) {
       return {
         icon: RefreshCw,
         color: "text-yellow-400",
         bgColor: "bg-yellow-900/30",
         borderColor: "border-yellow-400/30",
-        label: "Connecting...",
-        description: "Connecting to MCP server",
+        label: "Loading...",
+        description: "Loading MCP status",
       };
     }
 
-    if (mcpState.error) {
+    if (!mcpState.isConnected) {
       return {
-        icon: AlertCircle,
+        icon: WifiOff,
         color: "text-red-400",
         bgColor: "bg-red-900/30",
         borderColor: "border-red-400/30",
-        label: "Error",
-        description: mcpState.error,
-      };
-    }
-
-    if (mcpState.isConnected) {
-      return {
-        icon: CheckCircle,
-        color: "text-green-400",
-        bgColor: "bg-green-900/30",
-        borderColor: "border-green-400/30",
-        label: "Connected",
-        description: `MCP server connected with ${mcpState.tools.length} tools, ${mcpState.prompts.length} prompts`,
+        label: "Disconnected",
+        description: "MCP server not available",
       };
     }
 
     return {
-      icon: WifiOff,
-      color: "text-red-400",
-      bgColor: "bg-red-900/30",
-      borderColor: "border-red-400/30",
-      label: "Disconnected",
-      description: "MCP server is not available",
+      icon: CheckCircle,
+      color: "text-green-400",
+      bgColor: "bg-green-900/30",
+      borderColor: "border-green-400/30",
+      label: "Connected",
+      description: `Connected with ${mcpState.tools.length} tools and ${mcpState.prompts.length} prompts`,
     };
   };
 
@@ -93,7 +82,7 @@ export function McpStatusIndicator({
             >
               <Icon
                 className={cn("w-4 h-4", statusInfo.color, {
-                  "animate-spin": mcpState.isConnecting,
+                  "animate-spin": mcpState.isLoading,
                 })}
               />
               <span className={cn("text-sm font-medium", statusInfo.color)}>
@@ -137,7 +126,7 @@ export function McpStatusIndicator({
           >
             <Icon
               className={cn("w-5 h-5", statusInfo.color, {
-                "animate-spin": mcpState.isConnecting,
+                "animate-spin": mcpState.isLoading,
               })}
             />
           </div>
@@ -159,15 +148,15 @@ export function McpStatusIndicator({
 
         <div className="flex items-center gap-2">
           <Button
-            onClick={() => mcpActions.refreshData()}
+            onClick={() => mcpActions.refreshStatus()}
             size="sm"
             variant="ghost"
             className="text-gray-400 hover:text-white"
-            disabled={mcpState.isConnecting}
+            disabled={mcpState.isLoading}
           >
             <RefreshCw
               className={cn("w-4 h-4", {
-                "animate-spin": mcpState.isConnecting,
+                "animate-spin": mcpState.isLoading,
               })}
             />
           </Button>

@@ -3,7 +3,7 @@ import {
   formatOperationType,
   getCreditCost,
   type OperationType,
-} from "@/lib/credit-manager";
+} from "@/backend/lib/credit-manager";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
