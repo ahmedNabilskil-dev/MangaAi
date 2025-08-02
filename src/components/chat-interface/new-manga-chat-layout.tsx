@@ -2,6 +2,8 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/use-auth";
+import { useCredits } from "@/hooks/use-credits";
 import { useMcpClient } from "@/hooks/use-mcp-client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -153,6 +155,15 @@ export default function NewMangaChatLayout() {
 
   // MCP Client Integration
   const { state: mcpState, actions: mcpActions } = useMcpClient("chat");
+
+  // Authentication and Credits
+  const { user } = useAuth();
+  const {
+    consumeCredits,
+    canAfford,
+    calculateTextGenerationCost,
+    calculateImageGenerationCost,
+  } = useCredits();
 
   // State
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -348,6 +359,50 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
       setIsLoading(true);
 
       try {
+        // Check if user is authenticated
+        if (!user?.id) {
+          throw new Error("Please sign in to use AI features");
+        }
+
+        // Estimate credit cost for the request
+        const estimatedTokens = (textToSend || "").length * 8; // Rough estimate
+        let creditCost = calculateTextGenerationCost(estimatedTokens);
+
+        // Add cost for image generation if likely to be triggered
+        if (
+          textToSend.toLowerCase().includes("generate") ||
+          textToSend.toLowerCase().includes("create")
+        ) {
+          creditCost += calculateImageGenerationCost();
+        }
+
+        // Check if user can afford the operation
+        if (!canAfford(creditCost)) {
+          throw new Error(
+            `Insufficient credits. You need at least ${creditCost} credits for this operation.`
+          );
+        }
+
+        // Consume credits upfront
+        const creditResult = await consumeCredits(
+          creditCost,
+          "text_generation",
+          `Chat interaction: ${textToSend.substring(0, 50)}...`,
+          {
+            project_id: projectId,
+            message_type: imageUpload.file
+              ? "image_analysis"
+              : "text_generation",
+            estimated_tokens: estimatedTokens,
+          }
+        );
+
+        if (!creditResult.success) {
+          throw new Error(
+            creditResult.error || "Failed to process credit transaction"
+          );
+        }
+
         let response;
         // Only send selected tools to Gemini
         // Prepare Gemini messages (conversation history)

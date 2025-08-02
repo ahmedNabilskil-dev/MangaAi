@@ -12,7 +12,11 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useMcpClient } from "@/hooks/use-mcp-client";
-import { cleanOrphanedData, deleteProject } from "@/services/data-service";
+import {
+  cleanOrphanedData,
+  deleteProject,
+  getAllProjects,
+} from "@/services/data-service";
 import { mcpClient } from "@/services/mcp-client";
 import { MangaProject } from "@/types/entities";
 import { MangaStatus } from "@/types/enums";
@@ -63,10 +67,8 @@ const ProjectsPage = () => {
 
   const fetchProjects = async () => {
     setIsLoading(true);
-    // TODO: Implement readResource in MCP client
-    // const { contents } = await actions.readResource("manga://projects");
-    // setProjects(JSON.parse(contents[0].text));
-    setProjects([]); // Temporary fallback
+    const allProjects = await getAllProjects();
+    setProjects(allProjects);
     setIsLoading(false);
   };
 
