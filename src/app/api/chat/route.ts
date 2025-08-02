@@ -158,9 +158,46 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get project details for enhanced context
+    let projectInfo = "";
+    try {
+      const project = await dataService.getProject(projectId);
+      if (project) {
+        projectInfo = `
+**Project Title**: ${project.title || "Untitled"}
+**Description**: ${project.description || "No description available"}
+**Genre**: ${project.genre || "Not specified"}
+**Art Style**: ${project.artStyle || "Not specified"}
+**Status**: ${project.status || "Unknown"}
+**Target Audience**: ${project.targetAudience || "Not specified"}`;
+      } else {
+        projectInfo = `
+**Note**: This appears to be a new project. Project details will be populated as you develop the manga.`;
+      }
+    } catch (error) {
+      console.log("Could not fetch project details:", error);
+      projectInfo = `
+**Note**: Working with project ID ${projectId}. Project details will be loaded as available.`;
+    }
+
+    // Create enhanced system prompt with project context
+    const enhancedSystemPrompt = `${MANGA_AI_SYSTEM_PROMPT}
+
+## CURRENT PROJECT CONTEXT
+
+**Project ID**: ${projectId}${projectInfo}
+
+You are currently working on this specific manga project. All operations should be performed within this project context. When using MCP tools, always reference this project ID for creating or retrieving project-specific content like characters, scenes, chapters, outfits, and locations.
+
+**Important**: Always include the project ID when calling MCP tools that require it, and ensure all creative work is associated with this specific project.`;
+
     const params = {
       model: "gemini-2.0-flash",
-      systemPrompt: MANGA_AI_SYSTEM_PROMPT,
+      systemPrompt: enhancedSystemPrompt,
+      temperature: 0.7,
+      maxOutputTokens: 8192,
+      topP: 0.8,
+      topK: 40,
     };
 
     // Import and use AI adapter directly
@@ -180,7 +217,7 @@ export async function POST(request: NextRequest) {
       geminiMessages,
       allTools,
       params,
-      true // callTool = true
+      false // callTool = false
     );
 
     // Process responses and handle tool calls
@@ -302,14 +339,8 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Add credit usage summary to response
-    if (totalCreditsUsed > 0) {
-      const creditSummary = creditTransactions
-        .map((t) => `• ${t.description}: ${t.cost} credits`)
-        .join("\n");
-
-      finalMessage += `\n\n💰 **Credits Used**: ${totalCreditsUsed} total\n${creditSummary}`;
-    }
+    // Add credit usage summary to response (moved to avoid duplicates)
+    // Credit summary will be added separately if needed
 
     // Save AI response to database
     const aiMessage: ChatMessage = {

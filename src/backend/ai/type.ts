@@ -32,9 +32,12 @@ export type TextGenerationParams = {
   model?: string;
   temperature?: number;
   maxTokens?: number;
+  maxOutputTokens?: number;
   stream?: boolean;
   systemPrompt?: string;
   context?: Record<string, any>;
+  topP?: number;
+  topK?: number;
 };
 
 export interface ChatAdapter {

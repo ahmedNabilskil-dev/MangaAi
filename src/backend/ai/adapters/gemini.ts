@@ -69,6 +69,10 @@ export class GeminiAdapter implements ChatAdapter {
       config: {
         tools: geminiTools.length ? geminiTools : undefined,
         systemInstruction: params.systemPrompt,
+        temperature: params.temperature || 0.7,
+        maxOutputTokens: params.maxOutputTokens || 8192,
+        topP: params.topP || 0.8,
+        topK: params.topK || 40,
       },
     };
 
