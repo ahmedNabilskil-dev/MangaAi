@@ -36,6 +36,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (showLoading) {
         setIsLoading(true);
       }
+
+      // First check if we have a valid session
+      const {
+        data: { session },
+        error: sessionError,
+      } = await authService.supabase.auth.getSession();
+
+      if (sessionError || !session) {
+        console.log("No valid session found:", sessionError?.message);
+        setUser(null);
+        return;
+      }
+
+      // If we have a session, get the user data
       const currentUser = await authService.getCurrentUser();
       setUser(currentUser);
     } catch (error: any) {
@@ -96,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      await refreshUser();
+      // User will be set via the auth state change listener
       toast({
         title: "Welcome back!",
         description: "Successfully signed in.",
@@ -183,7 +197,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    refreshUser();
+    const initializeAuth = async () => {
+      try {
+        // Check for existing session first
+        const {
+          data: { session },
+        } = await authService.supabase.auth.getSession();
+
+        if (session) {
+          // If we have a session, get the user data
+          await refreshUser(false);
+        } else {
+          // No session, set user to null and stop loading
+          setUser(null);
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error("Error initializing auth:", error);
+        setUser(null);
+        setIsLoading(false);
+      }
+    };
+
+    // Initialize auth state
+    initializeAuth();
 
     // Set up auth state listener
     const {
@@ -192,16 +229,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("Auth state change:", event, !!session);
 
       if (event === "SIGNED_IN" && session) {
-        // Only refresh user for actual sign-in events, not page refreshes
-        await refreshUser(false); // Don't show loading for background updates
+        // User signed in - refresh user data
+        await refreshUser(false);
       } else if (event === "SIGNED_OUT") {
+        // User signed out - clear user data
         setUser(null);
         setIsLoading(false);
       } else if (event === "TOKEN_REFRESHED" && session) {
-        // Don't show loading for token refresh, just update silently
+        // Token refreshed - silently update user data
         await refreshUser(false);
       } else if (event === "INITIAL_SESSION") {
-        // Handle initial session without showing loading
+        // Handle initial session
         if (session) {
           await refreshUser(false);
         } else {

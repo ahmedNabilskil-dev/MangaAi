@@ -71,14 +71,19 @@ interface Database {
 
 export class AuthService {
   public supabase: SupabaseClient<Database>;
-  private readonly SUPABASE_URL = "https://zbstugrprjefmjwgtcbr.supabase.co";
-  private readonly SUPABASE_ANON_KEY =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpic3R1Z3JwcmplZm1qd2d0Y2JyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM4MDgyNDAsImV4cCI6MjA2OTM4NDI0MH0.kV0rsqzWehTQkaFhlQR0mwG2okLIu-h3Yqe_3WGY4tw";
 
   constructor() {
     this.supabase = createClient<Database>(
-      this.SUPABASE_URL,
-      this.SUPABASE_ANON_KEY
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        auth: {
+          detectSessionInUrl: true,
+          persistSession: true,
+          autoRefreshToken: true,
+          flowType: "pkce",
+        },
+      }
     );
   }
 
@@ -98,7 +103,7 @@ export class AuthService {
     const { data, error } = await this.supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${window.location.origin}/api/auth/callback`,
         queryParams: {
           access_type: "offline",
           prompt: "consent",
@@ -113,21 +118,17 @@ export class AuthService {
     password: string
   ): Promise<{ data: any; error: any }> {
     try {
-      const response = await fetch("/api/auth/signin", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
+      // Use client-side sign in to maintain session in the browser
+      const { data, error } = await this.supabase.auth.signInWithPassword({
+        email,
+        password,
       });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        return { data: null, error: { message: result.error } };
+      if (error) {
+        return { data: null, error: { message: error.message } };
       }
 
-      return { data: result.data, error: null };
+      return { data, error: null };
     } catch (error: any) {
       return { data: null, error: { message: error.message } };
     }
@@ -139,21 +140,22 @@ export class AuthService {
     name?: string
   ): Promise<{ data: any; error: any }> {
     try {
-      const response = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      // Use client-side sign up
+      const { data, error } = await this.supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name: name || null,
+          },
         },
-        body: JSON.stringify({ email, password, name }),
       });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        return { data: null, error: { message: result.error } };
+      if (error) {
+        return { data: null, error: { message: error.message } };
       }
 
-      return { data: result.data, error: null };
+      return { data, error: null };
     } catch (error: any) {
       return { data: null, error: { message: error.message } };
     }
@@ -161,17 +163,11 @@ export class AuthService {
 
   async signOut(): Promise<{ error: any }> {
     try {
-      const response = await fetch("/api/auth/signout", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(await this.getAuthHeaders()),
-        },
-      });
+      // Use client-side sign out
+      const { error } = await this.supabase.auth.signOut();
 
-      if (!response.ok) {
-        const result = await response.json();
-        return { error: { message: result.error } };
+      if (error) {
+        return { error: { message: error.message } };
       }
 
       return { error: null };
