@@ -1158,6 +1158,7 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
         onClose={() => setMcpToolsDialog(false)}
         onToolsSelect={handleMcpToolsSelect}
         projectId={projectId}
+        selectedTools={selectedMcpTools}
       />
     </div>
   );

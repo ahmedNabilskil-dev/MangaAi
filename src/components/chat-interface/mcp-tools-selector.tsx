@@ -42,6 +42,7 @@ interface McpToolsSelectorProps {
   onClose: () => void;
   onToolsSelect: (tools: McpTool[]) => void;
   projectId: string;
+  selectedTools?: McpTool[];
 }
 
 const toolIcons: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -82,18 +83,21 @@ export function McpToolsSelector({
   onClose,
   onToolsSelect,
   projectId,
+  selectedTools: externalSelectedTools = [],
 }: McpToolsSelectorProps) {
   const { state: mcpState } = useMcpClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTools, setSelectedTools] = useState<Set<string>>(new Set());
 
-  // Reset selections when dialog opens/closes
+  // Initialize with external selected tools when dialog opens
   useEffect(() => {
-    if (!isOpen) {
-      setSelectedTools(new Set());
+    if (isOpen) {
+      const selectedToolNames = externalSelectedTools.map((tool) => tool.name);
+      setSelectedTools(new Set(selectedToolNames));
+    } else {
       setSearchTerm("");
     }
-  }, [isOpen]);
+  }, [isOpen, externalSelectedTools]);
 
   // Filter tools based on search term
   const filteredTools = useMemo(() => {
