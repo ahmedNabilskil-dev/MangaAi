@@ -1,202 +1,59 @@
 import { z } from "zod";
 import { MangaStatus } from "./enums";
 
-// Component schema for outfit templates
-const outfitComponentSchema = z.object({
-  type: z
-    .enum([
-      "top",
-      "bottom",
-      "shoes",
-      "accessories",
-      "outerwear",
-      "undergarments",
-      "headwear",
-    ])
-    .describe("Type of clothing component"),
-  item: z.string().describe("Name of the clothing item"),
-  isRequired: z.boolean().describe("Whether this component is required"),
-  defaultColor: z
-    .string()
-    .optional()
-    .describe("Default color of the component"),
-  defaultMaterial: z
-    .string()
-    .optional()
-    .describe("Default material of the component"),
-  defaultPattern: z
-    .string()
-    .optional()
-    .describe("Default pattern on the component"),
-  alternatives: z
-    .array(
-      z.object({
-        item: z.string().describe("Alternative item name"),
-        color: z.string().optional().describe("Alternative color"),
-        material: z.string().optional().describe("Alternative material"),
-        pattern: z.string().optional().describe("Alternative pattern"),
-        condition: z
-          .string()
-          .optional()
-          .describe("Condition for using this alternative"),
-      })
-    )
-    .optional()
-    .describe("Alternative options for this component"),
-});
-
-// Color scheme schema
-const colorSchemeSchema = z.object({
-  name: z.string().describe("Name of the color scheme"),
-  primary: z.string().describe("Primary color"),
-  secondary: z.string().optional().describe("Secondary color"),
-  accent: z.string().optional().describe("Accent color"),
-  description: z
-    .string()
-    .optional()
-    .describe("Description of the color scheme"),
-});
-
-// Outfit variation schema
-const outfitVariationSchema = z.object({
-  id: z.string().describe("Unique identifier for the variation"),
-  name: z.string().describe("Name of the variation"),
-  description: z.string().optional().describe("Description of the variation"),
-  componentOverrides: z
-    .array(
-      z.object({
-        componentType: z.string().describe("Type of component to override"),
-        newItem: z.string().describe("New item name"),
-        newColor: z.string().optional().describe("New color"),
-        newMaterial: z.string().optional().describe("New material"),
-        newPattern: z.string().optional().describe("New pattern"),
-      })
-    )
-    .optional()
-    .describe("Component modifications"),
-  additionalComponents: z
-    .array(outfitComponentSchema)
-    .optional()
-    .describe("Additional components for this variation"),
-  conditions: z
-    .object({
-      weather: z.array(z.string()).optional().describe("Weather conditions"),
-      timeOfDay: z
-        .array(z.string())
-        .optional()
-        .describe("Time of day conditions"),
-      mood: z.array(z.string()).optional().describe("Mood conditions"),
-      activity: z.array(z.string()).optional().describe("Activity conditions"),
-    })
-    .optional()
-    .describe("Conditions for using this variation"),
-  promptModifiers: z
-    .array(z.string())
-    .optional()
-    .describe("Prompt modifications"),
-  imageUrl: z.string().optional().describe("Image URL for this variation"),
-  isActive: z.boolean().describe("Whether this variation is active"),
-  usageCount: z.number().int().describe("Usage count"),
-  lastUsed: z.date().optional().describe("Last used date"),
-  createdAt: z.date().describe("Creation date"),
-  updatedAt: z.date().describe("Last update date"),
-});
-
-// Lighting schema for location templates
-const lightingSchema = z.object({
-  type: z
-    .enum(["natural", "artificial", "mixed"])
-    .optional()
-    .describe("Type of lighting"),
-  intensity: z
-    .enum(["dim", "moderate", "bright"])
-    .optional()
-    .describe("Lighting intensity"),
-  color: z.string().optional().describe("Color of the lighting"),
-});
-
-// Body parts schema for pose templates
-const bodyPartsSchema = z.object({
-  head: z.string().optional().describe("Head position or angle"),
-  arms: z.string().optional().describe("Arms position"),
-  hands: z.string().optional().describe("Hands position or gesture"),
-  torso: z.string().optional().describe("Torso position"),
-  legs: z.string().optional().describe("Legs position"),
-  feet: z.string().optional().describe("Feet position"),
-});
-
 // Outfit Template Schema
 export const outfitTemplateSchema = z
   .object({
     id: z.string().describe("Unique identifier for the outfit template"),
     name: z
       .string()
-      .min(1, "Outfit name is required")
-      .describe("Name of the outfit (e.g., 'School Uniform', 'Casual')"),
-    description: z.string().describe("Short, visual-friendly summary"),
+      .describe(
+        "Descriptive name of the outfit (e.g., 'School Uniform', 'Winter Casual', 'Formal Evening Wear')"
+      ),
+    characterId: z
+      .string()
+      .describe(
+        "ID of the character this outfit belongs to - establishes ownership and consistency"
+      ),
+    description: z
+      .string()
+      .describe(
+        "Short visual summary (30-50 words) describing the overall look, style, and key visual elements of the outfit"
+      ),
+    aiPrompt: z
+      .string()
+      .describe(
+        "Complete AI image generation prompt with specific garment details, colors, materials, styling, and accessories for consistent visual reproduction"
+      ),
     category: z
-      .enum([
-        "casual",
-        "formal",
-        "traditional",
-        "fantasy",
-        "modern",
-        "vintage",
-        "futuristic",
-        "seasonal",
-        "special",
-      ])
-      .describe("Outfit category for classification"),
-    subCategory: z.string().optional().describe("More specific categorization"),
-    gender: z
-      .enum(["male", "female", "unisex"])
-      .describe("Gender this outfit is designed for"),
-    ageGroup: z
-      .enum(["child", "teen", "adult", "elderly"])
-      .describe("Age group this outfit suits"),
+      .enum(["casual", "formal", "school", "special"])
+      .describe(
+        "Classification of outfit type: casual (everyday wear), formal (dressy occasions), school (uniforms/academic), special (unique/themed)"
+      ),
     season: z
       .enum(["spring", "summer", "autumn", "winter", "all"])
-      .describe("Seasonal appropriateness"),
-    style: z
-      .enum(["anime", "realistic", "cartoon", "manga"])
-      .describe("Art style for the outfit"),
-    components: z
-      .array(outfitComponentSchema)
-      .describe("Components that make up the outfit"),
-    colorSchemes: z
-      .array(colorSchemeSchema)
-      .describe("Available color schemes for the outfit"),
-    materials: z.array(z.string()).describe("Materials used in the outfit"),
-    variations: z
-      .array(outfitVariationSchema)
-      .optional()
-      .describe("Outfit variations for different situations"),
-    occasions: z
+      .describe(
+        "Seasonal appropriateness of the outfit - determines when this outfit would logically be worn based on weather and context"
+      ),
+    isDefault: z
+      .boolean()
+      .describe(
+        "Whether this is the character's primary/signature outfit - the default choice when no specific outfit is specified for scenes"
+      ),
+    tags: z
       .array(z.string())
-      .describe("Occasions this outfit is suitable for"),
-    compatibility: z
-      .object({
-        weather: z
-          .array(
-            z.enum(["sunny", "cloudy", "rainy", "stormy", "snowy", "foggy"])
-          )
-          .describe("Compatible weather conditions"),
-        timeOfDay: z
-          .array(
-            z.enum(["dawn", "morning", "noon", "afternoon", "evening", "night"])
-          )
-          .describe("Compatible times of day"),
-        activities: z.array(z.string()).describe("Compatible activities"),
-      })
-      .describe("Compatibility information"),
-    tags: z.array(z.string()).describe("Tags for filtering and search"),
-    imagePrompt: z
+      .describe(
+        "Searchable keywords for filtering and categorization (e.g., 'sporty', 'elegant', 'colorful', 'practical')"
+      ),
+    imageUrl: z
       .string()
       .optional()
-      .describe("AI prompt for generating outfit images"),
-    imageUrl: z.string().optional().describe("URL of reference image"),
-    isActive: z.boolean().describe("Whether this template is active"),
-    mangaProjectId: z.string().describe("ID of the parent manga project"),
+      .describe("URL of reference image showing the completed outfit design"),
+    mangaProjectId: z
+      .string()
+      .describe(
+        "ID of the parent manga project this outfit template belongs to"
+      ),
     createdAt: z
       .date()
       .or(z.string().datetime())
@@ -206,46 +63,9 @@ export const outfitTemplateSchema = z
       .or(z.string().datetime())
       .describe("Last update timestamp"),
   })
-  .describe("Template defining character outfits for consistent AI generation");
-
-// Location variation schema
-const locationVariationSchema = z.object({
-  id: z.string().describe("Unique identifier for the variation"),
-  name: z.string().describe("Name of the variation"),
-  timeOfDay: z
-    .enum(["dawn", "morning", "noon", "afternoon", "evening", "night", "any"])
-    .optional()
-    .describe("Time of day override"),
-  weather: z
-    .enum(["sunny", "cloudy", "rainy", "stormy", "snowy", "foggy", "any"])
-    .optional()
-    .describe("Weather override"),
-  mood: z
-    .enum([
-      "peaceful",
-      "mysterious",
-      "energetic",
-      "romantic",
-      "tense",
-      "cheerful",
-      "somber",
-    ])
-    .optional()
-    .describe("Mood override"),
-  lighting: lightingSchema.optional().describe("Lighting override"),
-  additionalProps: z.array(z.string()).optional().describe("Additional props"),
-  modifiedColors: z.array(z.string()).optional().describe("Modified colors"),
-  promptModifiers: z
-    .array(z.string())
-    .optional()
-    .describe("Prompt modifications"),
-  imageUrl: z.string().optional().describe("Image URL for this variation"),
-  isActive: z.boolean().describe("Whether this variation is active"),
-  usageCount: z.number().int().describe("Usage count"),
-  lastUsed: z.date().optional().describe("Last used date"),
-  createdAt: z.date().describe("Creation date"),
-  updatedAt: z.date().describe("Last update date"),
-});
+  .describe(
+    "Simplified template defining character outfits for consistent AI generation"
+  );
 
 // Location Template Schema
 export const locationTemplateSchema = z
@@ -253,107 +73,50 @@ export const locationTemplateSchema = z
     id: z.string().describe("Unique identifier for the location template"),
     name: z
       .string()
-      .min(1, "Location name is required")
-      .describe("Name of the location (e.g., 'Classroom', 'Park')"),
-    description: z.string().describe("Short description of the location"),
+      .describe(
+        "Clear, descriptive name of the location (e.g., 'High School Classroom 2-A', 'Downtown Park with Cherry Blossoms', 'Family Kitchen')"
+      ),
+    description: z
+      .string()
+      .describe(
+        "Brief overview (30-50 words) of the location's purpose, atmosphere, and key visual characteristics"
+      ),
+    basePrompt: z
+      .string()
+      .describe(
+        "Comprehensive AI generation prompt (100-150 words) describing architecture, layout, lighting, materials, colors, and environmental details for consistent visual reproduction"
+      ),
+    type: z
+      .enum(["indoor", "outdoor"])
+      .describe(
+        "Fundamental location classification determining lighting conditions, weather effects, and environmental factors"
+      ),
     category: z
-      .enum([
-        "indoor",
-        "outdoor",
-        "urban",
-        "rural",
-        "fantasy",
-        "futuristic",
-        "historical",
-        "natural",
-        "architectural",
-      ])
-      .describe("Location category"),
-    subCategory: z.string().optional().describe("More specific categorization"),
-
-    // Backward compatibility fields
-    timeOfDay: z
-      .enum(["dawn", "morning", "noon", "afternoon", "evening", "night", "any"])
-      .optional()
-      .describe("Backward compatibility: time of day setting"),
-    weather: z
-      .enum(["sunny", "cloudy", "rainy", "stormy", "snowy", "foggy", "any"])
-      .optional()
-      .describe("Backward compatibility: weather conditions"),
-    mood: z
-      .enum([
-        "peaceful",
-        "mysterious",
-        "energetic",
-        "romantic",
-        "tense",
-        "cheerful",
-        "somber",
-      ])
-      .optional()
-      .describe("Backward compatibility: mood of the location"),
-    lighting: lightingSchema
-      .optional()
-      .describe("Backward compatibility: lighting configuration"),
-
-    // New enhanced fields
-    defaultTimeOfDay: z
-      .enum(["dawn", "morning", "noon", "afternoon", "evening", "night", "any"])
-      .optional()
-      .describe("Default time of day for this location"),
-    defaultWeather: z
-      .enum(["sunny", "cloudy", "rainy", "stormy", "snowy", "foggy", "any"])
-      .optional()
-      .describe("Default weather conditions"),
-    defaultMood: z
-      .enum([
-        "peaceful",
-        "mysterious",
-        "energetic",
-        "romantic",
-        "tense",
-        "cheerful",
-        "somber",
-      ])
-      .optional()
-      .describe("Default mood of the location"),
-
-    style: z
-      .enum(["anime", "realistic", "cartoon", "manga"])
-      .describe("Art style for the location"),
-
-    baseLighting: lightingSchema.optional().describe("Base lighting setup"),
-    variations: z
-      .array(locationVariationSchema)
-      .optional()
-      .describe("Supported variations for this location"),
+      .enum(["school", "home", "public", "nature", "fantasy"])
+      .describe(
+        "Thematic category: school (educational settings), home (residential), public (commercial/civic), nature (natural environments), fantasy (supernatural/fictional)"
+      ),
     cameraAngles: z
-      .array(
-        z.enum([
-          "wide-shot",
-          "medium-shot",
-          "close-up",
-          "birds-eye",
-          "worms-eye",
-          "dutch-angle",
-          "over-shoulder",
-        ])
-      )
-      .describe("Available camera angles"),
-    props: z.array(z.string()).describe("Props available in this location"),
-    colors: z.array(z.string()).describe("Primary colors of the location"),
-    tags: z.array(z.string()).describe("Tags for filtering and search"),
-    imagePrompt: z
+      .array(z.string())
+      .describe(
+        "Array of available camera perspective descriptions for varied visual storytelling (e.g., 'wide establishing shot', 'close-up corner view', 'overhead layout view')"
+      ),
+    tags: z
+      .array(z.string())
+      .describe(
+        "Searchable descriptive keywords for location discovery and filtering (e.g., 'bright', 'cozy', 'modern', 'traditional', 'spacious')"
+      ),
+    imageUrl: z
       .string()
       .optional()
-      .describe("Base AI prompt for generating location images"),
-    baseImagePrompt: z
+      .describe(
+        "URL of reference image showing the location's visual design and layout"
+      ),
+    mangaProjectId: z
       .string()
-      .optional()
-      .describe("Base image prompt that can be enhanced by variations"),
-    imageUrl: z.string().optional().describe("URL of reference image"),
-    isActive: z.boolean().describe("Whether this template is active"),
-    mangaProjectId: z.string().describe("ID of the parent manga project"),
+      .describe(
+        "ID of the parent manga project this location template belongs to"
+      ),
     createdAt: z
       .date()
       .or(z.string().datetime())
@@ -363,7 +126,9 @@ export const locationTemplateSchema = z
       .or(z.string().datetime())
       .describe("Last update timestamp"),
   })
-  .describe("Template defining locations for consistent scene generation");
+  .describe(
+    "Simplified template defining locations for consistent scene generation"
+  );
 
 // Character Schema
 export const characterSchema = z
@@ -371,108 +136,256 @@ export const characterSchema = z
     id: z.string().describe("Unique identifier for the character"),
     name: z
       .string()
-      .min(1, "Character name is required")
-      .describe("Full name of the character"),
-    age: z.number().int().describe("Age in years"),
-    gender: z.string().describe("Gender identity"),
+      .describe("Full name of the character as it appears in the story"),
+    age: z
+      .number()
+      .describe(
+        "Character's age in years - affects physical proportions, behavior patterns, and story role appropriateness"
+      ),
+    gender: z
+      .string()
+      .describe(
+        "Character's gender identity - influences design choices, social interactions, and character archetype selection"
+      ),
 
     // Physical Attributes
     bodyAttributes: z
       .object({
-        height: z.string().describe("Height measurement with units"),
-        bodyType: z.string().describe("General physique description"),
-        proportions: z.string().describe("Notable proportional features"),
+        height: z
+          .string()
+          .describe(
+            "Character's height with units (e.g., '165cm', '5'6') - crucial for consistent size relationships between characters"
+          ),
+        bodyType: z
+          .string()
+          .describe(
+            "Overall physique description (e.g., 'athletic', 'slender', 'stocky', 'petite') - defines silhouette and proportions"
+          ),
+        proportions: z
+          .string()
+          .describe(
+            "Notable proportional characteristics specific to anime/manga style (e.g., 'long legs', 'broad shoulders', 'compact frame')"
+          ),
       })
-      .describe("Physical body characteristics"),
+      .describe(
+        "Physical body characteristics that define the character's overall build and proportions"
+      ),
 
     facialAttributes: z
       .object({
-        faceShape: z.string().describe("Shape of the face"),
-        skinTone: z.string().describe("Skin color description"),
-        eyeColor: z.string().describe("Color of eyes"),
-        eyeShape: z.string().describe("Shape of eyes"),
-        noseType: z.string().describe("Nose shape"),
-        mouthType: z.string().describe("Mouth/lip shape"),
-        jawline: z.string().describe("Jaw structure"),
+        faceShape: z
+          .string()
+          .describe(
+            "Shape and structure of the face (e.g., 'oval', 'round', 'angular', 'heart-shaped') - foundation for facial recognition"
+          ),
+        skinTone: z
+          .string()
+          .describe(
+            "Skin color with specific descriptors (e.g., 'pale peach', 'warm olive', 'deep brown') - include hex codes when possible"
+          ),
+        eyeColor: z
+          .string()
+          .describe(
+            "Eye color with specific hues (e.g., 'emerald green', 'deep amber', 'steel blue') - often exaggerated in anime style"
+          ),
+        eyeShape: z
+          .string()
+          .describe(
+            "Eye shape and style (e.g., 'large round', 'sharp almond', 'droopy gentle') - key distinguishing anime feature"
+          ),
+        noseType: z
+          .string()
+          .describe(
+            "Nose shape and prominence (e.g., 'small button', 'straight refined', 'slightly upturned') - usually subtle in anime"
+          ),
+        mouthType: z
+          .string()
+          .describe(
+            "Mouth and lip characteristics (e.g., 'small rosebud', 'wide expressive', 'thin serious') - affects emotional expression"
+          ),
+        jawline: z
+          .string()
+          .describe(
+            "Jaw structure and definition (e.g., 'soft rounded', 'defined angular', 'delicate pointed') - influences face shape"
+          ),
       })
-      .describe("Facial features"),
+      .describe(
+        "Detailed facial features that make the character instantly recognizable and visually distinct"
+      ),
 
     hairAttributes: z
       .object({
-        hairColor: z.string().describe("Color of hair"),
-        hairstyle: z.string().describe("Style of hair"),
-        hairLength: z.string().describe("Length of hair"),
-        hairTexture: z.string().describe("Texture of hair"),
+        hairColor: z
+          .string()
+          .describe(
+            "Hair color with specific tones (e.g., 'platinum blonde', 'raven black', 'auburn red') - can be natural or fantastical"
+          ),
+        hairstyle: z
+          .string()
+          .describe(
+            "Hair styling and arrangement (e.g., 'messy spikes', 'twin ponytails', 'flowing waves', 'neat bob cut')"
+          ),
+        hairLength: z
+          .string()
+          .describe(
+            "Length classification (e.g., 'shoulder-length', 'waist-long', 'pixie short', 'mid-back flowing')"
+          ),
+        hairTexture: z
+          .string()
+          .describe(
+            "Hair texture and movement (e.g., 'silky straight', 'bouncy curls', 'wild untamed', 'soft waves')"
+          ),
         specialHairFeatures: z
           .string()
-          .describe("Notable hair characteristics"),
+          .describe(
+            "Unique hair characteristics (e.g., 'natural highlights', 'asymmetrical cut', 'hair accessories', 'color gradients')"
+          ),
       })
-      .describe("Hair characteristics"),
+      .describe(
+        "Complete hair design that serves as a major visual identifier and personality indicator"
+      ),
 
     distinctiveFeatures: z
       .array(z.string())
-      .describe("Unique identifying physical traits"),
+      .describe(
+        "Unique physical traits that make character instantly recognizable (e.g., 'scar over left eye', 'dimples when smiling', 'heterochromia', 'birthmark')"
+      ),
 
     physicalMannerisms: z
       .array(z.string())
-      .describe("Characteristic body movements"),
+      .describe(
+        "Characteristic body language and movements (e.g., 'fidgets with glasses', 'hands on hips when confident', 'tilts head when thinking')"
+      ),
 
-    posture: z.string().describe("Typical stance or bearing"),
+    posture: z
+      .string()
+      .describe(
+        "Default body stance and bearing (e.g., 'confident upright', 'relaxed slouch', 'nervous fidgety', 'regal composed') - reflects personality"
+      ),
 
     // Art Direction
     styleGuide: z
       .object({
-        artStyle: z.string().describe("Preferred artistic treatment"),
-        lineweight: z.string().describe("Line art characteristics"),
-        shadingStyle: z.string().describe("Shading technique"),
-        colorStyle: z.string().describe("Coloring approach"),
+        artStyle: z
+          .string()
+          .describe(
+            "Specific artistic approach for this character (e.g., 'soft shoujo style', 'detailed seinen realism', 'energetic shounen')"
+          ),
+        lineweight: z
+          .string()
+          .describe(
+            "Line art characteristics (e.g., 'thick bold outlines', 'delicate fine lines', 'variable expressive strokes')"
+          ),
+        shadingStyle: z
+          .string()
+          .describe(
+            "Shading and lighting approach (e.g., 'cell shading', 'soft gradient', 'dramatic contrast', 'minimal flat')"
+          ),
+        colorStyle: z
+          .string()
+          .describe(
+            "Color treatment method (e.g., 'vibrant saturated', 'muted pastels', 'high contrast', 'monochromatic accents')"
+          ),
       })
-      .describe("Artistic guidelines"),
+      .describe(
+        "Artistic guidelines ensuring visual consistency across all character appearances"
+      ),
 
     // Outfit Management
-    defaultOutfitId: z.string().optional().describe("ID of their main outfit"),
+    defaultOutfitId: z
+      .string()
+      .optional()
+      .describe(
+        "ID of the character's primary outfit template - used when no specific outfit is assigned to scenes"
+      ),
     outfitHistory: z
       .array(
         z.object({
-          sceneId: z.string().describe("Scene ID"),
-          outfitId: z.string().describe("Outfit ID used in scene"),
+          sceneId: z
+            .string()
+            .describe("Scene identifier where outfit was worn"),
+          outfitId: z
+            .string()
+            .describe("Outfit template ID used in that scene"),
         })
       )
       .optional()
-      .describe("History of outfits worn in different scenes"),
+      .describe(
+        "Historical record of outfit choices across different scenes for continuity tracking"
+      ),
 
     // AI Generation
     consistencyPrompt: z
       .string()
       .optional()
-      .describe("Prompt for consistent character generation"),
+      .describe(
+        "Standardized prompt ensuring consistent character appearance across all AI-generated images - includes key visual markers"
+      ),
     negativePrompt: z
       .string()
       .optional()
-      .describe("Negative prompt for image generation"),
+      .describe(
+        "Negative prompt for AI image generation listing what to avoid (e.g., 'realistic, photographic, inconsistent style, wrong proportions')"
+      ),
 
     // Narrative Attributes
     role: z
       .enum(["protagonist", "antagonist", "supporting", "minor"])
-      .describe("Narrative importance level"),
-    briefDescription: z.string().describe("Short character summary"),
-    personality: z.string().describe("Psychological profile"),
-    abilities: z.string().describe("Special skills or powers"),
-    backstory: z.string().describe("Historical background"),
+      .describe(
+        "Character's narrative importance: protagonist (main character), antagonist (opposing force), supporting (important secondary), minor (background)"
+      ),
+    briefDescription: z
+      .string()
+      .describe(
+        "Concise character summary (50-100 words) covering personality essence, role in story, and key relationships"
+      ),
+    personality: z
+      .string()
+      .describe(
+        "Detailed psychological profile including traits, motivations, fears, strengths, weaknesses, and behavioral patterns"
+      ),
+    abilities: z
+      .string()
+      .describe(
+        "Special skills, talents, powers, or notable capabilities that define character's role and potential in the story"
+      ),
+    backstory: z
+      .string()
+      .describe(
+        "Character's historical background, formative experiences, family history, and events that shaped their current personality"
+      ),
 
     // Visual References
-    imgUrl: z.string().url().optional().describe("Primary reference image URL"),
+    imgUrl: z
+      .string()
+      .url()
+      .optional()
+      .describe(
+        "URL of the primary reference image showing the character's complete design and appearance"
+      ),
 
     // Development
-    traits: z.array(z.string()).describe("Personality traits"),
-    arcs: z.array(z.string()).describe("Character development arcs"),
+    traits: z
+      .array(z.string())
+      .describe(
+        "Specific personality traits and characteristics (e.g., 'brave', 'impulsive', 'analytical', 'compassionate') for behavioral consistency"
+      ),
+    arcs: z
+      .array(z.string())
+      .describe(
+        "Character development arcs and growth trajectories planned throughout the story progression"
+      ),
 
     // Metadata
     isAiGenerated: z
       .boolean()
       .default(false)
-      .describe("Whether character was automatically generated"),
-    mangaProjectId: z.string().describe("ID of the parent manga project"),
+      .describe(
+        "Whether this character was created automatically by AI (true) or manually designed by user (false)"
+      ),
+    mangaProjectId: z
+      .string()
+      .describe("ID of the parent manga project this character belongs to"),
 
     // Timestamps
     createdAt: z
@@ -492,50 +405,66 @@ export const chapterSchema = z
     id: z.string().describe("Unique identifier for the chapter"),
     chapterNumber: z
       .number()
-      .describe("Sequential chapter number in your manga series"),
+      .describe(
+        "Sequential chapter number in the manga series - determines reading order and story progression"
+      ),
     title: z
       .string()
       .describe(
-        "Compelling chapter title that captures essence and hooks readers"
+        "Compelling chapter title that captures the essence, hooks readers, and hints at the chapter's central conflict or theme"
       ),
     narrative: z
       .string()
       .describe(
-        "Complete 600-800 word chapter narrative with visual storytelling structure"
+        "Complete 600-800 word chapter narrative with cinematic visual storytelling structure, natural panel break points, character development, and story advancement"
       ),
     purpose: z
       .string()
       .optional()
       .describe(
-        "Specific narrative function this chapter serves in overall story arc"
+        "Specific narrative function this chapter serves in the overall story arc (e.g., 'character introduction', 'major conflict escalation', 'emotional climax', 'plot revelation')"
       ),
     tone: z
       .string()
       .optional()
       .describe(
-        "Emotional atmosphere and mood (tense, lighthearted, mysterious, dramatic, etc.)"
+        "Emotional atmosphere and mood that permeates the chapter (e.g., 'tense and suspenseful', 'lighthearted comedic', 'melancholy introspective', 'action-packed energetic')"
       ),
     keyCharacters: z
       .array(z.string())
       .optional()
-      .describe("Names of characters with important roles in this chapter"),
+      .describe(
+        "Names of characters who play important roles or have significant development in this chapter"
+      ),
     coverImageUrl: z
       .string()
       .url()
       .optional()
-      .describe("URL of the chapter's cover image"),
-    mangaProjectId: z.string().describe("ID of the parent manga project"),
+      .describe(
+        "URL of the chapter's cover artwork - should represent the chapter's theme or key moment"
+      ),
+    mangaProjectId: z
+      .string()
+      .describe("ID of the parent manga project this chapter belongs to"),
     isAiGenerated: z
       .boolean()
       .optional()
-      .describe("Whether content was automatically generated"),
-    isPublished: z.boolean().optional().describe("Public availability status"),
+      .describe(
+        "Whether the chapter content was automatically generated by AI (true) or manually written by user (false)"
+      ),
+    isPublished: z
+      .boolean()
+      .optional()
+      .describe(
+        "Public availability status - whether readers can access this chapter"
+      ),
     viewCount: z
       .number()
-      .int()
       .nonnegative()
       .optional()
-      .describe("Number of times viewed"),
+      .describe(
+        "Number of times this chapter has been viewed by readers - engagement metric"
+      ),
     createdAt: z
       .date()
       .or(z.string().datetime())
@@ -557,51 +486,113 @@ export const chapterSchema = z
 export const sceneSchema = z
   .object({
     id: z.string().describe("Unique identifier for the scene"),
-    order: z.number().int().min(0).describe("Sequence position within chapter"),
+    order: z
+      .number()
+      .describe(
+        "Sequential position within the parent chapter - determines the flow and pacing of story events"
+      ),
     title: z
       .string()
-      .min(1, "Scene title is required")
-      .describe("Descriptive title of the scene"),
+      .describe(
+        "Descriptive title that captures the scene's essence, purpose, or key event"
+      ),
     description: z
       .string()
-      .describe("Description of what happens in the scene"),
+      .describe(
+        "Rich narrative description (150-250 words) of what happens in the scene, including character actions, dialogue, emotions, and visual elements"
+      ),
 
     // Scene Context
     sceneContext: z.object({
       locationId: z
         .string()
+        .describe(
+          "ID of the location template being used as the setting - establishes the visual environment and atmosphere"
+        ),
+      locationOverrides: z
+        .object({
+          timeOfDay: z
+            .enum(["dawn", "morning", "noon", "afternoon", "evening", "night"])
+            .optional()
+            .describe(
+              "Override the default time of day for this scene - affects lighting, mood, and character behavior"
+            ),
+          weather: z
+            .enum(["sunny", "cloudy", "rainy", "stormy", "snowy", "foggy"])
+            .optional()
+            .describe(
+              "Override weather conditions for dramatic effect, seasonal consistency, or narrative purpose"
+            ),
+          customPrompt: z
+            .string()
+            .optional()
+            .describe(
+              "Custom AI generation prompt additions specific to this scene's unique visual requirements"
+            ),
+        })
         .optional()
-        .describe("ID of the location template being used"),
-      locationVariationId: z
-        .string()
-        .optional()
-        .describe("ID of the specific location variation"),
+        .describe(
+          "Scene-specific modifications to the base location template for unique atmospheric conditions"
+        ),
       characterOutfits: z
         .array(
           z.object({
-            characterId: z.string().describe("Character ID"),
-            outfitId: z.string().describe("Outfit template ID"),
-            outfitVariationId: z
+            characterId: z
+              .string()
+              .describe("ID of the character whose outfit is being specified"),
+            outfitId: z
               .string()
               .optional()
-              .describe("Specific outfit variation ID"),
-            reason: z.string().optional().describe("Reason for outfit choice"),
+              .describe(
+                "ID of the outfit template to use - if omitted, uses character's default outfit"
+              ),
+            customOutfit: z
+              .object({
+                description: z
+                  .string()
+                  .describe(
+                    "Visual description of the custom outfit for this specific scene"
+                  ),
+                aiPrompt: z
+                  .string()
+                  .describe(
+                    "AI generation prompt for creating this custom outfit design"
+                  ),
+              })
+              .optional()
+              .describe(
+                "Custom outfit definition when existing templates don't meet scene requirements"
+              ),
+            reason: z
+              .string()
+              .optional()
+              .describe(
+                "Narrative justification for this outfit choice (e.g., 'formal event', 'weather change', 'character development')"
+              ),
           })
         )
-        .describe("Character outfit assignments for this scene"),
+        .describe(
+          "Complete outfit assignments for all characters appearing in this scene - ensures visual consistency and narrative logic"
+        ),
       presentCharacters: z
         .array(z.string())
-        .describe("IDs of characters appearing in the scene"),
+        .describe(
+          "Array of character IDs for all characters who appear in this scene - used for outfit management and interaction tracking"
+        ),
       environmentOverrides: z
         .object({
           timeOfDay: z
             .enum(["dawn", "morning", "noon", "afternoon", "evening", "night"])
             .optional()
-            .describe("Time of day override"),
+            .describe(
+              "Time override affecting lighting quality, character activity, and scene mood"
+            ),
           weather: z
             .enum(["sunny", "cloudy", "rainy", "stormy", "snowy", "foggy"])
             .optional()
-            .describe("Weather override"),
+            .describe(
+              "Weather override for atmospheric storytelling and visual drama"
+            ),
           mood: z
             .enum([
               "peaceful",
@@ -613,32 +604,67 @@ export const sceneSchema = z
               "somber",
             ])
             .optional()
-            .describe("Mood/atmosphere override"),
+            .describe(
+              "Emotional atmosphere that should permeate the scene's visual presentation and character interactions"
+            ),
           lighting: z
             .object({
-              type: z.enum(["natural", "artificial", "mixed"]).optional(),
-              intensity: z.enum(["dim", "moderate", "bright"]).optional(),
-              color: z.string().optional(),
+              type: z
+                .enum(["natural", "artificial", "mixed"])
+                .optional()
+                .describe(
+                  "Source of illumination affecting visual style and mood"
+                ),
+              intensity: z
+                .enum(["dim", "moderate", "bright"])
+                .optional()
+                .describe(
+                  "Brightness level impacting visibility and atmosphere"
+                ),
+              color: z
+                .string()
+                .optional()
+                .describe(
+                  "Lighting color/temperature (e.g., 'warm golden', 'cool blue', 'harsh white') for dramatic effect"
+                ),
             })
             .optional()
-            .describe("Lighting conditions"),
+            .describe(
+              "Detailed lighting specifications for creating specific visual moods and dramatic effects"
+            ),
           additionalProps: z
             .array(z.string())
             .optional()
-            .describe("Additional environmental properties"),
+            .describe(
+              "Extra environmental elements specific to this scene (e.g., 'falling leaves', 'bustling crowd', 'floating particles')"
+            ),
         })
         .optional()
-        .describe("Environmental condition overrides"),
+        .describe(
+          "Environmental condition customizations that override location template defaults for storytelling purposes"
+        ),
+      sceneNotes: z
+        .string()
+        .optional()
+        .describe(
+          "Additional scene-specific production notes, special instructions, or continuity reminders for consistent execution"
+        ),
     }),
 
     // Relationships
-    chapterId: z.string().describe("ID of the parent chapter"),
+    chapterId: z
+      .string()
+      .describe(
+        "ID of the parent chapter this scene belongs to - establishes narrative hierarchy and story flow"
+      ),
 
     // Metadata
     isAiGenerated: z
       .boolean()
       .default(false)
-      .describe("Whether scene was automatically generated"),
+      .describe(
+        "Whether this scene was automatically generated by AI (true) or manually created by user (false)"
+      ),
 
     // Timestamps
     createdAt: z
@@ -662,72 +688,177 @@ export const sceneSchema = z
 export const panelSchema = z
   .object({
     id: z.string().describe("Unique identifier for the panel"),
-    order: z.number().describe("Sequence position within scene"),
+    order: z
+      .number()
+      .describe(
+        "Sequential position within the parent scene - determines the flow and pacing of visual storytelling"
+      ),
     imageUrl: z
       .string()
-      .url()
       .optional()
-      .describe("URL of the rendered panel image"),
+      .describe(
+        "URL of the generated/rendered panel artwork - the final visual output for readers"
+      ),
 
     // Panel Context
     panelContext: z.object({
-      locationId: z.string().describe("ID of the location template"),
-      locationVariationId: z
+      locationId: z
         .string()
+        .describe(
+          "ID of the location template that provides the environmental setting and base visual elements for this panel"
+        ),
+      locationOverrides: z
+        .object({
+          timeOfDay: z
+            .enum(["dawn", "morning", "noon", "afternoon", "evening", "night"])
+            .optional()
+            .describe(
+              "Time of day override affecting lighting conditions, shadows, and overall visual atmosphere for storytelling purposes"
+            ),
+          weather: z
+            .enum(["sunny", "cloudy", "rainy", "stormy", "snowy", "foggy"])
+            .optional()
+            .describe(
+              "Weather condition override for dramatic effect, seasonal consistency, or narrative enhancement"
+            ),
+          customPrompt: z
+            .string()
+            .optional()
+            .describe(
+              "Additional AI generation prompt text specific to this panel's unique environmental requirements or special visual effects"
+            ),
+        })
         .optional()
-        .describe("ID of the specific location variation"),
+        .describe(
+          "Panel-specific modifications to the base location template for unique atmospheric conditions"
+        ),
       action: z
         .string()
         .optional()
-        .describe("Primary action occurring in the panel"),
+        .describe(
+          "Primary action or event occurring in this panel - the central focus that drives the visual composition (e.g., 'character running', 'emotional conversation', 'dramatic reveal')"
+        ),
       characterPoses: z
         .array(
           z.object({
-            characterId: z.string().describe("ID of the character"),
-            characterName: z.string().describe("Name of character"),
-            outfitId: z.string().describe("ID of outfit template"),
-            outfitVariationId: z
+            characterId: z
+              .string()
+              .describe(
+                "Unique identifier of the character appearing in this panel"
+              ),
+            characterName: z
+              .string()
+              .describe(
+                "Display name of the character for reference and clarity"
+              ),
+            outfitId: z
               .string()
               .optional()
-              .describe("ID of outfit variation"),
-            pose: z.string().describe("Specific pose description"),
-            expression: z.string().describe("Facial expression"),
-            position: z.string().optional().describe("Position in panel"),
+              .describe(
+                "ID of the outfit template this character is wearing - if omitted, uses character's default outfit"
+              ),
+            customOutfit: z
+              .object({
+                description: z
+                  .string()
+                  .describe(
+                    "Visual description of a custom outfit created specifically for this panel's narrative requirements"
+                  ),
+                aiPrompt: z
+                  .string()
+                  .describe(
+                    "Complete AI generation prompt for creating this custom outfit with specific details, colors, and styling"
+                  ),
+              })
+              .optional()
+              .describe(
+                "Custom outfit definition when existing templates don't meet this panel's specific visual or narrative needs"
+              ),
+            pose: z
+              .string()
+              .describe(
+                "Specific body position, gesture, or stance the character is taking - should convey emotion and action clearly"
+              ),
+            expression: z
+              .string()
+              .describe(
+                "Facial expression showing the character's emotional state and reaction to the scene's events"
+              ),
+            position: z
+              .string()
+              .optional()
+              .describe(
+                "Character's spatial location within the panel frame (e.g., 'center foreground', 'left background', 'close-up right side')"
+              ),
           })
         )
-        .describe("Character positioning and expressions"),
+        .describe(
+          "Complete character positioning, expressions, and outfit specifications for all characters appearing in this panel"
+        ),
       environmentOverrides: z
         .object({
           lighting: z
             .object({
-              type: z.enum(["natural", "artificial", "mixed"]).optional(),
-              intensity: z.enum(["dim", "moderate", "bright"]).optional(),
-              color: z.string().optional(),
-              direction: z.string().optional().describe("Lighting direction"),
+              type: z
+                .enum(["natural", "artificial", "mixed"])
+                .optional()
+                .describe(
+                  "Source of illumination: natural (sunlight/moonlight), artificial (lamps/electronics), mixed (combination)"
+                ),
+              intensity: z
+                .enum(["dim", "moderate", "bright"])
+                .optional()
+                .describe(
+                  "Brightness level affecting mood and visibility - dim (shadows/mystery), moderate (balanced), bright (cheerful/clear)"
+                ),
+              color: z
+                .string()
+                .optional()
+                .describe(
+                  "Lighting color temperature and hue (e.g., 'warm golden', 'cool blue', 'harsh white') for dramatic and emotional effect"
+                ),
+              direction: z
+                .string()
+                .optional()
+                .describe(
+                  "Direction and angle of primary light source (e.g., 'top-down', 'side-lit', 'backlit', 'from below') affecting shadows and drama"
+                ),
             })
             .optional()
-            .describe("Lighting conditions"),
+            .describe(
+              "Comprehensive lighting specifications that establish mood, drama, and visual atmosphere for the panel"
+            ),
           weather: z
             .enum(["sunny", "cloudy", "rainy", "stormy", "snowy", "foggy"])
             .optional()
-            .describe("Weather conditions"),
+            .describe(
+              "Weather conditions affecting environmental appearance, character behavior, and emotional atmosphere"
+            ),
           timeOfDay: z
             .enum(["dawn", "morning", "noon", "afternoon", "evening", "night"])
             .optional()
-            .describe("Time of day"),
+            .describe(
+              "Time of day affecting natural lighting, character activity levels, and scene appropriateness"
+            ),
           atmosphere: z
             .string()
             .optional()
-            .describe("Environmental atmosphere"),
+            .describe(
+              "Overall environmental mood and feeling that should permeate the panel (e.g., 'peaceful tranquility', 'tense anticipation', 'chaotic energy')"
+            ),
         })
         .optional()
-        .describe("Environmental condition overrides"),
+        .describe(
+          "Environmental condition overrides that modify the base location template for specific storytelling and atmospheric needs"
+        ),
       cameraSettings: z
         .object({
           angle: z
             .enum(["close-up", "medium", "wide", "bird's eye", "low angle"])
             .optional()
-            .describe("Camera angle"),
+            .describe(
+              "Camera perspective: close-up (emotions/details), medium (character interaction), wide (scene context), bird's eye (overview), low angle (power/drama)"
+            ),
           shotType: z
             .enum([
               "action",
@@ -737,65 +868,95 @@ export const panelSchema = z
               "transition",
             ])
             .optional()
-            .describe("Type of shot"),
-          focus: z.string().optional().describe("What the camera focuses on"),
+            .describe(
+              "Panel function: action (movement/events), reaction (emotional response), establishing (scene setup), detail (close examination), transition (scene change)"
+            ),
+          focus: z
+            .string()
+            .optional()
+            .describe(
+              "Primary visual element that should draw the reader's attention - the most important aspect of the panel composition"
+            ),
         })
         .optional()
-        .describe("Camera and framing settings"),
+        .describe(
+          "Camera positioning and framing specifications that control visual storytelling perspective and reader focus"
+        ),
       visualEffects: z
         .array(z.string())
         .optional()
-        .describe("Special visual effects to apply"),
+        .describe(
+          "Special visual effects to enhance the panel (e.g., 'motion blur', 'speed lines', 'dramatic shadows', 'sparkles', 'impact effects')"
+        ),
       panelNotes: z
         .string()
         .optional()
-        .describe("Additional panel-specific notes"),
+        .describe(
+          "Additional production notes, special instructions, or creative direction specific to this panel's execution and visual requirements"
+        ),
     }),
 
     // Relationships
-    sceneId: z.string().describe("ID of the parent scene"),
+    sceneId: z
+      .string()
+      .describe(
+        "ID of the parent scene this panel belongs to - establishes narrative context and sequence flow"
+      ),
 
     // Generation
     isAiGenerated: z
       .boolean()
       .default(false)
-      .describe("Whether panel was automatically generated"),
+      .describe(
+        "Whether this panel was automatically generated by AI (true) or manually created/designed by user (false)"
+      ),
     negativePrompt: z
       .string()
       .optional()
-      .describe("Negative prompt for image generation"),
+      .describe(
+        "Negative AI generation prompt specifying what to avoid in image creation (e.g., 'blurry, low quality, inconsistent art style, wrong proportions')"
+      ),
 
     // Timestamps
     createdAt: z
       .date()
-      .or(z.string().datetime())
-      .describe("Creation timestamp"),
+      .describe(
+        "Creation timestamp recording when this panel was first created"
+      ),
     updatedAt: z
       .date()
-      .or(z.string().datetime())
-      .describe("Last update timestamp"),
+      .describe("Last update timestamp recording the most recent modification"),
 
     // Children
     dialogues: z
       .array(z.lazy(() => panelDialogueSchema))
       .optional()
-      .describe("Dialogue contained in this panel"),
+      .describe(
+        "Array of dialogue entries (speech bubbles, thought bubbles, narration) contained within this panel"
+      ),
     characters: z
       .array(z.lazy(() => characterSchema))
       .optional()
-      .describe("Character references appearing in panel"),
+      .describe(
+        "Array of character reference objects for all characters appearing in this panel - used for consistency and relationship tracking"
+      ),
   })
   .describe("A single illustrated frame within a manga scene");
 
 // Panel Dialogue Schema
 export const panelDialogueSchema = z
   .object({
-    id: z.string().describe("Unique identifier for the dialogue"),
+    id: z.string().describe("Unique identifier for this dialogue entry"),
     content: z
       .string()
-      .min(1, "Dialogue content is required")
-      .describe("Actual spoken/written text"),
-    order: z.number().int().min(0).describe("Sequence position within panel"),
+      .describe(
+        "The actual spoken or written text that appears in the speech bubble - should sound natural and character-appropriate"
+      ),
+    order: z
+      .number()
+      .describe(
+        "Sequential position within the panel when multiple dialogue entries exist - determines reading flow and conversation timing"
+      ),
 
     // Styling
     style: z
@@ -803,43 +964,58 @@ export const panelDialogueSchema = z
         bubbleType: z
           .enum(["normal", "thought", "scream", "whisper", "narration"])
           .optional()
-          .describe("Visual presentation style"),
+          .describe(
+            "Visual presentation style: normal (standard speech), thought (internal monologue), scream (loud/emotional), whisper (quiet/secret), narration (story text)"
+          ),
       })
       .optional()
-      .describe("Visual presentation attributes"),
+      .describe(
+        "Visual presentation attributes that affect how the text appears and is interpreted by readers"
+      ),
 
     // Context
-    emotion: z.string().optional().describe("Emotional tone of delivery"),
-    subtextNote: z.string().optional().describe("Unspoken meaning or context"),
+    emotion: z
+      .string()
+      .optional()
+      .describe(
+        "Current emotional state affecting speech delivery and bubble styling (e.g., 'angry', 'sad', 'excited', 'nervous', 'confident')"
+      ),
+    subtextNote: z
+      .string()
+      .optional()
+      .describe(
+        "Hidden meaning, subtext, or context behind the words that may not be explicitly stated but influences character relationships"
+      ),
 
     // Relationships
-    panelId: z.string().describe("ID of the containing panel"),
+    panelId: z
+      .string()
+      .describe(
+        "ID of the panel containing this dialogue - establishes visual and narrative context"
+      ),
     speakerId: z
       .string()
       .nullable()
       .optional()
-      .describe("ID of the speaking character if applicable"),
+      .describe(
+        "ID of the character speaking this dialogue - null for narration or environmental text, character ID for spoken dialogue"
+      ),
 
     // Generation
     isAiGenerated: z
       .boolean()
       .default(false)
-      .describe("Whether dialogue was automatically generated"),
+      .describe(
+        "Whether this dialogue was automatically generated by AI (true) or manually written by user (false)"
+      ),
 
     // Timestamps
-    createdAt: z
-      .date()
-      .or(z.string().datetime())
-      .describe("Creation timestamp"),
-    updatedAt: z
-      .date()
-      .or(z.string().datetime())
-      .describe("Last update timestamp"),
+    createdAt: z.date().describe("Creation timestamp"),
+    updatedAt: z.date().describe("Last update timestamp"),
 
     // Reference
     speaker: z
       .lazy(() => characterSchema)
-      .nullable()
       .optional()
       .describe("Resolved speaker character details"),
     config: z.any().optional(),
@@ -849,146 +1025,233 @@ export const panelDialogueSchema = z
 // Manga Project Schema
 export const mangaProjectSchema = z
   .object({
-    id: z.string().describe("Unique identifier for the manga series"),
+    id: z
+      .string()
+      .describe(
+        "Unique identifier for the manga series - used for database references and URL routing"
+      ),
     title: z
       .string()
       .min(1, "Project title is required")
-      .describe("Official title of the manga series"),
+      .describe(
+        "Official title of the manga series - the primary name readers will see and use to identify the work"
+      ),
     description: z
       .string()
       .optional()
-      .describe("Brief summary of the manga's premise and setting"),
+      .describe(
+        "Brief summary of the manga's premise, setting, and core appeal - used for discovery and reader engagement (50-150 words recommended)"
+      ),
     status: z
       .nativeEnum(MangaStatus)
-      .describe("Current development phase of the project"),
+      .describe(
+        "Current development phase: draft (planning), in_progress (actively creating), completed (finished), published (publicly available), archived (no longer active)"
+      ),
     initialPrompt: z
       .string()
       .optional()
-      .describe("Original concept or inspiration for the manga"),
-    genre: z.string().optional().describe("Primary genre classification"),
+      .describe(
+        "Original concept or inspiration text that sparked the creation of this manga - preserves the creative genesis and vision"
+      ),
+    genre: z
+      .string()
+      .optional()
+      .describe(
+        "Primary genre classification (e.g., 'action', 'romance', 'fantasy', 'slice-of-life') for categorization and reader expectations"
+      ),
     artStyle: z
       .string()
       .optional()
-      .describe("Visual style description or artistic reference"),
+      .describe(
+        "Visual style description or artistic reference (e.g., 'shounen manga style', 'detailed realistic', 'chibi cute') guiding all visual creation"
+      ),
     coverImageUrl: z
       .string()
       .url()
       .optional()
-      .describe("URL pointing to the cover artwork image"),
+      .describe(
+        "URL pointing to the cover artwork image - the primary visual representation used for promotion and identification"
+      ),
     targetAudience: z
       .enum(["children", "teen", "young-adult", "adult"])
       .optional()
-      .describe("Intended demographic readership"),
+      .describe(
+        "Intended demographic readership determining content appropriateness, complexity, and thematic elements"
+      ),
 
     // World Building
     worldDetails: z
       .object({
         summary: z
           .string()
-          .describe("High-level overview of the manga's universe"),
+          .describe(
+            "High-level overview of the manga's universe, including setting, time period, and fundamental world characteristics"
+          ),
         history: z
           .string()
-          .describe("Historical background and major past events"),
+          .describe(
+            "Historical background and major past events that shaped the current world state and influence ongoing storylines"
+          ),
         society: z
           .string()
-          .describe("Cultural norms, social structures, and factions"),
+          .describe(
+            "Cultural norms, social structures, political systems, and factional relationships that govern character interactions"
+          ),
         uniqueSystems: z
           .string()
-          .describe("Special rules governing magic, technology, or powers"),
+          .describe(
+            "Special rules governing magic systems, technology levels, supernatural powers, or other world-specific mechanics"
+          ),
       })
       .optional()
-      .describe("Detailed setting information for the manga world"),
+      .describe(
+        "Comprehensive world-building information that establishes the setting, rules, and background context for all stories within this universe"
+      ),
 
     // Narrative Elements
     concept: z
       .string()
       .optional()
-      .describe("Core thematic idea or central conflict"),
+      .describe(
+        "Core thematic idea, central conflict, or unique premise that drives the entire narrative and distinguishes this manga from others"
+      ),
     plotStructure: z
       .object({
         incitingIncident: z
           .string()
-          .describe("Event that triggers the main storyline"),
-        plotTwist: z.string().describe("Major unexpected development"),
-        climax: z.string().describe("Pivotal confrontation or crisis point"),
-        resolution: z.string().describe("How the central conflict concludes"),
+          .describe(
+            "Pivotal event that triggers the main storyline and sets the protagonist on their journey or quest"
+          ),
+        plotTwist: z
+          .string()
+          .describe(
+            "Major unexpected development that changes everything and recontextualizes earlier events"
+          ),
+        climax: z
+          .string()
+          .describe(
+            "Pivotal confrontation, crisis point, or emotional peak where the central conflict reaches its maximum intensity"
+          ),
+        resolution: z
+          .string()
+          .describe(
+            "How the central conflict concludes and how character arcs are resolved, providing satisfying closure"
+          ),
       })
       .optional()
-      .describe("Key structural elements of the narrative"),
+      .describe(
+        "Key structural narrative elements that form the backbone of the story progression and character development"
+      ),
 
     // Templates
     outfitTemplates: z
       .array(outfitTemplateSchema)
       .optional()
-      .describe("Outfit templates for consistent character appearance"),
+      .describe(
+        "Collection of reusable outfit designs for consistent character appearance across scenes and chapters"
+      ),
     locationTemplates: z
       .array(locationTemplateSchema)
       .optional()
-      .describe("Location templates with camera angles"),
+      .describe(
+        "Collection of reusable location settings with established visual elements and camera angle options"
+      ),
 
     // Thematic Elements
     themes: z
       .array(z.string())
       .optional()
-      .describe("Recurring ideas or messages explored"),
+      .describe(
+        "Recurring philosophical ideas, moral questions, or universal messages explored throughout the manga (e.g., 'friendship', 'justice', 'coming-of-age')"
+      ),
     motifs: z
       .array(z.string())
       .optional()
-      .describe("Recurring symbolic elements or imagery"),
+      .describe(
+        "Recurring symbolic elements, visual patterns, or narrative devices that reinforce themes (e.g., 'cherry blossoms', 'mirrors', 'crossroads')"
+      ),
     symbols: z
       .array(z.string())
       .optional()
-      .describe("Objects representing abstract concepts"),
+      .describe(
+        "Objects, colors, or imagery representing abstract concepts and deeper meanings within the narrative (e.g., 'red rose for love', 'broken clock for lost time')"
+      ),
     tags: z
       .array(z.string())
       .optional()
-      .describe("Keywords for categorization and discovery"),
+      .describe(
+        "Keywords for categorization, discovery, and search functionality - helps readers find content matching their interests"
+      ),
 
     // Ownership and Metadata
     creatorId: z
       .string()
       .optional()
-      .describe("ID of the user who created this project"),
+      .describe(
+        "ID of the user who created this manga project - establishes ownership and permissions for editing and publishing"
+      ),
     messages: z
       .array(
         z.object({
-          role: z.string(),
-          parts: z.array(z.object({ text: z.string() })),
+          role: z
+            .string()
+            .describe("Message sender role in AI conversation context"),
+          parts: z
+            .array(
+              z.object({
+                text: z.string().describe("Text content of the message part"),
+              })
+            )
+            .describe("Message content segments"),
         })
       )
       .optional()
-      .describe("Chat messages for AI generation context"),
+      .describe(
+        "Historical chat messages and AI generation context used for maintaining consistency and creative direction"
+      ),
     viewCount: z
       .number()
-      .int()
       .nonnegative()
-      .describe("Number of times viewed"),
+      .describe(
+        "Total number of times this manga has been viewed by readers - engagement and popularity metric"
+      ),
     likeCount: z
       .number()
-      .int()
       .nonnegative()
-      .describe("Number of likes received"),
-    published: z.boolean().describe("Whether the manga is published"),
+      .describe(
+        "Total number of likes/favorites received from readers - quality and appeal metric"
+      ),
+    published: z
+      .boolean()
+      .describe(
+        "Whether this manga is publicly visible and accessible to readers (true) or private/draft (false)"
+      ),
 
     // Timestamps
     createdAt: z
       .date()
-      .or(z.string().datetime())
-      .describe("Creation timestamp"),
+      .describe(
+        "Creation timestamp recording when this manga project was first established"
+      ),
     updatedAt: z
       .date()
-      .or(z.string().datetime())
-      .describe("Last update timestamp"),
+      .describe(
+        "Last update timestamp recording the most recent modification to any aspect of the project"
+      ),
 
     // Relationships
     chapters: z
       .array(chapterSchema)
       .optional()
-      .describe("Chapters in this manga"),
+      .describe(
+        "Complete collection of chapters that make up this manga series, ordered by chapter number"
+      ),
     characters: z
       .array(characterSchema)
       .optional()
-      .describe("Characters in this manga"),
+      .describe(
+        "Complete cast of characters appearing throughout this manga, including protagonists, antagonists, and supporting roles"
+      ),
   })
   .describe("Complete definition of a manga project including all metadata");
 

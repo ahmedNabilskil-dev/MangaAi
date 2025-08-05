@@ -110,44 +110,69 @@ export class GeminiAdapter implements ChatAdapter {
     }
 
     const toolCalls = result.functionCalls || [];
+    const candidate = result.candidates?.[0];
+    const parts = candidate?.content?.parts || [];
+
+    // Check if there are any text parts in the response
+    const textParts = parts
+      .filter((p) => p.text)
+      .map((p) => p.text)
+      .join("");
 
     if (toolCalls.length > 0) {
-      // Handle only one tool call at a time (Gemini limitation if multiple are returned)
-      const call = toolCalls[0];
-      // Use MCP client to call the tool remotely
-      const args = call.args || {};
-      const toolName = typeof call.name === "string" ? call.name : "";
-      if (!toolName) throw new Error("Tool call missing name");
-      let toolResult;
-      try {
-        // Dynamically import mcpClient to avoid circular dependencies
-        const { mcpClient } = await import("../../services/mcp-client");
-        toolResult = await mcpClient.callTool(toolName, args);
-      } catch (err) {
-        throw new Error(
-          `MCP tool call failed for ${toolName}: ${
-            err instanceof Error ? err.message : String(err)
-          }`
+      // Handle multiple tool calls
+      const updatedMessages: Message[] = [...messages];
+
+      // Add text content if present
+      if (textParts.trim()) {
+        updatedMessages.push({
+          role: "assistant",
+          content: textParts,
+        });
+      }
+
+      // Process all tool calls
+      for (const call of toolCalls) {
+        const args = call.args || {};
+        const toolName = typeof call.name === "string" ? call.name : "";
+        if (!toolName) throw new Error("Tool call missing name");
+
+        let toolResult;
+        try {
+          // Dynamically import mcpClient to avoid circular dependencies
+          const { mcpClient } = await import("../../services/mcp-client");
+
+          console.log(
+            `Calling MCP tool: ${toolName} with args: ${JSON.stringify(args)}`
+          );
+          toolResult = await mcpClient.callTool(toolName, args);
+        } catch (err) {
+          throw new Error(
+            `MCP tool call failed for ${toolName}: ${
+              err instanceof Error ? err.message : String(err)
+            }`
+          );
+        }
+
+        // Add function call and response to messages
+        updatedMessages.push(
+          {
+            role: "assistant",
+            content: call,
+            contentKey: "functionCall",
+          },
+          {
+            role: "user",
+            content: {
+              name: call.name,
+              response: { result: toolResult },
+            },
+            contentKey: "functionResponse",
+          }
         );
       }
 
-      const updatedMessages: Message[] = [
-        ...messages,
-        {
-          role: "assistant",
-          content: call,
-          contentKey: "functionCall",
-        },
-        {
-          role: "user",
-          content: {
-            name: call.name,
-            response: { result: toolResult }, // Use the MCP result directly
-          },
-          contentKey: "functionResponse",
-        },
-      ];
-
+      // Continue the conversation with all tool results
       return await this.send(updatedMessages, [], params, false, depth + 1);
     }
 

@@ -90,25 +90,16 @@ interface Database {
       outfit_templates: {
         Row: {
           id: string;
-          manga_project_id: string;
           name: string;
-          description: string | null;
+          character_id: string;
+          description: string;
+          ai_prompt: string;
           category: string;
-          sub_category: string | null;
-          gender: string;
-          age_group: string;
           season: string;
-          style: string;
-          components: any;
-          color_schemes: any;
-          materials: string[] | null;
-          variations: any;
-          occasions: string[] | null;
-          compatibility: any;
-          tags: string[] | null;
-          image_prompt: string | null;
+          is_default: boolean;
+          tags: string[];
           image_url: string | null;
-          is_active: boolean;
+          manga_project_id: string;
           created_at: string;
           updated_at: string;
         };
@@ -123,29 +114,15 @@ interface Database {
       location_templates: {
         Row: {
           id: string;
-          manga_project_id: string;
           name: string;
-          description: string | null;
+          description: string;
+          base_prompt: string;
+          type: string;
           category: string;
-          sub_category: string | null;
-          time_of_day: string | null;
-          weather: string | null;
-          mood: string | null;
-          lighting: any;
-          default_time_of_day: string | null;
-          default_weather: string | null;
-          default_mood: string | null;
-          style: string;
-          base_lighting: any;
-          variations: any;
-          camera_angles: string[] | null;
-          props: string[] | null;
-          colors: string[] | null;
-          tags: string[] | null;
-          image_prompt: string | null;
-          base_image_prompt: string | null;
+          camera_angles: string[];
+          tags: string[];
           image_url: string | null;
-          is_active: boolean;
+          manga_project_id: string;
           created_at: string;
           updated_at: string;
         };
@@ -1327,25 +1304,16 @@ class SupabaseDataService implements IDataService {
   ): OutfitTemplate {
     return {
       id: dbTemplate.id,
-      mangaProjectId: dbTemplate.manga_project_id,
       name: dbTemplate.name,
-      description: dbTemplate.description || "",
+      characterId: dbTemplate.character_id,
+      description: dbTemplate.description,
+      aiPrompt: dbTemplate.ai_prompt,
       category: dbTemplate.category as any,
-      subCategory: dbTemplate.sub_category || undefined,
-      gender: dbTemplate.gender as any,
-      ageGroup: dbTemplate.age_group as any,
       season: dbTemplate.season as any,
-      style: dbTemplate.style as any,
-      components: dbTemplate.components || [],
-      colorSchemes: dbTemplate.color_schemes || [],
-      materials: dbTemplate.materials || [],
-      variations: dbTemplate.variations || undefined,
-      occasions: dbTemplate.occasions || [],
-      compatibility: dbTemplate.compatibility || {},
+      isDefault: dbTemplate.is_default,
       tags: dbTemplate.tags || [],
-      imagePrompt: dbTemplate.image_prompt || undefined,
       imageUrl: dbTemplate.image_url || undefined,
-      isActive: dbTemplate.is_active,
+      mangaProjectId: dbTemplate.manga_project_id,
       createdAt: new Date(dbTemplate.created_at),
       updatedAt: new Date(dbTemplate.updated_at),
     };
@@ -1363,25 +1331,16 @@ class SupabaseDataService implements IDataService {
     entity: Partial<OutfitTemplate>
   ): Partial<Database["public"]["Tables"]["outfit_templates"]["Insert"]> {
     return {
-      manga_project_id: entity.mangaProjectId!,
       name: entity.name!,
-      description: entity.description || null,
+      character_id: entity.characterId!,
+      description: entity.description!,
+      ai_prompt: entity.aiPrompt!,
       category: entity.category as any,
-      sub_category: entity.subCategory || null,
-      gender: entity.gender as any,
-      age_group: entity.ageGroup as any,
       season: entity.season as any,
-      style: entity.style as any,
-      components: entity.components || [],
-      color_schemes: entity.colorSchemes || [],
-      materials: entity.materials || null,
-      variations: entity.variations || [],
-      occasions: entity.occasions || null,
-      compatibility: entity.compatibility || {},
-      tags: entity.tags || null,
-      image_prompt: entity.imagePrompt || null,
+      is_default: entity.isDefault || false,
+      tags: entity.tags || [],
       image_url: entity.imageUrl || null,
-      is_active: entity.isActive !== undefined ? entity.isActive : true,
+      manga_project_id: entity.mangaProjectId!,
     };
   }
 
@@ -1390,29 +1349,15 @@ class SupabaseDataService implements IDataService {
   ): LocationTemplate {
     return {
       id: dbTemplate.id,
-      mangaProjectId: dbTemplate.manga_project_id,
       name: dbTemplate.name,
-      description: dbTemplate.description || "",
+      description: dbTemplate.description,
+      basePrompt: dbTemplate.base_prompt,
+      type: dbTemplate.type as any,
       category: dbTemplate.category as any,
-      subCategory: dbTemplate.sub_category || undefined,
-      timeOfDay: dbTemplate.time_of_day as any,
-      weather: dbTemplate.weather as any,
-      mood: dbTemplate.mood as any,
-      lighting: dbTemplate.lighting || undefined,
-      defaultTimeOfDay: dbTemplate.default_time_of_day as any,
-      defaultWeather: dbTemplate.default_weather as any,
-      defaultMood: dbTemplate.default_mood as any,
-      style: dbTemplate.style as any,
-      baseLighting: dbTemplate.base_lighting || undefined,
-      variations: dbTemplate.variations || undefined,
       cameraAngles: (dbTemplate.camera_angles as any[]) || [],
-      props: dbTemplate.props || [],
-      colors: dbTemplate.colors || [],
       tags: dbTemplate.tags || [],
-      imagePrompt: dbTemplate.image_prompt || undefined,
-      baseImagePrompt: dbTemplate.base_image_prompt || undefined,
       imageUrl: dbTemplate.image_url || undefined,
-      isActive: dbTemplate.is_active,
+      mangaProjectId: dbTemplate.manga_project_id,
       createdAt: new Date(dbTemplate.created_at),
       updatedAt: new Date(dbTemplate.updated_at),
     };
@@ -1430,29 +1375,15 @@ class SupabaseDataService implements IDataService {
     entity: Partial<LocationTemplate>
   ): Partial<Database["public"]["Tables"]["location_templates"]["Insert"]> {
     return {
-      manga_project_id: entity.mangaProjectId!,
       name: entity.name!,
-      description: entity.description || null,
+      description: entity.description!,
+      base_prompt: entity.basePrompt!,
+      type: entity.type as any,
       category: entity.category as any,
-      sub_category: entity.subCategory || null,
-      time_of_day: entity.timeOfDay as any,
-      weather: entity.weather as any,
-      mood: entity.mood as any,
-      lighting: entity.lighting || {},
-      default_time_of_day: entity.defaultTimeOfDay as any,
-      default_weather: entity.defaultWeather as any,
-      default_mood: entity.defaultMood as any,
-      style: entity.style as any,
-      base_lighting: entity.baseLighting || {},
-      variations: entity.variations || [],
-      camera_angles: (entity.cameraAngles as any[]) || null,
-      props: entity.props || null,
-      colors: entity.colors || null,
-      tags: entity.tags || null,
-      image_prompt: entity.imagePrompt || null,
-      base_image_prompt: entity.baseImagePrompt || null,
+      camera_angles: entity.cameraAngles || [],
+      tags: entity.tags || [],
       image_url: entity.imageUrl || null,
-      is_active: entity.isActive !== undefined ? entity.isActive : true,
+      manga_project_id: entity.mangaProjectId!,
     };
   }
 

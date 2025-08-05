@@ -33,8 +33,6 @@ import {
   Plus,
   Search,
   Send,
-  Settings,
-  Shield,
   Sparkles,
   Trash2,
   X,
@@ -280,27 +278,6 @@ const ProjectsPage = () => {
             isActive={true}
             isSidebarOpen={isSidebarOpen}
             href="/projects"
-          />
-          <SidebarItem
-            icon={<Settings className="h-5 w-5" />}
-            text="Settings"
-            isActive={false}
-            isSidebarOpen={isSidebarOpen}
-            href="/settings"
-          />
-          <SidebarItem
-            icon={<BookOpen className="h-5 w-5" />}
-            text="Setup Api Key Guide"
-            isActive={false}
-            isSidebarOpen={isSidebarOpen}
-            href="/documentation"
-          />
-          <SidebarItem
-            icon={<Shield className="h-5 w-5" />}
-            text="Terms"
-            isActive={false}
-            isSidebarOpen={isSidebarOpen}
-            href="/terms"
           />
         </nav>
 

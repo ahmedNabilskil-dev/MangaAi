@@ -64,7 +64,7 @@ export async function getProjectWithRelations(
   id: string
 ): Promise<MangaProject | null> {
   const service = await getSupabaseService();
-  return await service.getProject(id);
+  return service.getProjectWithRelations(id);
 }
 
 // --- Chapter ---

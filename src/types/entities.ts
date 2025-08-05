@@ -3,272 +3,32 @@ import { MangaStatus } from "@/types/enums";
 export interface OutfitTemplate {
   id: string;
   name: string;
+  characterId: string;
   description: string;
-  category:
-    | "casual"
-    | "formal"
-    | "traditional"
-    | "fantasy"
-    | "modern"
-    | "vintage"
-    | "futuristic"
-    | "seasonal"
-    | "special";
-  subCategory?: string;
-  gender: "male" | "female" | "unisex";
-  ageGroup: "child" | "teen" | "adult" | "elderly";
+  aiPrompt: string; // Complete AI generation prompt
+  category: "casual" | "formal" | "school" | "special";
   season: "spring" | "summer" | "autumn" | "winter" | "all";
-  style: "anime" | "realistic" | "cartoon" | "manga";
-
-  // Enhanced component system
-  components: OutfitComponent[];
-
-  // Color schemes and materials
-  colorSchemes: ColorScheme[];
-  materials: string[];
-
-  // Outfit variations for different situations
-  variations?: OutfitVariation[];
-
-  // Usage and context
-  occasions: string[]; // e.g., ["school", "formal_event", "casual_day"]
-  compatibility: {
-    weather: ("sunny" | "cloudy" | "rainy" | "stormy" | "snowy" | "foggy")[];
-    timeOfDay: (
-      | "dawn"
-      | "morning"
-      | "noon"
-      | "afternoon"
-      | "evening"
-      | "night"
-    )[];
-    activities: string[]; // e.g., ["walking", "running", "sitting", "fighting"]
-  };
-
+  isDefault: boolean;
   tags: string[];
-  imagePrompt?: string;
   imageUrl?: string;
-  isActive: boolean;
   mangaProjectId: string;
   createdAt: Date | string;
   updatedAt: Date | string;
-}
-
-export interface OutfitComponent {
-  type:
-    | "top"
-    | "bottom"
-    | "shoes"
-    | "accessories"
-    | "outerwear"
-    | "undergarments"
-    | "headwear";
-  item: string;
-  isRequired: boolean; // Some components might be optional
-  defaultColor?: string;
-  defaultMaterial?: string;
-  defaultPattern?: string;
-
-  // Alternative options for this component
-  alternatives?: {
-    item: string;
-    color?: string;
-    material?: string;
-    pattern?: string;
-    condition?: string; // e.g., "if weather is rainy"
-  }[];
-}
-
-export interface ColorScheme {
-  name: string; // e.g., "Default", "Summer", "Formal"
-  primary: string;
-  secondary?: string;
-  accent?: string;
-  description?: string;
-}
-
-export interface OutfitVariation {
-  id: string;
-  name: string; // e.g., "Casual Version", "Damaged", "Winter Coat Added"
-  description?: string;
-
-  // Component modifications
-  componentOverrides?: {
-    componentType: string;
-    newItem: string;
-    newColor?: string;
-    newMaterial?: string;
-    newPattern?: string;
-  }[];
-
-  // Additional components for this variation
-  additionalComponents?: OutfitComponent[];
-
-  // When to use this variation
-  conditions?: {
-    weather?: string[];
-    timeOfDay?: string[];
-    mood?: string[];
-    activity?: string[];
-  };
-
-  // Prompt modifications
-  promptModifiers?: string[];
-  imageUrl?: string;
-
-  // Usage tracking
-  isActive: boolean;
-  usageCount: number;
-  lastUsed?: Date;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 export interface LocationTemplate {
   id: string;
   name: string;
   description: string;
-  category:
-    | "indoor"
-    | "outdoor"
-    | "urban"
-    | "rural"
-    | "fantasy"
-    | "futuristic"
-    | "historical"
-    | "natural"
-    | "architectural";
-  subCategory?: string;
-
-  // Backward compatibility: keep old single-value fields
-  timeOfDay?:
-    | "dawn"
-    | "morning"
-    | "noon"
-    | "afternoon"
-    | "evening"
-    | "night"
-    | "any";
-  weather?: "sunny" | "cloudy" | "rainy" | "stormy" | "snowy" | "foggy" | "any";
-  mood?:
-    | "peaceful"
-    | "mysterious"
-    | "energetic"
-    | "romantic"
-    | "tense"
-    | "cheerful"
-    | "somber";
-  lighting?: {
-    type?: "natural" | "artificial" | "mixed";
-    intensity?: "dim" | "moderate" | "bright";
-    color?: string;
-  };
-
-  // New enhanced fields (optional for backward compatibility)
-  defaultTimeOfDay?:
-    | "dawn"
-    | "morning"
-    | "noon"
-    | "afternoon"
-    | "evening"
-    | "night"
-    | "any";
-  defaultWeather?:
-    | "sunny"
-    | "cloudy"
-    | "rainy"
-    | "stormy"
-    | "snowy"
-    | "foggy"
-    | "any";
-  defaultMood?:
-    | "peaceful"
-    | "mysterious"
-    | "energetic"
-    | "romantic"
-    | "tense"
-    | "cheerful"
-    | "somber";
-
-  style: "anime" | "realistic" | "cartoon" | "manga";
-
-  // Base lighting setup (new)
-  baseLighting?: {
-    type?: "natural" | "artificial" | "mixed";
-    intensity?: "dim" | "moderate" | "bright";
-    color?: string;
-  };
-
-  // Supported variations for this location (new)
-  variations?: LocationVariation[];
-
-  cameraAngles: (
-    | "wide-shot"
-    | "medium-shot"
-    | "close-up"
-    | "birds-eye"
-    | "worms-eye"
-    | "dutch-angle"
-    | "over-shoulder"
-  )[];
-  props: string[];
-  colors: string[];
+  basePrompt: string; // Core location description for AI
+  type: "indoor" | "outdoor";
+  category: "school" | "home" | "public" | "nature" | "fantasy";
+  cameraAngles: string[]; // Simple array of angle descriptions
   tags: string[];
-
-  // Base prompt that can be enhanced by variations
-  imagePrompt?: string;
-  baseImagePrompt?: string;
   imageUrl?: string;
-  isActive: boolean;
   mangaProjectId: string;
   createdAt: Date | string;
   updatedAt: Date | string;
-}
-
-export interface LocationVariation {
-  id: string;
-  name: string; // e.g., "Morning Classroom", "Rainy Classroom", "Evening Classroom"
-
-  // Override specific properties
-  timeOfDay?:
-    | "dawn"
-    | "morning"
-    | "noon"
-    | "afternoon"
-    | "evening"
-    | "night"
-    | "any";
-  weather?: "sunny" | "cloudy" | "rainy" | "stormy" | "snowy" | "foggy" | "any";
-  mood?:
-    | "peaceful"
-    | "mysterious"
-    | "energetic"
-    | "romantic"
-    | "tense"
-    | "cheerful"
-    | "somber";
-
-  // Variation-specific lighting
-  lighting?: {
-    type?: "natural" | "artificial" | "mixed";
-    intensity?: "dim" | "moderate" | "bright";
-    color?: string;
-  };
-
-  // Additional or modified props for this variation
-  additionalProps?: string[];
-  modifiedColors?: string[];
-
-  // Specific image prompt modifications
-  promptModifiers?: string[]; // e.g., ["golden hour lighting", "rain drops on windows"]
-  imageUrl?: string;
-
-  // Usage tracking
-  isActive: boolean;
-  usageCount: number;
-  lastUsed?: Date;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 export interface MangaProject {
@@ -390,15 +150,28 @@ export interface Scene {
   title: string;
   description: string;
   sceneContext: {
-    // Required location reference with optional variation
+    // Location reference with override capability
     locationId: string;
-    locationVariationId?: string; // Reference to specific variation
+    locationOverrides?: {
+      timeOfDay?:
+        | "dawn"
+        | "morning"
+        | "noon"
+        | "afternoon"
+        | "evening"
+        | "night";
+      weather?: "sunny" | "cloudy" | "rainy" | "stormy" | "snowy" | "foggy";
+      customPrompt?: string; // Custom AI prompt override
+    };
 
-    // Character outfit assignments
+    // Character outfit assignments with override capability
     characterOutfits: {
       characterId: string;
-      outfitId: string;
-      outfitVariationId?: string; // Reference to specific variation
+      outfitId?: string; // Use template
+      customOutfit?: {
+        description: string;
+        aiPrompt: string;
+      }; // OR define directly
       reason?: string;
     }[];
 
@@ -446,19 +219,32 @@ export interface Panel {
   order: number;
   imageUrl?: string;
   panelContext: {
-    // Location reference
+    // Location reference with override capability
     locationId: string;
-    locationVariationId?: string;
+    locationOverrides?: {
+      timeOfDay?:
+        | "dawn"
+        | "morning"
+        | "noon"
+        | "afternoon"
+        | "evening"
+        | "night";
+      weather?: "sunny" | "cloudy" | "rainy" | "stormy" | "snowy" | "foggy";
+      customPrompt?: string;
+    };
 
     // Primary action/description for this panel
     action?: string;
 
-    // Character poses and positions
+    // Character poses and positions with outfit override capability
     characterPoses: {
       characterId: string;
       characterName: string;
-      outfitId: string;
-      outfitVariationId?: string;
+      outfitId?: string; // Use template
+      customOutfit?: {
+        description: string;
+        aiPrompt: string;
+      }; // OR define directly
       pose: string;
       expression: string;
       position?: string;

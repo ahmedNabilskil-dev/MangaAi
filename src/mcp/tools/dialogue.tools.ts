@@ -2,95 +2,56 @@ import { panelDialogueSchema } from "@/types/schemas";
 import { z } from "zod";
 import { RegisteredTool } from "../tool-registry";
 import { zodSchemaToMcpSchema } from "../utils/schema-converter";
-import { createPanelDialogueHandler } from "./handlers/creation-tools";
-import { deletePanelDialogueHandler } from "./handlers/delete-tools";
-import {
-  getPanelDialogueHandler,
-  listDialoguesForPanelHandler,
-} from "./handlers/fetch-tools";
-import { updatePanelDialogueHandler } from "./handlers/update-tools";
+import { createOrUpdateDialoguesHandler } from "./handlers/batch-tools";
 
 export const dialogueTools: RegisteredTool[] = [
   {
-    name: "createPanelDialogue",
-    description:
-      "Creates dialogue for a panel with speaker, content, and bubble style.",
-    inputSchema: zodSchemaToMcpSchema(
-      panelDialogueSchema
-        .omit({
-          id: true,
-          createdAt: true,
-          updatedAt: true,
-          speaker: true,
-          isAiGenerated: true,
-        })
-        .extend({
-          speakerName: z
-            .string()
-            .optional()
-            .describe("Name of the character speaking (optional)"),
-        })
-    ),
-    handler: createPanelDialogueHandler,
-  },
-  {
-    name: "updatePanelDialogue",
-    description:
-      "Updates existing panel dialogue content, speaker, or bubble style.",
+    name: "createOrUpdateDialogues",
+    description: `Creates or updates one or more natural, character-authentic dialogues for manga panels.
+
+CORE FUNCTIONALITY:
+- Generate authentic dialogue matching character voices and emotions
+- Support batch operations (create multiple dialogues at once)
+- Update existing dialogues by including 'id' field
+- Automatic speech pattern and style integration
+
+INPUT REQUIREMENTS:
+- content, panelId, speakerId, emotion, order (required for new dialogues)
+- style.bubbleType, subtextNote (auto-generated if not provided)
+- All dialogue follows character voice guidelines and natural conversation principles
+
+BATCH EXAMPLES:
+- Create single: dialogues=[{content: "Hello!", panelId: "panel_123", speakerId: "char_456", emotion: "happy", order: 1}]
+- Create multiple: dialogues=[{content: "Hello!", panelId: "panel_123", speakerId: "char_456", emotion: "happy", order: 1}, {content: "Hi there!", panelId: "panel_123", speakerId: "char_789", emotion: "excited", order: 2}]
+- Update existing: dialogues=[{id: "dialogue_456", content: "Updated text"}]
+- Mixed operations: Mix create and update in same call
+
+All dialogue automatically follows character authenticity and natural conversation standards.`,
+
     inputSchema: zodSchemaToMcpSchema(
       z.object({
-        dialogueId: z
-          .string()
-          .describe("Unique identifier of the dialogue to update"),
-        updates: panelDialogueSchema
-          .omit({
-            id: true,
-            createdAt: true,
-            updatedAt: true,
-            panelId: true,
-            speaker: true,
-            isAiGenerated: true,
-          })
-          .partial()
+        dialogues: z
+          .array(
+            panelDialogueSchema
+              .omit({
+                id: true,
+                createdAt: true,
+                updatedAt: true,
+                speaker: true,
+              })
+              .extend({
+                id: z
+                  .string()
+                  .optional()
+                  .describe("Include for updates, omit for new dialogues"),
+              })
+          )
+          .min(1)
           .describe(
-            "Object containing only the dialogue fields you want to modify"
+            "Array of dialogue data - include 'id' to update existing dialogues, omit 'id' to create new ones"
           ),
-        speakerName: z
-          .string()
-          .optional()
-          .describe("Name of the character speaking (optional)"),
       })
     ),
-    handler: updatePanelDialogueHandler,
-  },
-  {
-    name: "deletePanelDialogue",
-    description: "Deletes a dialogue from a panel.",
-    inputSchema: zodSchemaToMcpSchema(
-      z.object({
-        dialogueId: z.string().describe("ID of the dialogue to remove"),
-      })
-    ),
-    handler: deletePanelDialogueHandler,
-  },
-  {
-    name: "getPanelDialogue",
-    description: "Retrieves complete details of a dialogue by ID.",
-    inputSchema: zodSchemaToMcpSchema(
-      z.object({
-        dialogueId: z.string().describe("ID of the dialogue to retrieve"),
-      })
-    ),
-    handler: getPanelDialogueHandler,
-  },
-  {
-    name: "listPanelDialogues",
-    description: "Lists all dialogues in a panel.",
-    inputSchema: zodSchemaToMcpSchema(
-      z.object({
-        panelId: z.string().describe("ID of the panel to list dialogues from"),
-      })
-    ),
-    handler: listDialoguesForPanelHandler,
+    handler: createOrUpdateDialoguesHandler,
   },
 ];

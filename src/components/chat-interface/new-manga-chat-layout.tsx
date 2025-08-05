@@ -3,7 +3,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
-import { useCredits } from "@/hooks/use-credits";
 import { useMcpClient } from "@/hooks/use-mcp-client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -154,12 +153,18 @@ export default function NewMangaChatLayout() {
 
   // Authentication and Credits
   const { user } = useAuth();
-  const {
-    consumeCredits,
-    canAfford,
-    calculateTextGenerationCost,
-    calculateImageGenerationCost,
-  } = useCredits();
+
+  useEffect(() => {
+    setSelectedMcpTools(
+      mcpState.tools?.filter(
+        (tool) =>
+          (tool.name.startsWith("create") ||
+            tool.name.startsWith("get") ||
+            tool.name.startsWith("list")) &&
+          !tool.name.startsWith("createProject")
+      ) || []
+    );
+  }, [mcpState.tools]);
 
   // State
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -483,15 +488,6 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
         if (textareaRef.current) {
           textareaRef.current.focus();
         }
-
-        toast({
-          title: "Prompt Template Loaded",
-          description: `${promptName
-            .replace(/-/g, " ")
-            .replace(/\b\w/g, (l) =>
-              l.toUpperCase()
-            )} template has been loaded into the input field.`,
-        });
       } catch (error) {
         console.error("Failed to load MCP prompt:", error);
         toast({
@@ -518,12 +514,6 @@ Click the **👁️ icons** in the side panels to see detailed views of your pro
   const handleMcpToolsSelect = useCallback(
     (tools: McpTool[]) => {
       setSelectedMcpTools(tools);
-      toast({
-        title: "Tools Enabled",
-        description: `${tools.length} MCP tool${
-          tools.length !== 1 ? "s" : ""
-        } enabled for AI use`,
-      });
     },
     [toast]
   );

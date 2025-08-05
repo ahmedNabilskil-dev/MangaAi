@@ -95,10 +95,10 @@ export async function POST(request: NextRequest) {
       imageData: userMessage.imageData,
     });
 
-    // Get recent conversation context (last 10 messages)
+    // Get recent conversation context (last 15 messages for better context)
     const recentMessages = await dataService.getRecentChatMessages(
       projectId,
-      10
+      15 // Increased from 10 to provide more context for AI decisions
     );
 
     // Prepare AI messages with context
@@ -125,19 +125,15 @@ export async function POST(request: NextRequest) {
       }),
     ];
 
-    // Prepare MCP tools
-    let mcpTools: any[] = [];
-    if (selectedMcpTools.length > 0) {
-      // Get MCP tools from backend
-      const availableTools = await mcpClient.getChatTools();
-      mcpTools = availableTools
-        .filter((tool) => selectedMcpTools.includes(tool.name))
-        .map((tool) => ({
-          name: tool.name,
-          description: tool.description,
-          parameters: tool.inputSchema,
-        }));
-    }
+    // AUTO-ENABLE ALL MCP TOOLS for beginners (they shouldn't need to select tools)
+    const availableTools = await mcpClient.getChatTools();
+    const mcpTools = availableTools
+      .filter((tool) => selectedMcpTools.includes(tool.name))
+      .map((tool) => ({
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.inputSchema,
+      }));
 
     // Always add image generation tool
     const allTools = [
@@ -158,46 +154,217 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get project details for enhanced context
+    // Get COMPREHENSIVE project details for enhanced context
     let projectInfo = "";
+    let fullProjectContext = "";
     try {
       const project = await dataService.getProject(projectId);
       if (project) {
+        // Create rich project summary for AI context
         projectInfo = `
-**Project Title**: ${project.title || "Untitled"}
+**Project Title**: ${project.title || "Untitled Manga"}
 **Description**: ${project.description || "No description available"}
 **Genre**: ${project.genre || "Not specified"}
-**Art Style**: ${project.artStyle || "Not specified"}
-**Status**: ${project.status || "Unknown"}
-**Target Audience**: ${project.targetAudience || "Not specified"}`;
+**Art Style**: ${project.artStyle || "Anime/Manga"}
+**Status**: ${project.status || "In Development"}
+**Target Audience**: ${project.targetAudience || "General"}
+
+### STORY CONTEXT
+${project.concept ? `**Concept**: ${project.concept}` : ""}
+${
+  project.themes && project.themes.length > 0
+    ? `**Themes**: ${project.themes.join(", ")}`
+    : ""
+}
+${
+  project.plotStructure
+    ? `
+**Plot Structure**:
+- Inciting Incident: ${
+        project.plotStructure.incitingIncident || "To be developed"
+      }
+- Plot Twist: ${project.plotStructure.plotTwist || "To be developed"}
+- Climax: ${project.plotStructure.climax || "To be developed"}
+- Resolution: ${project.plotStructure.resolution || "To be developed"}`
+    : ""
+}
+
+### EXISTING PROJECT CONTENT`;
+
+        // Enhanced content overview with more detail
+        const charactersInfo =
+          project.characters && project.characters.length > 0
+            ? project.characters
+                .map((char) => {
+                  const outfitInfo = char.defaultOutfitId
+                    ? ` [Default Outfit: ${char.defaultOutfitId}]`
+                    : "";
+                  const personalityInfo = char.personality
+                    ? ` - ${char.personality.substring(0, 50)}${
+                        char.personality.length > 50 ? "..." : ""
+                      }`
+                    : "";
+                  return `├── ${char.name} (${char.id}) - ${
+                    char.role || "minor"
+                  }${outfitInfo}${personalityInfo}`;
+                })
+                .join("\n")
+            : "└── No characters created yet - Consider creating main characters first";
+
+        const outfitsInfo =
+          project.outfitTemplates && project.outfitTemplates.length > 0
+            ? project.outfitTemplates
+                .map(
+                  (outfit) =>
+                    `├── ${outfit.name} (${outfit.id}) - ${outfit.category}`
+                )
+                .join("\n")
+            : "└── No outfit templates - Characters will need outfits for scenes";
+
+        const locationsInfo =
+          project.locationTemplates && project.locationTemplates.length > 0
+            ? project.locationTemplates
+                .map(
+                  (location) =>
+                    `├── ${location.name} (${location.id}) - ${location.category}`
+                )
+                .join("\n")
+            : "└── No locations created - Stories need settings and backgrounds";
+
+        const chaptersInfo =
+          project.chapters && project.chapters.length > 0
+            ? project.chapters
+                .map((chapter) => {
+                  const sceneCount = chapter.scenes ? chapter.scenes.length : 0;
+                  const totalPanels = chapter.scenes
+                    ? chapter.scenes.reduce(
+                        (acc, scene) =>
+                          acc + (scene.panels ? scene.panels.length : 0),
+                        0
+                      )
+                    : 0;
+                  return `├── Chapter ${chapter.chapterNumber}: "${chapter.title}" (${chapter.id}) - ${sceneCount} scenes, ${totalPanels} panels`;
+                })
+                .join("\n")
+            : "└── No chapters created - Start with Chapter 1 to begin the story";
+
+        fullProjectContext = `
+📚 **Characters**: ${project.characters ? project.characters.length : 0} total
+${charactersInfo}
+
+👕 **Outfit Templates**: ${
+          project.outfitTemplates ? project.outfitTemplates.length : 0
+        } total
+${outfitsInfo}
+
+🏛️ **Location Templates**: ${
+          project.locationTemplates ? project.locationTemplates.length : 0
+        } total
+${locationsInfo}
+
+📖 **Chapters**: ${project.chapters ? project.chapters.length : 0} total
+${chaptersInfo}`;
+
+        // Add project analysis for AI decision making
+        const analysisInfo = `
+
+### PROJECT ANALYSIS FOR AI DECISIONS
+**Current Stage**: ${
+          !project.characters || project.characters.length === 0
+            ? "Character Creation Needed"
+            : !project.locationTemplates ||
+              project.locationTemplates.length === 0
+            ? "Location Setup Needed"
+            : !project.outfitTemplates || project.outfitTemplates.length === 0
+            ? "Outfit Templates Needed"
+            : !project.chapters || project.chapters.length === 0
+            ? "Story Development Ready"
+            : "Content Expansion Phase"
+        }
+
+**Next Logical Steps**:
+${
+  !project.characters || project.characters.length === 0
+    ? "- Create main characters (protagonist, supporting characters)"
+    : ""
+}
+${
+  !project.locationTemplates || project.locationTemplates.length === 0
+    ? "- Design key locations where story takes place"
+    : ""
+}
+${
+  !project.outfitTemplates || project.outfitTemplates.length === 0
+    ? "- Create outfit templates for different characters and situations"
+    : ""
+}
+${
+  !project.chapters || project.chapters.length === 0
+    ? "- Begin Chapter 1 with character introductions"
+    : ""
+}
+${
+  project.chapters && project.chapters.length > 0
+    ? "- Expand existing chapters with more scenes and panels"
+    : ""
+}
+
+**Story Development Opportunities**:
+${
+  project.characters && project.characters.length > 0
+    ? `- Character interactions between ${project.characters
+        .map((c) => c.name)
+        .join(", ")}`
+    : ""
+}
+${
+  project.locationTemplates && project.locationTemplates.length > 0
+    ? `- Utilize created locations: ${project.locationTemplates
+        .map((l) => l.name)
+        .join(", ")}`
+    : ""
+}
+${
+  project.plotStructure
+    ? "- Develop established plot points further"
+    : "- Establish clear story structure"
+}`;
+
+        projectInfo += fullProjectContext + analysisInfo;
       } else {
         projectInfo = `
-**Note**: This appears to be a new project. Project details will be populated as you develop the manga.`;
+**Note**: This appears to be a new project. I'll help you build it from the ground up, starting with characters and basic story elements.
+
+### GETTING STARTED RECOMMENDATIONS
+Since this is a new project, I suggest we begin with:
+1. **Main Characters** - Create your protagonist and key supporting characters
+2. **Core Locations** - Design the primary settings where your story takes place  
+3. **Outfit Templates** - Create clothing options for different characters and situations
+4. **Chapter 1** - Begin the story with character introductions and world-building`;
       }
     } catch (error) {
       console.log("Could not fetch project details:", error);
       projectInfo = `
-**Note**: Working with project ID ${projectId}. Project details will be loaded as available.`;
+**Note**: Working with project ID ${projectId}. I'll help you develop this manga project step by step.`;
     }
 
-    // Create enhanced system prompt with project context
+    // Enhanced system prompt with current project context
     const enhancedSystemPrompt = `${MANGA_AI_SYSTEM_PROMPT}
 
 ## CURRENT PROJECT CONTEXT
 
 **Project ID**: ${projectId}${projectInfo}
 
-You are currently working on this specific manga project. All operations should be performed within this project context. When using MCP tools, always reference this project ID for creating or retrieving project-specific content like characters, scenes, chapters, outfits, and locations.
+You are currently working on this specific manga project. All operations should be performed within this project context, using the established workflow and content creation standards defined above.`;
 
-**Important**: Always include the project ID when calling MCP tools that require it, and ensure all creative work is associated with this specific project.`;
-
+    // Adjust AI parameters for more creative and autonomous generation
     const params = {
       model: "gemini-2.0-flash",
       systemPrompt: enhancedSystemPrompt,
-      temperature: 0.7,
+      temperature: 0.8, // Increased for more creativity
       maxOutputTokens: 8192,
-      topP: 0.8,
-      topK: 40,
+      topP: 0.85, // Slightly increased for more varied responses
+      topK: 50, // Increased for more creative word choices
     };
 
     // Import and use AI adapter directly
@@ -284,7 +451,214 @@ You are currently working on this specific manga project. All operations should 
       }
     }
 
-    // Deduct credits based on actual usage
+    // Enhanced tool call extraction and execution with better error handling
+    const extractAndExecuteTextToolCalls = async (
+      text: string
+    ): Promise<{ cleanedText: string; toolResults: string[] }> => {
+      const toolResults: string[] = [];
+      let cleanedText = text;
+
+      // Pattern 1: Regular expression to match tool_code blocks
+      const toolCodeRegex = /```tool_code\s*\n([\s\S]*?)\n```/g;
+      const codeBlockMatches = [...text.matchAll(toolCodeRegex)];
+
+      // Pattern 2: Direct print(default_api. calls (not in code blocks)
+      const directCallRegex = /print\(default_api\.(\w+)\(([\s\S]*?)\)\)/g;
+      const directMatches = [...text.matchAll(directCallRegex)];
+
+      // Process code block matches first
+      for (const match of codeBlockMatches) {
+        const toolCode = match[1].trim();
+
+        try {
+          // Extract function name and parameters from the tool code
+          const functionCallRegex = /print\(default_api\.(\w+)\(([\s\S]*?)\)\)/;
+          const functionMatch = toolCode.match(functionCallRegex);
+
+          if (functionMatch) {
+            const functionName = functionMatch[1];
+            const parametersString = functionMatch[2];
+
+            const params = await parseToolParameters(parametersString);
+
+            console.log(
+              `🔧 Executing tool call from code block: ${functionName} with params:`,
+              params
+            );
+
+            try {
+              const toolResult = await mcpClient.callTool(functionName, params);
+
+              // Enhanced success feedback for different tool types
+              let successMessage = "";
+              if (functionName.includes("create")) {
+                successMessage = `✅ Created ${functionName
+                  .replace("create", "")
+                  .toLowerCase()}: ${JSON.stringify(toolResult)}`;
+              } else if (functionName.includes("list")) {
+                const count = Array.isArray(toolResult)
+                  ? toolResult.length
+                  : "multiple";
+                successMessage = `📋 Listed ${count} ${functionName
+                  .replace("list", "")
+                  .toLowerCase()}(s)`;
+              } else if (functionName.includes("get")) {
+                successMessage = `📄 Retrieved ${functionName
+                  .replace("get", "")
+                  .toLowerCase()} details`;
+              } else {
+                successMessage = `✅ ${functionName} executed successfully`;
+              }
+
+              toolResults.push(successMessage);
+              console.log(
+                `✅ Tool ${functionName} executed successfully:`,
+                toolResult
+              );
+            } catch (error: any) {
+              const errorMsg = `❌ Tool ${functionName} failed: ${error.message}`;
+              toolResults.push(errorMsg);
+              console.error("Tool execution error:", error);
+            }
+          }
+        } catch (error: any) {
+          console.error("Error parsing tool code:", error);
+          toolResults.push(`❌ Failed to parse tool call: ${error.message}`);
+        }
+
+        // Remove the tool_code block from the message
+        cleanedText = cleanedText.replace(match[0], "");
+      }
+
+      // Process direct print() calls (same logic as before)
+      for (const match of directMatches) {
+        // Skip if this match was already processed in a code block
+        let isInCodeBlock = false;
+        for (const codeMatch of codeBlockMatches) {
+          if (codeMatch[0].includes(match[0])) {
+            isInCodeBlock = true;
+            break;
+          }
+        }
+        if (isInCodeBlock) continue;
+
+        try {
+          const functionName = match[1];
+          const parametersString = match[2];
+
+          const params = await parseToolParameters(parametersString);
+
+          console.log(
+            `🔧 Executing direct tool call: ${functionName} with params:`,
+            params
+          );
+
+          try {
+            const toolResult = await mcpClient.callTool(functionName, params);
+
+            // Enhanced success feedback
+            let successMessage = "";
+            if (functionName.includes("create")) {
+              successMessage = `✅ Created ${functionName
+                .replace("create", "")
+                .toLowerCase()}`;
+            } else if (functionName.includes("list")) {
+              const count = Array.isArray(toolResult)
+                ? toolResult.length
+                : "multiple";
+              successMessage = `📋 Found ${count} ${functionName
+                .replace("list", "")
+                .toLowerCase()}(s)`;
+            } else {
+              successMessage = `✅ ${functionName} completed`;
+            }
+
+            toolResults.push(successMessage);
+            console.log(
+              `✅ Tool ${functionName} executed successfully:`,
+              toolResult
+            );
+          } catch (error: any) {
+            const errorMsg = `❌ Tool ${functionName} failed: ${error.message}`;
+            toolResults.push(errorMsg);
+            console.error("Tool execution error:", error);
+          }
+        } catch (error: any) {
+          console.error("Error parsing direct tool call:", error);
+          toolResults.push(`❌ Failed to parse tool call: ${error.message}`);
+        }
+
+        // Remove the direct print() call from the message
+        cleanedText = cleanedText.replace(match[0], "");
+      }
+
+      // Clean up extra whitespace
+      cleanedText = cleanedText.replace(/\n\s*\n\s*\n/g, "\n\n").trim();
+
+      return { cleanedText, toolResults };
+    };
+
+    // Helper function to parse tool parameters (unchanged)
+    const parseToolParameters = async (
+      parametersString: string
+    ): Promise<Record<string, any>> => {
+      const params: Record<string, any> = {};
+
+      // Handle different parameter formats
+      if (parametersString.trim()) {
+        // Split by comma but respect quoted strings and arrays
+        const paramPairs = parametersString.split(
+          /,(?=(?:[^"]*"[^"]*")*[^"]*$)/
+        );
+
+        for (const pair of paramPairs) {
+          const [key, ...valueParts] = pair.split("=");
+          if (key && valueParts.length > 0) {
+            const cleanKey = key.trim();
+            let value = valueParts.join("=").trim();
+
+            // Remove surrounding quotes
+            if (
+              (value.startsWith('"') && value.endsWith('"')) ||
+              (value.startsWith("'") && value.endsWith("'"))
+            ) {
+              value = value.slice(1, -1);
+            }
+
+            // Handle arrays (basic JSON parsing)
+            if (value.startsWith("[") && value.endsWith("]")) {
+              try {
+                value = JSON.parse(value);
+              } catch (e) {
+                console.warn("Failed to parse array parameter:", value);
+              }
+            }
+
+            params[cleanKey] = value;
+          }
+        }
+      }
+
+      return params;
+    };
+
+    // Process text-based tool calls if any
+    if (
+      finalMessage.includes("```tool_code") ||
+      finalMessage.includes("print(default_api.")
+    ) {
+      const { cleanedText, toolResults } = await extractAndExecuteTextToolCalls(
+        finalMessage
+      );
+      finalMessage = cleanedText;
+
+      // Add tool execution results to the message with better formatting
+      if (toolResults.length > 0) {
+        finalMessage += "\n\n**Actions Completed:**\n" + toolResults.join("\n");
+      }
+    }
+
+    // Deduct credits based on actual usage (unchanged)
     let totalCreditsUsed = 0;
     const creditTransactions: Array<{
       operation: "textGeneration" | "imageGeneration";
@@ -333,20 +707,18 @@ You are currently working on this specific manga project. All operations should 
         type: "generation",
         amount: -totalCreditsUsed,
         operation: "text_generation",
-        description: `Chat AI usage: ${creditTransactions
+        description: `AI Manga Creation: ${creditTransactions
           .map((t) => t.description)
           .join(", ")}`,
       });
     }
 
-    // Add credit usage summary to response (moved to avoid duplicates)
-    // Credit summary will be added separately if needed
-
     // Save AI response to database
     const aiMessage: ChatMessage = {
       id: "", // Will be auto-generated by database
       role: "assistant",
-      content: finalMessage || "I processed your request.",
+      content:
+        finalMessage || "I've processed your request and created the content.",
       timestamp: new Date().toISOString(),
       type: generatedImageUrl ? "image" : "text",
       imageUrl: generatedImageUrl,
