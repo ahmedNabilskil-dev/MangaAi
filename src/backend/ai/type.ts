@@ -45,7 +45,9 @@ export interface ChatAdapter {
     messages: Message[],
     tools: Tool[],
     params: TextGenerationParams,
-    toolCall: boolean
+    toolCall?: boolean,
+    depth?: number,
+    maxDepth?: number
   ): Promise<Message[]>;
 
   generateImage({

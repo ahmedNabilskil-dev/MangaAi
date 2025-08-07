@@ -21,9 +21,10 @@ export class GeminiAdapter implements ChatAdapter {
     tools: Tool[] = [],
     params: TextGenerationParams,
     callTool?: boolean,
-    depth = 0
+    depth = 0,
+    maxDepth = 3
   ): Promise<Message[]> {
-    if (depth > 10) throw new Error("Too many recursive tool calls");
+    if (depth > maxDepth) throw new Error("Too many recursive tool calls");
 
     const geminiTools: ToolListUnion = tools.length
       ? [
@@ -76,18 +77,45 @@ export class GeminiAdapter implements ChatAdapter {
       },
     };
 
-    if (params.context?.outputSchema && !callTool) {
-      requestOptions.config!.responseMimeType = "application/json";
-      requestOptions.config!.responseSchema = params.context.outputSchema;
+    // Handle structured output based on scenarios:
+    // 1. No tools: AI outputs structured output directly if schema exists
+    // 2. Tools present:
+    //    a. callTool=true: AI calls tools first, then on second call (when tools=[]) returns structured output
+    //    b. callTool=false or undefined: Pass same config including tools, allowing recursive tool calls
+
+    const hasTools = tools.length > 0;
+    const hasOutputSchema = params.context?.outputSchema;
+
+    // Scenario 1: No tools
+    if (!hasTools) {
+      if (hasOutputSchema) {
+        // No tools + output schema = structured output
+        requestOptions.config!.responseMimeType = "application/json";
+        requestOptions.config!.responseSchema = params.context!.outputSchema;
+      }
+      // If callTool=true but no tools, just ignore callTool (no tools to call)
     }
 
-    if (callTool) {
-      // When calling a tool, the mode should be ANY
-      requestOptions.config!.toolConfig = {
-        functionCallingConfig: {
-          mode: FunctionCallingConfigMode.ANY,
-        },
-      };
+    // Scenario 2: Tools present
+    if (hasTools) {
+      if (callTool === true) {
+        // Scenario 2a: Force tool calling, no structured output in this call
+        requestOptions.config!.toolConfig = {
+          functionCallingConfig: {
+            mode: FunctionCallingConfigMode.ANY,
+          },
+        };
+        // Don't set structured output here - will be set in recursive call
+      } else {
+        // Scenario 2b: callTool=false or undefined
+        // Allow tools to be available but don't force them
+        if (hasOutputSchema) {
+          // Tools available + structured output
+          requestOptions.config!.responseMimeType = "application/json";
+          requestOptions.config!.responseSchema = params.context!.outputSchema;
+        }
+        // If no output schema, tools are still available for optional use
+      }
     }
 
     let result: GenerateContentResponse;
@@ -173,7 +201,18 @@ export class GeminiAdapter implements ChatAdapter {
       }
 
       // Continue the conversation with all tool results
-      return await this.send(updatedMessages, [], params, false, depth + 1);
+      // If callTool was true, next call should have no tools to allow structured output
+      // If callTool was false/undefined, keep the same tools configuration
+      const nextTools = callTool ? [] : tools;
+      const nextCallTool = callTool ? false : callTool;
+      return await this.send(
+        updatedMessages,
+        nextTools,
+        params,
+        nextCallTool,
+        depth + 1,
+        maxDepth
+      );
     }
 
     // No tool call — normal response

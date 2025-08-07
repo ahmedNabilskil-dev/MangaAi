@@ -96,7 +96,7 @@ const HomePage = () => {
           projectId: tempProjectId,
           message: `Create a manga project based on this idea: ${mangaIdea}`,
           userId: user?.id || "anonymous",
-          selectedMcpTools: ["imageGeneration"], // Use image generation tool
+          selectedMcpTools: ["createOrUpdateProject"], // Use create or update project tool
         }),
       });
 
