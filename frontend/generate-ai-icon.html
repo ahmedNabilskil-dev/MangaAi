@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AI Magic Icon Generator</title>
+  </head>
+  <body>
+    <canvas id="canvas" width="128" height="128"></canvas>
+    <script>
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+
+      // Set background to transparent
+      ctx.clearRect(0, 0, 128, 128);
+
+      // Scale everything by 4 for higher resolution
+      const scale = 4;
+
+      // Magic wand
+      ctx.strokeStyle = "#8B5CF6";
+      ctx.lineWidth = 2 * scale;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(8 * scale, 24 * scale);
+      ctx.lineTo(24 * scale, 8 * scale);
+      ctx.stroke();
+
+      // Wand tip (star)
+      ctx.fillStyle = "#F59E0B";
+      ctx.beginPath();
+      ctx.moveTo(23 * scale, 9 * scale);
+      ctx.lineTo(25 * scale, 7 * scale);
+      ctx.lineTo(27 * scale, 9 * scale);
+      ctx.lineTo(25 * scale, 11 * scale);
+      ctx.closePath();
+      ctx.fill();
+
+      // Magic sparkles
+      ctx.fillStyle = "#8B5CF6";
+      ctx.beginPath();
+      ctx.arc(12 * scale, 12 * scale, 1 * scale, 0, 2 * Math.PI);
+      ctx.fill();
+
+      ctx.fillStyle = "#EC4899";
+      ctx.beginPath();
+      ctx.arc(18 * scale, 18 * scale, 1.5 * scale, 0, 2 * Math.PI);
+      ctx.fill();
+
+      ctx.fillStyle = "#10B981";
+      ctx.beginPath();
+      ctx.arc(10 * scale, 20 * scale, 1 * scale, 0, 2 * Math.PI);
+      ctx.fill();
+
+      ctx.fillStyle = "#F59E0B";
+      ctx.beginPath();
+      ctx.arc(20 * scale, 12 * scale, 1 * scale, 0, 2 * Math.PI);
+      ctx.fill();
+
+      // Large sparkle
+      ctx.fillStyle = "#EC4899";
+      ctx.beginPath();
+      ctx.moveTo(6 * scale, 6 * scale);
+      ctx.lineTo(8 * scale, 4 * scale);
+      ctx.lineTo(10 * scale, 6 * scale);
+      ctx.lineTo(8 * scale, 8 * scale);
+      ctx.closePath();
+      ctx.fill();
+
+      // Small sparkles
+      ctx.fillStyle = "#10B981";
+      ctx.beginPath();
+      ctx.moveTo(26 * scale, 20 * scale);
+      ctx.lineTo(27 * scale, 19 * scale);
+      ctx.lineTo(28 * scale, 20 * scale);
+      ctx.lineTo(27 * scale, 21 * scale);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = "#8B5CF6";
+      ctx.beginPath();
+      ctx.moveTo(4 * scale, 16 * scale);
+      ctx.lineTo(5 * scale, 15 * scale);
+      ctx.lineTo(6 * scale, 16 * scale);
+      ctx.lineTo(5 * scale, 17 * scale);
+      ctx.closePath();
+      ctx.fill();
+
+      // AI circuit pattern
+      ctx.strokeStyle = "#8B5CF6";
+      ctx.lineWidth = 1 * scale;
+      ctx.beginPath();
+      ctx.arc(16 * scale, 16 * scale, 2 * scale, 0, 2 * Math.PI);
+      ctx.stroke();
+
+      ctx.fillStyle = "#8B5CF6";
+      ctx.beginPath();
+      ctx.arc(16 * scale, 16 * scale, 0.5 * scale, 0, 2 * Math.PI);
+      ctx.fill();
+
+      // Download the image
+      setTimeout(() => {
+        const link = document.createElement("a");
+        link.download = "ai-magic-icon.png";
+        link.href = canvas.toDataURL();
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }, 100);
+    </script>
+  </body>
+</html>
