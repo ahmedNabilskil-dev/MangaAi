@@ -10,7 +10,7 @@ interface CommentItemProps {
 
 const CommentItem: React.FC<CommentItemProps> = ({ comment }) => {
   return (
-    <div className="bg-muted rounded-lg p-3 flex flex-col gap-2 border border-border">
+    <div className="group bg-white rounded-xl p-4 hover:bg-gray-50/50 transition-all duration-300 border border-gray-100 hover:border-gray-200 hover:shadow-sm">
       <CommentHeader comment={comment} />
       <CommentContent comment={comment} />
       <CommentActions comment={comment} />

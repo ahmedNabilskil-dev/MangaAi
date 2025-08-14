@@ -11,14 +11,12 @@ interface PostItemProps {
 
 const PostItem: React.FC<PostItemProps> = ({ post }) => {
   return (
-    <div className="bg-card rounded-xl shadow p-4 flex flex-col gap-3 border border-border">
+    <article className="group bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-lg hover:border-gray-300 transition-all duration-300 overflow-hidden">
       <PostHeader post={post} />
       <PostContent post={post} />
-      {post.images && post.images.length > 0 && (
-        <PostImageGallery images={post.images} />
-      )}
+      <PostImageGallery images={post.images || []} />
       <PostActions post={post} />
-    </div>
+    </article>
   );
 };
 

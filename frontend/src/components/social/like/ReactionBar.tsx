@@ -1,12 +1,49 @@
+import { Angry, Frown, Heart, Smile, ThumbsUp, Zap } from "lucide-react";
 import React from "react";
 
 const reactions = [
-  { type: "like", icon: "thumb_up", color: "text-blue-500" },
-  { type: "love", icon: "favorite", color: "text-pink-500" },
-  { type: "haha", icon: "sentiment_very_satisfied", color: "text-yellow-500" },
-  { type: "wow", icon: "emoji_objects", color: "text-purple-500" },
-  { type: "sad", icon: "sentiment_dissatisfied", color: "text-gray-500" },
-  { type: "angry", icon: "sentiment_very_dissatisfied", color: "text-red-500" },
+  {
+    type: "like",
+    icon: ThumbsUp,
+    color: "text-blue-500",
+    bg: "bg-blue-50",
+    hoverBg: "hover:bg-blue-100",
+  },
+  {
+    type: "love",
+    icon: Heart,
+    color: "text-red-500",
+    bg: "bg-red-50",
+    hoverBg: "hover:bg-red-100",
+  },
+  {
+    type: "haha",
+    icon: Smile,
+    color: "text-yellow-500",
+    bg: "bg-yellow-50",
+    hoverBg: "hover:bg-yellow-100",
+  },
+  {
+    type: "wow",
+    icon: Zap,
+    color: "text-purple-500",
+    bg: "bg-purple-50",
+    hoverBg: "hover:bg-purple-100",
+  },
+  {
+    type: "sad",
+    icon: Frown,
+    color: "text-gray-500",
+    bg: "bg-gray-50",
+    hoverBg: "hover:bg-gray-100",
+  },
+  {
+    type: "angry",
+    icon: Angry,
+    color: "text-red-600",
+    bg: "bg-red-50",
+    hoverBg: "hover:bg-red-100",
+  },
 ];
 
 interface ReactionBarProps {
@@ -21,19 +58,27 @@ const ReactionBar: React.FC<ReactionBarProps> = ({
   onReact,
 }) => {
   return (
-    <div className="flex gap-2">
-      {reactions.map((r) => (
-        <button
-          key={r.type}
-          className={`flex items-center gap-1 px-2 py-1 rounded transition text-xs ${
-            selected === r.type ? r.color : "text-muted-foreground"
-          }`}
-          onClick={() => onReact(r.type)}
-        >
-          <span className="material-symbols-rounded">{r.icon}</span>
-          <span>{counts[r.type] || 0}</span>
-        </button>
-      ))}
+    <div className="flex flex-wrap gap-2 p-4 bg-gradient-to-r from-gray-50 to-slate-50 rounded-xl border border-gray-200">
+      {reactions.map((reaction) => {
+        const Icon = reaction.icon;
+        const count = counts[reaction.type] || 0;
+        const isSelected = selected === reaction.type;
+
+        return (
+          <button
+            key={reaction.type}
+            onClick={() => onReact(reaction.type)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-full transition-all duration-200 text-sm font-medium border ${
+              isSelected
+                ? `${reaction.color} ${reaction.bg} border-current shadow-md scale-105`
+                : `text-gray-600 bg-white border-gray-200 hover:text-gray-800 ${reaction.hoverBg} hover:border-gray-300`
+            }`}
+          >
+            <Icon className="w-4 h-4" />
+            <span className="font-bold">{count}</span>
+          </button>
+        );
+      })}
     </div>
   );
 };

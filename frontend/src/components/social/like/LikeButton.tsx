@@ -1,3 +1,4 @@
+import { Heart } from "lucide-react";
 import React from "react";
 
 interface LikeButtonProps {
@@ -15,16 +16,20 @@ const LikeButton: React.FC<LikeButtonProps> = ({
 }) => {
   return (
     <button
-      className={`flex items-center gap-1 px-2 py-1 rounded transition text-sm ${
-        liked ? "text-primary" : "text-muted-foreground"
-      } ${disabled ? "opacity-60 cursor-not-allowed" : "hover:bg-accent"}`}
       onClick={onClick}
       disabled={disabled}
-      aria-pressed={liked}
-      aria-label={liked ? "Unlike" : "Like"}
+      className={`group flex items-center gap-2 px-4 py-2 rounded-full transition-all duration-300 font-semibold text-sm border ${
+        liked
+          ? "bg-gradient-to-r from-red-50 to-pink-50 text-red-600 border-red-200 hover:from-red-100 hover:to-pink-100 shadow-md"
+          : "bg-white text-gray-600 border-gray-200 hover:bg-red-50 hover:text-red-500 hover:border-red-200"
+      } ${disabled ? "opacity-50 cursor-not-allowed" : "hover:shadow-lg"}`}
     >
-      <span className="material-symbols-rounded">thumb_up</span>
-      <span>{count}</span>
+      <Heart
+        className={`w-4 h-4 transition-all duration-300 ${
+          liked ? "fill-current scale-110" : "group-hover:scale-110"
+        }`}
+      />
+      <span className="font-bold">{count}</span>
     </button>
   );
 };

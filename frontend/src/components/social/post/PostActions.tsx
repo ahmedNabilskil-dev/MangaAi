@@ -2,9 +2,21 @@
 import { useLike } from "@/hooks/useLike";
 import { usePostActions } from "@/hooks/usePostActions";
 import { Post } from "@/lib/api/social/posts";
+import {
+  Bookmark,
+  Edit3,
+  EyeOff,
+  Flag,
+  Heart,
+  MessageCircle,
+  MoreVertical,
+  Share2,
+  Shield,
+  Trash2,
+} from "lucide-react";
 import React, { useState } from "react";
-import LikeButton from "../like/LikeButton";
-// You should replace these with your actual auth context/store
+
+// Replace with your actual auth context/store
 const fakeUserId = "demo-user-id";
 const fakeToken = "demo-token";
 
@@ -27,247 +39,290 @@ const PostActions: React.FC<PostActionsProps> = ({
   );
   const { remove, update, report, hide, updateVisibility, block } =
     usePostActions(token);
-  const [showEdit, setShowEdit] = useState(false);
+
+  // UI State
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [editContent, setEditContent] = useState(post.content);
   const [editVisibility, setEditVisibility] = useState(post.visibility);
   const [reportReason, setReportReason] = useState("");
-  const [showReport, setShowReport] = useState(false);
-  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
-  const [showConfirmHide, setShowConfirmHide] = useState(false);
-  const [showConfirmBlock, setShowConfirmBlock] = useState(false);
 
   const likeCount = likes.length;
   const liked = !!userLike;
 
-  return (
-    <div className="flex flex-wrap gap-3 pt-2 border-t border-border mt-2 items-center">
-      <LikeButton
-        liked={liked}
-        count={likeCount}
-        onClick={() => {
-          if (liked) {
-            unlike("like");
-          } else {
-            like("like");
-          }
-        }}
-        disabled={likeLoading || unlikeLoading}
-      />
-      <button className="flex items-center gap-1 text-muted-foreground hover:text-primary transition">
-        <span className="material-symbols-rounded">chat_bubble</span>
-        <span>Comment</span>
-      </button>
-      <button className="flex items-center gap-1 text-muted-foreground hover:text-primary transition">
-        <span className="material-symbols-rounded">share</span>
-        <span>Share</span>
-      </button>
-      {/* Edit */}
-      <button
-        className="flex items-center gap-1 text-muted-foreground hover:text-primary transition"
-        onClick={() => setShowEdit((v) => !v)}
-      >
-        <span className="material-symbols-rounded">edit</span>
-        <span>Edit</span>
-      </button>
-      {/* Delete */}
-      <button
-        className="flex items-center gap-1 text-destructive hover:text-destructive-foreground transition"
-        onClick={() => setShowConfirmDelete(true)}
-        disabled={remove.isPending}
-      >
-        <span className="material-symbols-rounded">delete</span>
-        <span>{remove.isPending ? "..." : "Delete"}</span>
-      </button>
-      {/* Report */}
-      <button
-        className="flex items-center gap-1 text-warning hover:text-warning-foreground transition"
-        onClick={() => setShowReport(true)}
-        disabled={report.isPending}
-      >
-        <span className="material-symbols-rounded">flag</span>
-        <span>{report.isPending ? "..." : "Report"}</span>
-      </button>
-      {/* Hide */}
-      <button
-        className="flex items-center gap-1 text-muted-foreground hover:text-primary transition"
-        onClick={() => setShowConfirmHide(true)}
-        disabled={hide.isPending}
-      >
-        <span className="material-symbols-rounded">visibility_off</span>
-        <span>{hide.isPending ? "..." : "Hide"}</span>
-      </button>
-      {/* Visibility */}
-      <select
-        className="rounded border px-2 py-1 text-xs"
-        value={editVisibility}
-        onChange={(e) => {
-          setEditVisibility(e.target.value as "public" | "private" | "friends");
-          updateVisibility.mutate({
-            postId: post._id,
-            visibility: e.target.value as "public" | "private" | "friends",
-          });
-        }}
-        disabled={updateVisibility.isPending}
-      >
-        <option value="public">Public</option>
-        <option value="private">Private</option>
-        <option value="friends">Friends</option>
-      </select>
-      {/* Block */}
-      <button
-        className="flex items-center gap-1 text-muted-foreground hover:text-primary transition"
-        onClick={() => setShowConfirmBlock(true)}
-        disabled={block.isPending}
-      >
-        <span className="material-symbols-rounded">block</span>
-        <span>{block.isPending ? "..." : "Block User"}</span>
-      </button>
+  const handleLike = () => {
+    if (liked) {
+      unlike("like");
+    } else {
+      like("like");
+    }
+  };
 
-      {/* Modals/Dialogs */}
-      {showEdit && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-card p-6 rounded shadow-lg w-full max-w-md flex flex-col gap-3">
-            <h3 className="font-semibold text-lg mb-2">Edit Post</h3>
+  return (
+    <>
+      <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50">
+        <div className="flex items-center justify-between">
+          {/* Main Actions */}
+          <div className="flex items-center gap-2">
+            {/* Like Button */}
+            <button
+              onClick={handleLike}
+              disabled={likeLoading || unlikeLoading}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all duration-200 font-medium text-sm ${
+                liked
+                  ? "bg-red-50 text-red-600 hover:bg-red-100"
+                  : "bg-white hover:bg-gray-50 text-gray-600 hover:text-red-500 border border-gray-200"
+              }`}
+            >
+              <Heart
+                className={`w-4 h-4 transition-all duration-200 ${
+                  liked ? "fill-current" : ""
+                }`}
+              />
+              <span>{likeCount}</span>
+            </button>
+
+            {/* Comment Button */}
+            <button className="flex items-center gap-2 px-4 py-2 rounded-full bg-white hover:bg-blue-50 text-gray-600 hover:text-blue-600 border border-gray-200 transition-all duration-200 font-medium text-sm">
+              <MessageCircle className="w-4 h-4" />
+              <span>Comment</span>
+            </button>
+
+            {/* Share Button */}
+            <button className="flex items-center gap-2 px-4 py-2 rounded-full bg-white hover:bg-green-50 text-gray-600 hover:text-green-600 border border-gray-200 transition-all duration-200 font-medium text-sm">
+              <Share2 className="w-4 h-4" />
+              <span>Share</span>
+            </button>
+          </div>
+
+          {/* More Actions */}
+          <div className="relative">
+            <button
+              onClick={() => setShowDropdown(!showDropdown)}
+              className="p-2 rounded-full hover:bg-gray-100 transition-colors duration-200"
+            >
+              <MoreVertical className="w-5 h-5 text-gray-400" />
+            </button>
+
+            {showDropdown && (
+              <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-10">
+                <ActionMenuItem
+                  icon={<Bookmark className="w-4 h-4" />}
+                  text="Save Post"
+                  onClick={() => setShowDropdown(false)}
+                />
+                <ActionMenuItem
+                  icon={<Edit3 className="w-4 h-4" />}
+                  text="Edit Post"
+                  onClick={() => {
+                    setShowEditModal(true);
+                    setShowDropdown(false);
+                  }}
+                />
+                <ActionMenuItem
+                  icon={<Flag className="w-4 h-4" />}
+                  text="Report Post"
+                  onClick={() => {
+                    setShowReportModal(true);
+                    setShowDropdown(false);
+                  }}
+                />
+                <ActionMenuItem
+                  icon={<EyeOff className="w-4 h-4" />}
+                  text="Hide Post"
+                  onClick={() => {
+                    hide.mutate(post._id);
+                    setShowDropdown(false);
+                  }}
+                  disabled={hide.isPending}
+                />
+                <ActionMenuItem
+                  icon={<Shield className="w-4 h-4" />}
+                  text="Block User"
+                  onClick={() => {
+                    block.mutate(post.userId);
+                    setShowDropdown(false);
+                  }}
+                  disabled={block.isPending}
+                />
+                <div className="border-t border-gray-100 my-1" />
+                <ActionMenuItem
+                  icon={<Trash2 className="w-4 h-4" />}
+                  text="Delete Post"
+                  onClick={() => {
+                    setShowDeleteModal(true);
+                    setShowDropdown(false);
+                  }}
+                  destructive
+                  disabled={remove.isPending}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Edit Modal */}
+      {showEditModal && (
+        <Modal onClose={() => setShowEditModal(false)}>
+          <div className="p-6">
+            <h3 className="text-xl font-semibold text-gray-900 mb-4">
+              Edit Post
+            </h3>
             <textarea
-              className="w-full border rounded p-2"
               value={editContent}
               onChange={(e) => setEditContent(e.target.value)}
-              rows={4}
+              className="w-full h-32 p-3 border border-gray-200 rounded-xl resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="What's on your mind?"
             />
-            <div className="flex gap-2 justify-end">
-              <button
-                className="px-3 py-1 rounded bg-muted"
-                onClick={() => setShowEdit(false)}
+            <div className="flex items-center justify-between mt-4">
+              <select
+                value={editVisibility}
+                onChange={(e) =>
+                  setEditVisibility(
+                    e.target.value as "public" | "private" | "friends"
+                  )
+                }
+                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                Cancel
-              </button>
-              <button
-                className="px-3 py-1 rounded bg-primary text-primary-foreground"
-                onClick={() => {
-                  update.mutate({
-                    postId: post._id,
-                    data: { content: editContent, visibility: editVisibility },
-                  });
-                  setShowEdit(false);
-                }}
-                disabled={update.isPending}
-              >
-                {update.isPending ? "Saving..." : "Save"}
-              </button>
+                <option value="public">Public</option>
+                <option value="friends">Friends</option>
+                <option value="private">Private</option>
+              </select>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    update.mutate({
+                      postId: post._id,
+                      data: {
+                        content: editContent,
+                        visibility: editVisibility,
+                      },
+                    });
+                    setShowEditModal(false);
+                  }}
+                  disabled={update.isPending}
+                  className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50"
+                >
+                  {update.isPending ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
-      {showReport && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-card p-6 rounded shadow-lg w-full max-w-md flex flex-col gap-3">
-            <h3 className="font-semibold text-lg mb-2">Report Post</h3>
-            <input
-              className="w-full border rounded p-2"
-              placeholder="Reason"
+
+      {/* Report Modal */}
+      {showReportModal && (
+        <Modal onClose={() => setShowReportModal(false)}>
+          <div className="p-6">
+            <h3 className="text-xl font-semibold text-gray-900 mb-4">
+              Report Post
+            </h3>
+            <p className="text-gray-600 mb-4">
+              Help us understand what's wrong with this post.
+            </p>
+            <textarea
               value={reportReason}
               onChange={(e) => setReportReason(e.target.value)}
+              className="w-full h-24 p-3 border border-gray-200 rounded-xl resize-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              placeholder="Describe the issue..."
             />
-            <div className="flex gap-2 justify-end">
+            <div className="flex justify-end gap-3 mt-4">
               <button
-                className="px-3 py-1 rounded bg-muted"
-                onClick={() => setShowReport(false)}
+                onClick={() => setShowReportModal(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium"
               >
                 Cancel
               </button>
               <button
-                className="px-3 py-1 rounded bg-warning text-warning-foreground"
                 onClick={() => {
                   report.mutate({ postId: post._id, reason: reportReason });
-                  setShowReport(false);
+                  setShowReportModal(false);
                 }}
-                disabled={report.isPending || !reportReason}
+                disabled={report.isPending || !reportReason.trim()}
+                className="px-6 py-2 bg-gradient-to-r from-red-600 to-pink-600 text-white rounded-lg font-medium hover:from-red-700 hover:to-pink-700 disabled:opacity-50"
               >
-                {report.isPending ? "Reporting..." : "Report"}
+                {report.isPending ? "Reporting..." : "Submit Report"}
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
-      {showConfirmDelete && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-card p-6 rounded shadow-lg w-full max-w-sm flex flex-col gap-3">
-            <h3 className="font-semibold text-lg mb-2">Delete Post?</h3>
-            <div className="flex gap-2 justify-end">
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <Modal onClose={() => setShowDeleteModal(false)}>
+          <div className="p-6 text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash2 className="w-8 h-8 text-red-600" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              Delete Post?
+            </h3>
+            <p className="text-gray-600 mb-6">
+              This action cannot be undone. Your post will be permanently
+              deleted.
+            </p>
+            <div className="flex justify-center gap-3">
               <button
-                className="px-3 py-1 rounded bg-muted"
-                onClick={() => setShowConfirmDelete(false)}
+                onClick={() => setShowDeleteModal(false)}
+                className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200"
               >
                 Cancel
               </button>
               <button
-                className="px-3 py-1 rounded bg-destructive text-destructive-foreground"
                 onClick={() => {
                   remove.mutate(post._id);
-                  setShowConfirmDelete(false);
+                  setShowDeleteModal(false);
                 }}
                 disabled={remove.isPending}
+                className="px-6 py-2 bg-gradient-to-r from-red-600 to-pink-600 text-white rounded-lg font-medium hover:from-red-700 hover:to-pink-700 disabled:opacity-50"
               >
-                {remove.isPending ? "Deleting..." : "Delete"}
+                {remove.isPending ? "Deleting..." : "Delete Post"}
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
-      {showConfirmHide && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-card p-6 rounded shadow-lg w-full max-w-sm flex flex-col gap-3">
-            <h3 className="font-semibold text-lg mb-2">Hide Post?</h3>
-            <div className="flex gap-2 justify-end">
-              <button
-                className="px-3 py-1 rounded bg-muted"
-                onClick={() => setShowConfirmHide(false)}
-              >
-                Cancel
-              </button>
-              <button
-                className="px-3 py-1 rounded bg-primary text-primary-foreground"
-                onClick={() => {
-                  hide.mutate(post._id);
-                  setShowConfirmHide(false);
-                }}
-                disabled={hide.isPending}
-              >
-                {hide.isPending ? "Hiding..." : "Hide"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {showConfirmBlock && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-card p-6 rounded shadow-lg w-full max-w-sm flex flex-col gap-3">
-            <h3 className="font-semibold text-lg mb-2">
-              Block All Posts from User?
-            </h3>
-            <div className="flex gap-2 justify-end">
-              <button
-                className="px-3 py-1 rounded bg-muted"
-                onClick={() => setShowConfirmBlock(false)}
-              >
-                Cancel
-              </button>
-              <button
-                className="px-3 py-1 rounded bg-primary text-primary-foreground"
-                onClick={() => {
-                  block.mutate(post.userId);
-                  setShowConfirmBlock(false);
-                }}
-                disabled={block.isPending}
-              >
-                {block.isPending ? "Blocking..." : "Block"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+    </>
   );
 };
+
+// Helper Components
+const ActionMenuItem = ({
+  icon,
+  text,
+  onClick,
+  destructive = false,
+  disabled = false,
+}) => (
+  <button
+    onClick={onClick}
+    disabled={disabled}
+    className={`w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed ${
+      destructive ? "text-red-600 hover:bg-red-50" : "text-gray-700"
+    }`}
+  >
+    {icon}
+    <span>{text}</span>
+  </button>
+);
+
+const Modal = ({ children, onClose }) => (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+      {children}
+    </div>
+  </div>
+);
 
 export default PostActions;
