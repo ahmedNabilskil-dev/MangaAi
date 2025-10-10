@@ -333,8 +333,8 @@ const LandingPage: React.FC = () => {
     const initialize = async () => {
       try {
         const paddle = await initializePaddle({
-          environment: "sandbox",
-          token: "test_15203fea84a753f6514b479a062",
+          environment: "production",
+          token: "live_7ba0f58524641e5d2bcf16edb49",
         });
         setPaddleInstance(paddle);
       } catch (error) {
