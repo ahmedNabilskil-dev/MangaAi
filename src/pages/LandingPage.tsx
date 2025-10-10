@@ -121,10 +121,9 @@ const translations = {
       lifetime: "Lifetime",
       save: "Save 40%",
       bestDeal: "Best Value",
-      guarantee: "30-day money-back guarantee",
+      guarantee: "7 -day Free Trial", // UPDATED LINE
       cancel: "Cancel anytime",
       noFees: "No hidden fees",
-      trial: "7-day free trial", // ADD THIS LINE
       monthlyLicense: "Monthly License",
       monthlyDesc: "Flexible month-to-month access",
       yearlyLicense: "Yearly License",
@@ -248,7 +247,7 @@ const translations = {
       lifetime: "مدى الحياة",
       save: "وفر 40%",
       bestDeal: "أفضل قيمة",
-      guarantee: "ضمان استرداد الأموال لمدة 30 يوم",
+      guarantee: "تجربة مجانية 7 أيام", // UPDATED LINE
       cancel: "ألغ في أي وقت",
       noFees: "لا توجد رسوم خفية",
       trial: "تجربة مجانية 7 أيام", // ADD THIS LINE
@@ -427,7 +426,6 @@ const LandingPage: React.FC = () => {
               ? "Flexible month-to-month access"
               : "وصول مرن شهر بشهر",
           features: [
-            language === "en" ? "7-day free trial" : "تجربة مجانية 7 أيام", // ADD AS FIRST FEATURE
             language === "en"
               ? "Full desktop application access"
               : "وصول كامل لتطبيق سطح المكتب",
@@ -458,7 +456,7 @@ const LandingPage: React.FC = () => {
               ? "Get Monthly License"
               : "احصل على الترخيص الشهري",
           popular: false,
-          paddlePriceId: "pri_01k65kfvna4cjae8a62n1gh7g3", // Replace with your actual monthly price ID
+          paddlePriceId: "pri_01k76n58vtw58nzyzj3dh7md1t", // Replace with your actual monthly price ID
         },
       ],
       yearly: [
@@ -472,7 +470,6 @@ const LandingPage: React.FC = () => {
               ? "Best value for serious creators"
               : "أفضل قيمة للمبدعين الجادين",
           features: [
-            language === "en" ? "7-day free trial" : "تجربة مجانية 7 أيام", // ADD AS FIRST FEATURE
             language === "en"
               ? "Full desktop application access"
               : "وصول كامل لتطبيق سطح المكتب",
@@ -503,7 +500,7 @@ const LandingPage: React.FC = () => {
               ? "Get Yearly License"
               : "احصل على الترخيص السنوي",
           popular: false,
-          paddlePriceId: "pri_01k6jr3a6b9k0wpspyb4ntcd73", // Replace with your actual yearly price ID
+          paddlePriceId: "pri_01k76na5awhbh7epxs3tf5vqyr", // Replace with your actual yearly price ID
         },
       ],
       lifetime: [
@@ -551,7 +548,7 @@ const LandingPage: React.FC = () => {
               ? "Get Lifetime License"
               : "احصل على الترخيص مدى الحياة",
           popular: true,
-          paddlePriceId: "pri_01k6jr4sdr54taq7ydexyecgn5", // Replace with your actual lifetime price ID
+          paddlePriceId: "pri_01k76nmc3fkax0287xsgsh1m52", // Replace with your actual lifetime price ID
         },
       ],
     };
@@ -923,16 +920,6 @@ const LandingPage: React.FC = () => {
                         </span>
                       </div>
                     </div>
-
-                    {/* Trial Badge for subscriptions */}
-                    {activeTab !== "lifetime" && (
-                      <div className="mt-3">
-                        <span className="inline-flex items-center gap-1 bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-xs font-semibold border border-green-500/30">
-                          <Check className="w-3 h-3" />
-                          {t.pricing.trial}
-                        </span>
-                      </div>
-                    )}
                   </div>
 
                   {/* Features List */}

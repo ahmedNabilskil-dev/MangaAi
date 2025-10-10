@@ -30,11 +30,39 @@ export default function TermsOfService() {
               <h2 className="text-2xl font-bold">Agreement to Terms</h2>
             </div>
             <p className="text-gray-300 leading-relaxed">
-              By purchasing, downloading, or using MangaAI desktop application
+              By downloading, installing, or using MangaAI desktop application
               ("the Software"), you agree to be bound by these Terms of Service
               ("Terms"). If you do not agree to these Terms, do not use the
               Software.
             </p>
+          </section>
+
+          {/* Free Trial */}
+          <section>
+            <div className="flex items-center gap-3 mb-4">
+              <AlertCircle className="w-6 h-6 text-purple-400" />
+              <h2 className="text-2xl font-bold">Free Trial Period</h2>
+            </div>
+            <p className="text-gray-300 leading-relaxed mb-4">
+              New users are eligible for a 7-day free trial:
+            </p>
+            <ul className="list-disc list-inside space-y-2 text-gray-300">
+              <li>No payment information required to start the trial</li>
+              <li>Full access to all Software features during trial period</li>
+              <li>
+                You can activate the trial directly within the application
+              </li>
+              <li>Trial begins immediately upon activation</li>
+              <li>Only one free trial per device/user is permitted</li>
+            </ul>
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mt-4">
+              <p className="text-blue-300 text-sm">
+                <strong>Note:</strong> After the 7-day trial period ends, you
+                must purchase a license to continue using the Software. The
+                application will require a valid license key for continued
+                access.
+              </p>
+            </div>
           </section>
 
           {/* License Grant */}
@@ -75,30 +103,10 @@ export default function TermsOfService() {
               <p className="text-blue-300 text-sm">
                 <strong>Note:</strong> All licenses are for individual use only.
                 Each license permits installation on up to 3 devices owned by
-                the licensee.
+                the licensee. License keys are required for activation after the
+                trial period.
               </p>
             </div>
-          </section>
-
-          {/* Free Trial */}
-          <section>
-            <div className="flex items-center gap-3 mb-4">
-              <AlertCircle className="w-6 h-6 text-purple-400" />
-              <h2 className="text-2xl font-bold">Free Trial Period</h2>
-            </div>
-            <p className="text-gray-300 leading-relaxed mb-4">
-              Monthly and Yearly subscriptions include a 7-day free trial
-              period:
-            </p>
-            <ul className="list-disc list-inside space-y-2 text-gray-300">
-              <li>You will not be charged during the trial period</li>
-              <li>You can cancel anytime during the trial without charge</li>
-              <li>
-                If you do not cancel, you will be automatically charged at the
-                end of the trial
-              </li>
-              <li>Only one free trial per user is permitted</li>
-            </ul>
           </section>
 
           {/* Usage Requirements */}
@@ -148,6 +156,7 @@ export default function TermsOfService() {
               <li>
                 Share, sell, rent, or distribute your license key to others
               </li>
+              <li>Attempt to extend or manipulate the free trial period</li>
               <li>Reverse engineer, decompile, or disassemble the Software</li>
               <li>
                 Remove or modify any copyright notices or license information
@@ -204,43 +213,27 @@ export default function TermsOfService() {
             </ul>
           </section>
 
-          {/* Refund Policy */}
-          <section>
-            <div className="flex items-center gap-3 mb-4">
-              <AlertCircle className="w-6 h-6 text-purple-400" />
-              <h2 className="text-2xl font-bold">Refund Policy</h2>
-            </div>
-            <p className="text-gray-300 leading-relaxed mb-4">
-              We offer a 30-day money-back guarantee:
-            </p>
-            <ul className="list-disc list-inside space-y-2 text-gray-300 mb-4">
-              <li>Request a refund within 30 days of purchase</li>
-              <li>
-                Refunds are processed through Paddle (our payment processor)
-              </li>
-              <li>Your license will be deactivated upon refund</li>
-              <li>Refunds are at our discretion and subject to terms</li>
-            </ul>
-            <p className="text-gray-300 leading-relaxed">
-              To request a refund, contact us through our Facebook page:{" "}
-              <a
-                href="https://facebook.com/mangaaiapp"
-                className="text-purple-400 hover:text-purple-300"
-              >
-                facebook.com/mangaaiapp
-              </a>
-            </p>
-          </section>
-
           {/* Subscription Management */}
           <section>
             <div className="flex items-center gap-3 mb-4">
               <FileText className="w-6 h-6 text-purple-400" />
-              <h2 className="text-2xl font-bold">Subscription Management</h2>
+              <h2 className="text-2xl font-bold">License Management</h2>
             </div>
 
             <h3 className="text-xl font-semibold mb-3 text-purple-300">
-              Cancellation
+              Activation Required
+            </h3>
+            <p className="text-gray-300 leading-relaxed mb-4">
+              After the 7-day free trial, you must:
+            </p>
+            <ul className="list-disc list-inside space-y-2 text-gray-300 mb-6">
+              <li>Purchase a license (Monthly, Yearly, or Lifetime)</li>
+              <li>Enter your license key in the application</li>
+              <li>Activate the license to continue using the Software</li>
+            </ul>
+
+            <h3 className="text-xl font-semibold mb-3 text-purple-300">
+              Cancellation (Monthly/Yearly)
             </h3>
             <p className="text-gray-300 leading-relaxed mb-4">
               You may cancel your monthly or yearly subscription at any time:
@@ -286,6 +279,7 @@ export default function TermsOfService() {
                 <li>
                   Your content will be preserved (always backup your data)
                 </li>
+                <li>Free trial will be available indefinitely</li>
               </ul>
             </div>
           </section>
@@ -316,6 +310,7 @@ export default function TermsOfService() {
               <li>
                 We are not responsible for content you create or how you use it
               </li>
+              <li>We are not liable for free trial availability or duration</li>
             </ul>
           </section>
 
@@ -334,8 +329,9 @@ export default function TermsOfService() {
               <li>Access to documentation (when available)</li>
             </ul>
             <p className="text-gray-300 leading-relaxed mt-4">
-              We reserve the right to discontinue features or support for older
-              versions at any time.
+              Free trial users receive basic functionality but may have limited
+              access to support services. We reserve the right to discontinue
+              features or support for older versions at any time.
             </p>
           </section>
 
@@ -346,17 +342,19 @@ export default function TermsOfService() {
               <h2 className="text-2xl font-bold">Termination</h2>
             </div>
             <p className="text-gray-300 leading-relaxed mb-4">
-              We may terminate your license if you:
+              We may terminate your license or trial access if you:
             </p>
             <ul className="list-disc list-inside space-y-2 text-gray-300">
               <li>Violate these Terms</li>
               <li>Engage in fraudulent activity</li>
-              <li>Abuse or circumvent license validation</li>
+              <li>Abuse or circumvent license/trial validation</li>
               <li>Use the Software for illegal purposes</li>
+              <li>Attempt to manipulate or extend the trial period</li>
             </ul>
             <p className="text-gray-300 leading-relaxed mt-4">
               Upon termination, you must cease all use of the Software and
-              delete all copies.
+              delete all copies. Trial access automatically terminates after 7
+              days.
             </p>
           </section>
 

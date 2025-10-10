@@ -31,6 +31,46 @@ export default function LicenseAgreement() {
             </p>
           </section>
 
+          {/* Free Trial */}
+          <section>
+            <div className="flex items-center gap-3 mb-4">
+              <Award className="w-6 h-6 text-purple-400" />
+              <h2 className="text-2xl font-bold">Free Trial Period</h2>
+            </div>
+            <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/30 rounded-xl p-6 mb-4">
+              <h3 className="text-xl font-semibold mb-3 text-blue-300">
+                7-Day Free Trial
+              </h3>
+              <ul className="space-y-2 text-gray-300">
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+                  <span>No payment information required to start trial</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+                  <span>Activate trial directly within the application</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+                  <span>Full access to all Software features during trial</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+                  <span>Trial begins immediately upon activation</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+                  <span>Only one free trial per device/user</span>
+                </li>
+              </ul>
+            </div>
+            <p className="text-gray-300 leading-relaxed">
+              After the 7-day trial period ends, you must purchase and activate
+              a license to continue using the Software. The application will
+              require a valid license key for continued access.
+            </p>
+          </section>
+
           {/* License Types */}
           <section>
             <div className="flex items-center gap-3 mb-4">
@@ -51,10 +91,6 @@ export default function LicenseAgreement() {
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-                    <span>7-day free trial period</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
                     <span>Auto-renews each month unless canceled</span>
                   </li>
                   <li className="flex items-start gap-2">
@@ -63,7 +99,7 @@ export default function LicenseAgreement() {
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-                    <span>Price: $15/month after trial</span>
+                    <span>Price: $15/month</span>
                   </li>
                 </ul>
               </div>
@@ -80,10 +116,6 @@ export default function LicenseAgreement() {
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-                    <span>7-day free trial period</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
                     <span>Auto-renews each year unless canceled</span>
                   </li>
                   <li className="flex items-start gap-2">
@@ -92,7 +124,7 @@ export default function LicenseAgreement() {
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-                    <span>Price: $120/year after trial</span>
+                    <span>Price: $120/year</span>
                   </li>
                 </ul>
               </div>
@@ -123,7 +155,7 @@ export default function LicenseAgreement() {
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-                    <span>No trial period (immediate access)</span>
+                    <span>Immediate access after activation</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
@@ -142,8 +174,8 @@ export default function LicenseAgreement() {
             </div>
             <p className="text-gray-300 leading-relaxed mb-4">
               Subject to your compliance with this EULA and payment of
-              applicable fees, MangaAI grants you a limited, non-exclusive,
-              non-transferable, revocable license to:
+              applicable fees (after trial period), MangaAI grants you a
+              limited, non-exclusive, non-transferable, revocable license to:
             </p>
             <ul className="list-disc list-inside space-y-2 text-gray-300">
               <li>
@@ -156,6 +188,13 @@ export default function LicenseAgreement() {
               <li>Use the Software for personal or commercial purposes</li>
               <li>Export and publish content you create with the Software</li>
             </ul>
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mt-4">
+              <p className="text-blue-300 text-sm">
+                <strong>Note:</strong> During the free trial period, you receive
+                a temporary evaluation license. Full license rights are granted
+                only after purchasing and activating a paid license.
+              </p>
+            </div>
           </section>
 
           {/* Installation and Activation */}
@@ -168,12 +207,21 @@ export default function LicenseAgreement() {
             </div>
 
             <h3 className="text-xl font-semibold mb-3 text-purple-300">
-              License Key
+              Free Trial Activation
+            </h3>
+            <p className="text-gray-300 leading-relaxed mb-4">
+              New users can activate a 7-day free trial directly within the
+              application. No payment information is required. The trial
+              provides full access to all Software features.
+            </p>
+
+            <h3 className="text-xl font-semibold mb-3 text-purple-300">
+              License Key Activation
             </h3>
             <p className="text-gray-300 leading-relaxed mb-4">
               After purchase, you will receive a unique license key via email.
-              This key is used to activate the Software and must be kept
-              confidential.
+              This key is used to activate the Software after the trial period
+              and must be kept confidential.
             </p>
 
             <h3 className="text-xl font-semibold mb-3 text-purple-300">
@@ -190,8 +238,8 @@ export default function LicenseAgreement() {
             </h3>
             <p className="text-gray-300 leading-relaxed">
               The Software requires periodic online validation of your license.
-              An internet connection is required for initial activation and
-              periodic verification (typically monthly).
+              An internet connection is required for trial activation, license
+              activation, and periodic verification (typically monthly).
             </p>
           </section>
 
@@ -202,7 +250,7 @@ export default function LicenseAgreement() {
               <h2 className="text-2xl font-bold">Permitted Uses</h2>
             </div>
             <p className="text-gray-300 leading-relaxed mb-4">
-              With a valid license, you MAY:
+              With a valid license (trial or paid), you MAY:
             </p>
             <ul className="space-y-2 text-gray-300">
               <li className="flex items-start gap-2">
@@ -241,6 +289,12 @@ export default function LicenseAgreement() {
               <li className="flex items-start gap-2">
                 <XCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
                 <span>Share, transfer, or sell your license key to others</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <XCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                <span>
+                  Attempt to extend or manipulate the free trial period
+                </span>
               </li>
               <li className="flex items-start gap-2">
                 <XCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
@@ -305,6 +359,13 @@ export default function LicenseAgreement() {
               <li>Managing your API usage and costs</li>
               <li>Securing and protecting your API key</li>
             </ul>
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mt-4">
+              <p className="text-blue-300 text-sm">
+                <strong>Note:</strong> API key requirements apply during both
+                trial and paid license periods. You must provide your own API
+                key to use AI features.
+              </p>
+            </div>
           </section>
 
           {/* Ownership */}
@@ -386,7 +447,8 @@ export default function LicenseAgreement() {
             <p className="text-gray-300 leading-relaxed">
               Lifetime license holders receive all future updates at no
               additional cost. Subscription holders receive updates while their
-              subscription is active.
+              subscription is active. Free trial users receive current version
+              features.
             </p>
           </section>
 
@@ -405,6 +467,9 @@ export default function LicenseAgreement() {
             </p>
             <ul className="list-disc list-inside space-y-2 text-gray-300 mb-6">
               <li>You violate any terms of this EULA</li>
+              <li>
+                Your free trial period expires (unless you purchase a license)
+              </li>
               <li>Your subscription payment fails (for Monthly/Yearly)</li>
               <li>You cancel your subscription (access ends at period end)</li>
               <li>You engage in fraudulent activity or license abuse</li>
@@ -444,8 +509,9 @@ export default function LicenseAgreement() {
               <li>Bug reports and feature requests</li>
             </ul>
             <p className="text-gray-300 leading-relaxed mt-4">
-              Support is provided on a reasonable-effort basis. Response times
-              are not guaranteed.
+              Free trial users receive basic functionality support. Priority
+              support is provided to paid license holders on a reasonable-effort
+              basis. Response times are not guaranteed.
             </p>
           </section>
 
@@ -464,6 +530,8 @@ export default function LicenseAgreement() {
               <p className="text-gray-300 leading-relaxed">
                 MangaAI does not warrant that the Software will be error-free,
                 secure, or uninterrupted. You use the Software at your own risk.
+                Free trial availability is not guaranteed and may be
+                discontinued at any time.
               </p>
             </div>
           </section>
@@ -482,7 +550,8 @@ export default function LicenseAgreement() {
               </p>
               <p className="text-gray-300 leading-relaxed">
                 Our total liability shall not exceed the amount you paid for the
-                license in the 12 months preceding the claim.
+                license in the 12 months preceding the claim. For free trial
+                users, liability is limited to $0.
               </p>
             </div>
           </section>
