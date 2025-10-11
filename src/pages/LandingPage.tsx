@@ -555,8 +555,8 @@ const LandingPage: React.FC = () => {
 
   const downloadLinks = {
     windows:
-      "https://github.com/ahmedNabilskil-dev/MangaAI-Desktop-Release/releases/download/v.01/MangaAI-1.0.0-win.exe",
-    mac: "https://github.com/ahmedNabilskil-dev/MangaAI-Desktop-Release/releases/download/v.01/MangaAI-1.0.0-win.exe",
+      "https://github.com/ahmedNabilskil-dev/MangaAI-Desktop-Release/releases/download/1.0.0/MangaAI-1.0.0-win.exe",
+    mac: "https://github.com/ahmedNabilskil-dev/MangaAI-Desktop-Release/releases/download/1.0.0/MangaAI.Desktop-0.2.0-mac.dmg",
   };
 
   return (
