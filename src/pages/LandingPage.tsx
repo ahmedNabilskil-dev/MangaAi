@@ -155,34 +155,21 @@ const MangaAILanding = () => {
               <div className="absolute inset-0 blur-3xl bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 opacity-60 animate-pulse" />
               <div className="absolute inset-0 blur-2xl bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 opacity-40" />
 
-              <h1 className="relative font-black tracking-tighter">
-                <span
-                  className="block text-8xl md:text-9xl lg:text-[12rem] leading-none text-transparent bg-clip-text bg-gradient-to-b from-white via-purple-200 to-purple-500"
+              <div className="relative">
+                <img
+                  src="/images/logo.png"
+                  alt="MangaAI Logo"
+                  className="w-64 md:w-96 lg:w-[32rem] h-auto mx-auto"
                   style={{
-                    textShadow: `
-                      0 0 80px rgba(168, 85, 247, 0.8),
-                      0 0 120px rgba(236, 72, 153, 0.6),
-                      5px 5px 0 rgba(168, 85, 247, 0.4),
-                      10px 10px 0 rgba(168, 85, 247, 0.3),
-                      15px 15px 0 rgba(168, 85, 247, 0.2),
-                      20px 20px 0 rgba(168, 85, 247, 0.1)
+                    filter: `
+                      drop-shadow(0 0 80px rgba(168, 85, 247, 0.8))
+                      drop-shadow(0 0 120px rgba(236, 72, 153, 0.6))
                     `,
+                    marginTop: -100,
+                    marginBottom: -100,
                   }}
-                >
-                  MANGA
-                </span>
-                <span
-                  className="block text-6xl md:text-8xl lg:text-9xl leading-none mt-4 text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500"
-                  style={{
-                    textShadow: `
-                      0 0 60px rgba(236, 72, 153, 0.8),
-                      0 0 100px rgba(168, 85, 247, 0.6)
-                    `,
-                  }}
-                >
-                  AI
-                </span>
-              </h1>
+                />
+              </div>
             </div>
           </div>
 
@@ -438,21 +425,21 @@ const MangaAILanding = () => {
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-7xl mx-auto">
             <div className="flex items-center gap-6 mb-16">
-              <div className="h-1 flex-1 bg-gradient-to-r from-transparent to-indigo-500/50" />
+              <div className="h-1 flex-1 bg-gradient-to-r from-transparent to-indigo-500" />
               <div className="relative group">
-                <div className="absolute inset-0 bg-indigo-600/50 blur-xl" />
-                <div className="relative bg-black border-4 border-indigo-500/50 px-8 py-4 transform skew-x-12 shadow-2xl">
-                  <span className="text-indigo-400/70 font-black text-lg tracking-widest">
+                <div className="absolute inset-0 bg-indigo-600 blur-xl" />
+                <div className="relative bg-black border-4 border-indigo-500 px-8 py-4 transform skew-x-12 shadow-2xl">
+                  <span className="text-indigo-400 font-black text-lg tracking-widest">
                     CHAPTER 02
                   </span>
                 </div>
               </div>
-              <div className="h-1 flex-1 bg-gradient-to-l from-transparent to-indigo-500/50" />
+              <div className="h-1 flex-1 bg-gradient-to-l from-transparent to-indigo-500" />
             </div>
 
             <div className="grid lg:grid-cols-2 gap-16 items-center">
               <div className="relative">
-                <ComicPanel className="opacity-60 hover:opacity-80 transition-opacity">
+                <ComicPanel>
                   <div className="bg-gradient-to-br from-indigo-950 to-black p-8 relative overflow-hidden">
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex items-center justify-center z-10">
                       <div className="text-center">
@@ -465,7 +452,7 @@ const MangaAILanding = () => {
                       </div>
                     </div>
 
-                    <div className="space-y-4 opacity-30">
+                    <div className="space-y-4">
                       {[1, 2, 3].map((i) => (
                         <div
                           key={i}
@@ -495,18 +482,18 @@ const MangaAILanding = () => {
 
               <div className="space-y-8">
                 <div>
-                  <h2 className="text-6xl md:text-8xl font-black leading-none mb-6 opacity-70">
+                  <h2 className="text-6xl md:text-8xl font-black leading-none mb-6">
                     <span className="block text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-cyan-500 to-indigo-400">
                       THE
                     </span>
-                    <span className="block text-white/70 mt-2">SOCIAL</span>
+                    <span className="block text-white mt-2">SOCIAL</span>
                     <span className="block text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-indigo-600 mt-2">
                       REALM
                     </span>
                   </h2>
                 </div>
 
-                <ComicPanel className="opacity-70">
+                <ComicPanel>
                   <div className="p-8 bg-gradient-to-br from-indigo-900/50 to-black">
                     <p className="text-xl text-indigo-100 leading-relaxed">
                       <span className="font-black text-2xl text-white/70">
@@ -521,7 +508,7 @@ const MangaAILanding = () => {
                   </div>
                 </ComicPanel>
 
-                <div className="grid grid-cols-2 gap-4 opacity-60">
+                <div className="grid grid-cols-2 gap-4">
                   {[
                     { icon: "🌐", title: "Universe Worlds" },
                     { icon: "👥", title: "AI Characters" },
@@ -541,7 +528,7 @@ const MangaAILanding = () => {
                   ))}
                 </div>
 
-                <div className="relative inline-block opacity-50 cursor-not-allowed">
+                <div className="relative inline-block cursor-not-allowed">
                   <div className="bg-gradient-to-r from-indigo-900 to-indigo-800 text-indigo-300 px-12 py-6 rounded-2xl font-black text-2xl md:text-3xl shadow-2xl border-4 border-indigo-600/50 flex items-center gap-4">
                     <Lock className="w-8 h-8" />
                     <span>LOCKED</span>
@@ -567,19 +554,19 @@ const MangaAILanding = () => {
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-7xl mx-auto">
             <div className="flex items-center gap-6 mb-16">
-              <div className="relative group opacity-40">
-                <div className="absolute inset-0 bg-violet-600/30 blur-xl" />
-                <div className="relative bg-black border-4 border-violet-500/30 px-8 py-4 transform -skew-x-12 shadow-2xl">
-                  <span className="text-violet-400/50 font-black text-lg tracking-widest">
+              <div className="relative group">
+                <div className="absolute inset-0 bg-violet-600 blur-xl" />
+                <div className="relative bg-black border-4 border-violet-500 px-8 py-4 transform -skew-x-12 shadow-2xl">
+                  <span className="text-violet-400 font-black text-lg tracking-widest">
                     CHAPTER 03
                   </span>
                 </div>
               </div>
-              <div className="h-1 flex-1 bg-gradient-to-r from-violet-500/30 to-transparent" />
+              <div className="h-1 flex-1 bg-gradient-to-r from-violet-500 to-transparent" />
             </div>
 
             <div className="grid lg:grid-cols-2 gap-16 items-center">
-              <div className="space-y-8 opacity-40">
+              <div className="space-y-8">
                 <div>
                   <h2 className="text-6xl md:text-8xl font-black leading-none mb-6">
                     <span className="block text-transparent bg-clip-text bg-gradient-to-r from-violet-400/50 via-fuchsia-500/50 to-violet-400/50">
@@ -592,7 +579,7 @@ const MangaAILanding = () => {
                   </h2>
                 </div>
 
-                <ComicPanel className="opacity-50">
+                <ComicPanel>
                   <div className="p-8 bg-gradient-to-br from-violet-900/30 to-black">
                     <p className="text-xl text-violet-100/50 leading-relaxed">
                       <span className="font-black text-2xl text-white/30">
@@ -605,14 +592,14 @@ const MangaAILanding = () => {
                   </div>
                 </ComicPanel>
 
-                <div className="inline-flex items-center gap-3 bg-violet-900/20 border-2 border-violet-500/30 px-6 py-3 rounded-full">
+                <div className="inline-flex items-center gap-3 bg-violet-900 border-2 border-violet-500 px-6 py-3 rounded-full">
                   <div className="w-3 h-3 bg-violet-400/30 rounded-full animate-pulse" />
                   <span className="text-violet-400/50 font-black text-lg tracking-wider">
                     TO BE CONTINUED
                   </span>
                 </div>
 
-                <div className="text-center p-8 border-2 border-violet-500/20 rounded-lg bg-black/50">
+                <div className="text-center p-8 border-2 border-violet-500 rounded-lg bg-black">
                   <p className="text-violet-400/30 text-2xl font-black mb-2">
                     ［ CLASSIFIED ］
                   </p>
@@ -622,7 +609,7 @@ const MangaAILanding = () => {
                 </div>
               </div>
 
-              <div className="relative opacity-30 hover:opacity-50 transition-opacity">
+              <div className="relative hover:opacity-90 transition-opacity">
                 <ComicPanel>
                   <div className="bg-gradient-to-br from-violet-950/30 to-black p-8 relative overflow-hidden">
                     <div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center">
