@@ -7,6 +7,11 @@ const PrivacyPolicy = () => {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  // Scroll to top on mount
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
     const handleMouseMove = (e: MouseEvent) =>
@@ -117,9 +122,19 @@ const PrivacyPolicy = () => {
               <ArrowLeft className="w-6 h-6 group-hover:-translate-x-2 transition-transform" />
               <span className="font-bold">Back to Universe</span>
             </Link>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-violet-500 rounded-full animate-pulse" />
-              <span className="text-violet-400 font-bold text-sm">KEMTOON</span>
+            <div className="flex items-center gap-6">
+              <Link
+                to="/terms-and-conditions"
+                className="text-violet-400 hover:text-violet-300 transition-colors font-semibold text-sm hidden md:block"
+              >
+                Terms & Conditions
+              </Link>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-violet-500 rounded-full animate-pulse" />
+                <span className="text-violet-400 font-bold text-sm">
+                  KEMTOON
+                </span>
+              </div>
             </div>
           </div>
         </div>
