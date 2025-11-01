@@ -11,7 +11,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
-const MangaAILanding = () => {
+const KemtoonLanding = () => {
   const [scrollY, setScrollY] = useState(0);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [isVisible, setIsVisible] = useState<Record<string, boolean>>({});
@@ -159,7 +159,7 @@ const MangaAILanding = () => {
               <div className="relative">
                 <img
                   src="/images/logo.png"
-                  alt="MangaAI Logo"
+                  alt="Kemtoon Logo"
                   className="w-64 md:w-96 lg:w-[32rem] h-auto mx-auto"
                   style={{
                     filter: `
@@ -397,7 +397,7 @@ const MangaAILanding = () => {
                   <div className="bg-gradient-to-br from-purple-900 via-black to-purple-900 overflow-hidden">
                     <img
                       src="/images/studio.png"
-                      alt="MangaAI Studio Interface"
+                      alt="Kemtoon Studio Interface"
                       className="w-full h-auto object-cover"
                     />
                   </div>
@@ -668,7 +668,7 @@ const MangaAILanding = () => {
                       textShadow: "0 0 80px rgba(168, 85, 247, 0.8)",
                     }}
                   >
-                    THE MANGAAI UNIVERSE
+                    THE KEMTOON UNIVERSE
                   </span>
                 </h2>
               </div>
@@ -818,7 +818,7 @@ const MangaAILanding = () => {
           <div className="max-w-4xl mx-auto text-center">
             <div className="mb-6">
               <h3 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-2">
-                MangaAI
+                Kemtoon
               </h3>
               <p className="text-purple-400/70">
                 Where AI brings manga to life
@@ -855,7 +855,7 @@ const MangaAILanding = () => {
             </div>
 
             <p className="text-purple-500/50 text-sm">
-              © 2025 MangaAI Ecosystem. All rights reserved.
+              © 2025 Kemtoon Ecosystem. All rights reserved.
             </p>
           </div>
         </div>
@@ -864,4 +864,4 @@ const MangaAILanding = () => {
   );
 };
 
-export default MangaAILanding;
+export default KemtoonLanding;
