@@ -9,6 +9,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 
 const MangaAILanding = () => {
   const [scrollY, setScrollY] = useState(0);
@@ -836,6 +837,22 @@ const MangaAILanding = () => {
             </div>
 
             <div className="h-px bg-gradient-to-r from-transparent via-purple-500/30 to-transparent mb-8" />
+
+            <div className="flex flex-wrap justify-center gap-6 mb-6 text-sm">
+              <Link
+                to="/privacy-policy"
+                className="text-purple-400 hover:text-purple-300 transition-colors font-semibold"
+              >
+                Privacy Policy
+              </Link>
+              <span className="text-purple-600/50">•</span>
+              <Link
+                to="/terms-and-conditions"
+                className="text-purple-400 hover:text-purple-300 transition-colors font-semibold"
+              >
+                Terms & Conditions
+              </Link>
+            </div>
 
             <p className="text-purple-500/50 text-sm">
               © 2025 MangaAI Ecosystem. All rights reserved.
