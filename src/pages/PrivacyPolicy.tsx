@@ -209,18 +209,19 @@ const PrivacyPolicy = () => {
               <ul className="list-disc list-inside space-y-2 ml-4">
                 <li>
                   <strong>Account Information:</strong> Name, email address,
-                  phone, username, and password when you create an account.
+                  phone number, username, and password when you create an
+                  account.
                 </li>
                 <li>
                   <strong>Profile Data:</strong> Optional profile picture, bio,
                   and preferences.
                 </li>
                 <li>
-                  <strong>API Keys:</strong> Your Gemini API key or other AI
-                  service keys that you provide for manga generation (stored
-                  encrypted in our Supabase database). We never share or use
-                  your API keys for any purpose other than making requests on
-                  your behalf.
+                  <strong>API Keys:</strong> Your Google Gemini API key that you
+                  provide for AI-powered manga generation (stored encrypted in
+                  our Supabase database). We never share or use your API key for
+                  any purpose other than making requests to Gemini on your
+                  behalf.
                 </li>
                 <li>
                   <strong>Content:</strong> Manga projects, chapters, scenes,
@@ -235,17 +236,16 @@ const PrivacyPolicy = () => {
               <ul className="list-disc list-inside space-y-2 ml-4">
                 <li>
                   <strong>Usage Data:</strong> IP address, browser type, device
-                  information, pages visited, time spent, and interactions with
-                  the platform.
+                  information, and interactions with the platform for security
+                  and service functionality.
                 </li>
                 <li>
-                  <strong>Cookies:</strong> We use cookies and similar tracking
-                  technologies to enhance your experience and analyze platform
-                  usage.
+                  <strong>Cookies:</strong> We use essential and preference
+                  cookies to maintain your session and remember your settings.
                 </li>
                 <li>
-                  <strong>Analytics:</strong> Platform performance, feature
-                  usage, and error logs to improve our services.
+                  <strong>Error Logs:</strong> Technical logs to diagnose and
+                  fix platform issues.
                 </li>
               </ul>
             </Section>
@@ -265,22 +265,21 @@ const PrivacyPolicy = () => {
                   based on preferences and usage patterns.
                 </li>
                 <li>
-                  <strong>Communication:</strong> To send updates, newsletters,
-                  promotional content, and respond to inquiries (you can opt out
-                  anytime).
+                  <strong>Communication:</strong> To respond to your inquiries
+                  and provide important service-related updates.
                 </li>
                 <li>
                   <strong>Security:</strong> To detect, prevent, and address
                   fraud, abuse, and security issues.
                 </li>
                 <li>
-                  <strong>AI Processing:</strong> Your API keys are used
-                  securely to connect to third-party AI services (Gemini, GPT,
-                  etc.) for content generation.
+                  <strong>AI Processing:</strong> Your Gemini API key is used
+                  securely to connect to Google Gemini for AI-powered content
+                  generation.
                 </li>
                 <li>
-                  <strong>Analytics:</strong> To understand user behavior and
-                  improve platform features.
+                  <strong>Platform Improvement:</strong> To diagnose issues, fix
+                  bugs, and enhance features based on usage patterns.
                 </li>
                 <li>
                   <strong>Legal Compliance:</strong> To comply with legal
@@ -299,9 +298,9 @@ const PrivacyPolicy = () => {
               </p>
               <ul className="list-disc list-inside space-y-2 ml-4">
                 <li>
-                  <strong>API Key Encryption:</strong> All API keys (Gemini,
-                  GPT, etc.) are encrypted at rest in our Supabase PostgreSQL
-                  database using AES-256 encryption.
+                  <strong>API Key Encryption:</strong> Your Gemini API key is
+                  encrypted at rest in our Supabase PostgreSQL database using
+                  AES-256 encryption.
                 </li>
                 <li>
                   <strong>Secure Transmission:</strong> Data transmitted between
@@ -330,9 +329,9 @@ const PrivacyPolicy = () => {
                   authentication (compliant with GDPR, SOC 2).
                 </li>
                 <li>
-                  <strong>AI Providers:</strong> Your API keys are used to make
-                  requests to Google Gemini, OpenAI, and other AI services. We
-                  do not share your keys with anyone else.
+                  <strong>Google Gemini:</strong> Your Gemini API key is used to
+                  make requests to Google's Gemini AI service. We do not share
+                  your key with anyone else.
                 </li>
               </ul>
             </Section>
@@ -389,25 +388,17 @@ const PrivacyPolicy = () => {
                   purposes).
                 </li>
                 <li>
-                  <strong>Opt-Out:</strong> Unsubscribe from marketing emails
-                  via the link in each email.
-                </li>
-                <li>
                   <strong>Data Portability:</strong> Request your data in a
                   machine-readable format.
-                </li>
-                <li>
-                  <strong>Object to Processing:</strong> Object to certain uses
-                  of your data (e.g., marketing).
                 </li>
               </ul>
               <p className="mt-4">
                 To exercise these rights, contact us at{" "}
                 <a
-                  href="mailto:privacy@kemtoon.com"
+                  href="mailto:contact@kemtoon.com"
                   className="text-violet-400 hover:text-violet-300 font-semibold"
                 >
-                  privacy@kemtoon.com
+                  contact@kemtoon.com
                 </a>
                 .
               </p>
@@ -424,35 +415,36 @@ const PrivacyPolicy = () => {
               <ul className="list-disc list-inside space-y-2 ml-4">
                 <li>
                   <strong>Essential Cookies:</strong> Required for the platform
-                  to function (login, security).
-                </li>
-                <li>
-                  <strong>Analytics Cookies:</strong> Help us understand usage
-                  patterns and improve features.
+                  to function (login, authentication, security).
                 </li>
                 <li>
                   <strong>Preference Cookies:</strong> Remember your settings
-                  and preferences.
+                  and preferences for a better user experience.
                 </li>
               </ul>
               <p className="mt-4">
                 You can control cookies through your browser settings, but
-                disabling certain cookies may affect platform functionality.
+                disabling essential cookies may affect platform functionality.
               </p>
             </Section>
 
             <Section icon={Lock} title="8. Children's Privacy">
               <p>
-                Kemtoon is not intended for children under the age of 13. We do
-                not knowingly collect personal information from children. If we
-                discover that a child under 13 has provided personal
-                information, we will delete it immediately. If you believe a
-                child has provided us with personal data, please contact us at{" "}
+                Kemtoon uses third-party authentication services (such as
+                Google) that have their own age restrictions and policies. We do
+                not independently verify user ages and rely on these
+                authentication providers to enforce their age requirements.
+              </p>
+              <p className="mt-4">
+                We do not knowingly collect personal information from children
+                who do not meet the minimum age requirements of the
+                authentication service they use. If you believe a child has
+                inappropriately accessed our services, please contact us at{" "}
                 <a
-                  href="mailto:privacy@kemtoon.com"
+                  href="mailto:contact@kemtoon.com"
                   className="text-violet-400 hover:text-violet-300 font-semibold"
                 >
-                  privacy@kemtoon.com
+                  contact@kemtoon.com
                 </a>
                 .
               </p>
@@ -499,10 +491,10 @@ const PrivacyPolicy = () => {
                 <p>
                   <strong>Email:</strong>{" "}
                   <a
-                    href="mailto:privacy@kemtoon.com"
+                    href="mailto:contact@kemtoon.com"
                     className="text-violet-300 hover:text-violet-200"
                   >
-                    privacy@kemtoon.com
+                    contact@kemtoon.com
                   </a>
                 </p>
                 <p>
@@ -510,6 +502,8 @@ const PrivacyPolicy = () => {
                   <a
                     href="https://kemtoon.com"
                     className="text-violet-300 hover:text-violet-200"
+                    target="_blank"
+                    rel="noopener noreferrer"
                   >
                     kemtoon.com
                   </a>
@@ -519,8 +513,21 @@ const PrivacyPolicy = () => {
                   <a
                     href="https://studio.kemtoon.com"
                     className="text-violet-300 hover:text-violet-200"
+                    target="_blank"
+                    rel="noopener noreferrer"
                   >
                     studio.kemtoon.com
+                  </a>
+                </p>
+                <p>
+                  <strong>Facebook:</strong>{" "}
+                  <a
+                    href="https://www.facebook.com/kemetoon"
+                    className="text-violet-300 hover:text-violet-200"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    @kemetoon
                   </a>
                 </p>
                 <p>
