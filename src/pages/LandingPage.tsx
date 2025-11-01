@@ -379,7 +379,7 @@ const MangaAILanding = () => {
                 </div>
 
                 <a
-                  href="https://studio.mangaai.app"
+                  href="https://studio.kemtoon.com"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="group relative inline-block"
@@ -778,7 +778,7 @@ const MangaAILanding = () => {
             </p>
 
             <a
-              href="https://studio.mangaai.app"
+              href="https://studio.kemtoon.com"
               target="_blank"
               rel="noopener noreferrer"
               className="group relative inline-block"
@@ -793,19 +793,19 @@ const MangaAILanding = () => {
 
             <div className="mt-20 flex flex-wrap justify-center gap-4 text-sm">
               <a
-                href="https://studio.mangaai.app"
+                href="https://studio.kemtoon.com"
                 className="text-purple-400 hover:text-purple-300 font-semibold transition-colors flex items-center gap-2"
               >
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                studio.mangaai.app
+                studio.kemtoon.com
               </a>
               <span className="text-purple-600">•</span>
               <span className="text-purple-600/50">
-                social.mangaai.app (soon)
+                social.kemtoon.com (soon)
               </span>
               <span className="text-purple-600">•</span>
               <span className="text-purple-600/30">
-                game.mangaai.app (future)
+                game.kemtoon.com (future)
               </span>
             </div>
           </div>
@@ -827,7 +827,7 @@ const MangaAILanding = () => {
 
             <div className="flex flex-wrap justify-center gap-6 mb-8 text-sm">
               <a
-                href="https://studio.mangaai.app"
+                href="https://studio.kemtoon.com"
                 className="text-purple-400 hover:text-purple-300 transition-colors font-semibold"
               >
                 Studio
